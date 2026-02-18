@@ -1,0 +1,125 @@
+{
+    "user": "ukmi2026",
+    "key": "ihsantaufiq",
+    "agenda": {
+        "tag": "Agenda terdekat",
+        "title": "Pelantikan Ketum 2026-2027",
+        "detail": "Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027."
+    },
+    "agendas": [
+        {
+            "tag": "Agenda terdekat",
+            "title": "Pelantikan Ketum 2026-2027",
+            "detail": "Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027."
+        },
+        {
+            "tag": "Agenda terdekat",
+            "title": "Pelantikan Ketum 2026-2027",
+            "detail": "Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027."
+        }
+    ],
+    "agenda_archive": [],
+    "logs": [
+        {
+            "time": "2026-02-18T15:06:59+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "registration-updated"
+        },
+        {
+            "time": "2026-02-18T15:06:59+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-18T15:04:32+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "registration-updated"
+        },
+        {
+            "time": "2026-02-18T15:04:32+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-18T15:04:29+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "agenda-updated"
+        },
+        {
+            "time": "2026-02-18T15:04:29+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-18T15:04:26+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "agenda-updated"
+        },
+        {
+            "time": "2026-02-18T15:04:26+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-18T15:04:22+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
+            "event": "view-auth"
+        }
+    ],
+    "logs_archive": [],
+    "registration": {
+        "platform": "Google Form",
+        "url": "https:\/\/forms.gle\/e4e6egXHiRnyQVPV7"
+    },
+    "docs": [
+        {
+            "tag": "Highlight",
+            "title": "Arsip IG UKMI",
+            "description": "Galeri kegiatan 2016-2025 dalam format slide dan grid. Cocok untuk stalking suasana UKMI.",
+            "url": "https:\/\/krasyid822.github.io\/ukmipolmed\/ukmipolmed-ig\/"
+        },
+        {
+            "tag": "PPI 2024",
+            "title": "Dokumentasi PPI 2024",
+            "description": "Index foto\/video PPI 2024 lengkap dengan navigasi slide & grid view.",
+            "url": "https:\/\/krasyid822.github.io\/ukmipolmed\/dokumentasi-ppi-2024\/"
+        }
+    ],
+    "posts": [],
+    "divisions": [
+        {
+            "name": "Kaderisasi",
+            "description": "Merancang alur pembinaan anggota baru dan pelatihan berjenjang."
+        },
+        {
+            "name": "Mentoring Agama Islam",
+            "description": "Fokus mentoring iman-ilmu, kajian tematik, dan pendampingan rohani."
+        },
+        {
+            "name": "Pembinaan Tilawatil Quran",
+            "description": "Kelas tahsin-tahfizh, halaqah rutin, dan penguatan literasi Quran."
+        },
+        {
+            "name": "Syiar Media",
+            "description": "Mengelola konten digital, desain, foto-video, dan siaran kampanye kebaikan."
+        },
+        {
+            "name": "Keputrian",
+            "description": "Program khusus muslimah: kelas, support system, dan kepemimpinan perempuan."
+        },
+        {
+            "name": "Ekonomi",
+            "description": "Inisiatif kewirausahaan, fundrising program, dan pengelolaan dana kegiatan."
+        }
+    ],
+    "session_version": 1
+}

@@ -1,0 +1,214 @@
+{
+    "user": "ukmi2026",
+    "key": "ihsantaufiq",
+    "agenda": {
+        "tag": "Agenda terdekat",
+        "title": "Pelantikan Ketum 2026-2027",
+        "detail": "Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027..."
+    },
+    "logs": [
+        {
+            "time": "2026-02-18T06:23:26-05:00",
+            "ip": "182.9.35.241",
+            "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-18T06:23:26-05:00",
+            "ip": "182.9.35.241",
+            "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+            "event": "login-success"
+        },
+        {
+            "time": "2026-02-18T06:23:23-05:00",
+            "ip": "182.9.35.241",
+            "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+            "event": "view-guest"
+        }
+    ],
+    "logs_archive": {
+        "2026-02-17": [
+            {
+                "time": "2026-02-17T02:15:30-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T01:27:02-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T01:26:36-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-auth"
+            },
+            {
+                "time": "2026-02-17T01:26:36-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "login-success"
+            },
+            {
+                "time": "2026-02-17T01:26:32-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T01:26:31-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "logout-all"
+            },
+            {
+                "time": "2026-02-17T01:25:30-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-auth"
+            },
+            {
+                "time": "2026-02-17T01:25:30-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "login-success"
+            },
+            {
+                "time": "2026-02-17T01:25:19-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T01:04:55-05:00",
+                "ip": "103.165.239.221",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T01:04:46-05:00",
+                "ip": "103.165.239.221",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T01:04:46-05:00",
+                "ip": "103.165.239.221",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Mobile Safari\/537.36",
+                "event": "login-fail"
+            },
+            {
+                "time": "2026-02-17T01:04:37-05:00",
+                "ip": "103.165.239.221",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T01:04:25-05:00",
+                "ip": "103.165.239.221",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:15:39-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:15:37-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:15:36-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:15:31-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:15:26-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "agenda-updated"
+            },
+            {
+                "time": "2026-02-17T00:15:26-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-auth"
+            },
+            {
+                "time": "2026-02-17T00:14:42-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-auth"
+            },
+            {
+                "time": "2026-02-17T00:14:41-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "login-success"
+            },
+            {
+                "time": "2026-02-17T00:14:36-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:14:19-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:14:19-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "login-fail"
+            },
+            {
+                "time": "2026-02-17T00:14:10-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:11:14-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:08:02-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:06:43-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-guest"
+            },
+            {
+                "time": "2026-02-17T00:05:59-05:00",
+                "ip": "182.9.35.141",
+                "ua": "Mozilla\/5.0 (Linux; Android 10; K) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/145.0.0.0 Mobile Safari\/537.36",
+                "event": "view-auth"
+            }
+        ]
+    },
+    "session_version": 3
+}
