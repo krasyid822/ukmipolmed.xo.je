@@ -5,15 +5,111 @@ $agendaDefaults = [
     'detail' => 'Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027.',
 ];
 
-$agenda = $agendaDefaults;
-$configPath = __DIR__ . '/admin.json';
+$registrationDefaults = [
+    'platform' => 'Google Form',
+    'url' => 'https://forms.gle/e4e6egXHiRnyQVPV7',
+];
+$divisionDefaults = [
+    ['name' => 'Kaderisasi', 'description' => 'Merancang alur pembinaan anggota baru dan pelatihan berjenjang.'],
+    ['name' => 'Mentoring Agama Islam', 'description' => 'Fokus mentoring iman-ilmu, kajian tematik, dan pendampingan rohani.'],
+    ['name' => 'Pembinaan Tilawatil Quran', 'description' => 'Kelas tahsin-tahfizh, halaqah rutin, dan penguatan literasi Quran.'],
+    ['name' => 'Syiar Media', 'description' => 'Mengelola konten digital, desain, foto-video, dan siaran kampanye kebaikan.'],
+    ['name' => 'Keputrian', 'description' => 'Program khusus muslimah: kelas, support system, dan kepemimpinan perempuan.'],
+    ['name' => 'Ekonomi', 'description' => 'Inisiatif kewirausahaan, fundrising program, dan pengelolaan dana kegiatan.'],
+];
+$docDefaults = [
+    ['tag' => 'Highlight', 'title' => 'Arsip IG UKMI', 'description' => 'Galeri kegiatan 2016-2025 dalam format slide dan grid. Cocok untuk stalking suasana UKMI.', 'url' => 'https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/'],
+    ['tag' => 'PPI 2024', 'title' => 'Dokumentasi PPI 2024', 'description' => 'Index foto/video PPI 2024 lengkap dengan navigasi slide & grid view.', 'url' => 'https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/'],
+];
+
+$agendas = [];
+$configPath = __DIR__ . '/data.json';
+$defaultPath = __DIR__ . '/default.json';
+
+if (is_readable($defaultPath)) {
+    $defaultData = json_decode((string) file_get_contents($defaultPath), true);
+    if (is_array($defaultData)) {
+        $agendaDefaults = array_merge($agendaDefaults, array_intersect_key($defaultData['agenda'] ?? [], $agendaDefaults));
+        $registrationDefaults = array_merge($registrationDefaults, array_intersect_key($defaultData['registration'] ?? [], $registrationDefaults));
+        if (!empty($defaultData['divisions']) && is_array($defaultData['divisions'])) {
+            $divisionDefaults = $defaultData['divisions'];
+        }
+        if (!empty($defaultData['docs']) && is_array($defaultData['docs'])) {
+            $docDefaults = $defaultData['docs'];
+        }
+    }
+}
 
 if (is_readable($configPath)) {
     $config = json_decode((string) file_get_contents($configPath), true);
-    if (is_array($config) && !empty($config['agenda']) && is_array($config['agenda'])) {
-        $agenda = array_merge($agendaDefaults, array_intersect_key($config['agenda'], $agendaDefaults));
+    if (is_array($config)) {
+        if (!empty($config['agendas']) && is_array($config['agendas'])) {
+            foreach ($config['agendas'] as $item) {
+                if (!is_array($item)) continue;
+                $agendas[] = array_merge($agendaDefaults, array_intersect_key($item, $agendaDefaults));
+            }
+        } elseif (!empty($config['agenda']) && is_array($config['agenda'])) {
+            $agendas[] = array_merge($agendaDefaults, array_intersect_key($config['agenda'], $agendaDefaults));
+        }
     }
 }
+
+if (empty($agendas)) {
+    $agendas[] = $agendaDefaults;
+}
+
+$registration = $registrationDefaults;
+if (isset($config) && is_array($config) && !empty($config['registration']) && is_array($config['registration'])) {
+    $registration = array_merge($registrationDefaults, array_intersect_key($config['registration'], $registrationDefaults));
+    if (empty(trim((string) $registration['url'] ?? ''))) {
+        $registration['url'] = $registrationDefaults['url'];
+    }
+}
+
+$divisions = $divisionDefaults;
+if (isset($config) && is_array($config) && !empty($config['divisions']) && is_array($config['divisions'])) {
+    $tmp = [];
+    foreach ($config['divisions'] as $item) {
+        if (!is_array($item)) continue;
+        $name = trim((string) ($item['name'] ?? ''));
+        $desc = trim((string) ($item['description'] ?? ''));
+        if ($name === '' && $desc === '') continue;
+        $tmp[] = [
+            'name' => $name ?: 'Divisi',
+            'description' => $desc ?: 'Deskripsi divisi.',
+        ];
+    }
+    if (!empty($tmp)) {
+        $divisions = $tmp;
+    }
+}
+$divisionCount = count($divisions);
+$divisionNames = array_map(fn($d) => $d['name'], $divisions);
+$divisionYearStart = (int) date('Y');
+$divisionYearLabel = $divisionYearStart . '-' . ($divisionYearStart + 1);
+$docs = $docDefaults;
+if (isset($config) && is_array($config) && !empty($config['docs']) && is_array($config['docs'])) {
+    $tmpDocs = [];
+    foreach ($config['docs'] as $item) {
+        if (!is_array($item)) continue;
+        $tag = trim((string) ($item['tag'] ?? 'Dokumentasi')) ?: 'Dokumentasi';
+        $title = trim((string) ($item['title'] ?? '')) ?: 'Judul dokumentasi';
+        $desc = trim((string) ($item['description'] ?? '')) ?: 'Deskripsi dokumentasi.';
+        $url = trim((string) ($item['url'] ?? '')) ?: '#';
+        $tmpDocs[] = [
+            'tag' => $tag,
+            'title' => $title,
+            'description' => $desc,
+            'url' => $url,
+        ];
+        if (count($tmpDocs) >= 10) break;
+    }
+    if (!empty($tmpDocs)) {
+        $docs = $tmpDocs;
+    }
+}
+
+$firstAgenda = $agendas[0];
 
 function e($value)
 {
@@ -338,6 +434,23 @@ function e($value)
             margin-bottom: 8px;
         }
 
+        .agenda-rotator {
+            position: relative;
+            perspective: 1200px;
+            overflow: hidden;
+            isolation: isolate;
+        }
+        .agenda-swap {
+            position: relative;
+            z-index: 1;
+            transform-origin: center;
+            transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.15, 1), opacity 0.35s ease;
+        }
+        .agenda-swap.flipping {
+            transform: rotateY(90deg) translateZ(0);
+            opacity: 0;
+        }
+
         .steps {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -420,7 +533,8 @@ function e($value)
                 <a class="btn ghost" href="#program">Program</a>
                 <a class="btn ghost" href="#divisi">Divisi</a>
                 <a class="btn ghost" href="#dokumentasi">Dokumentasi</a>
-                <a class="btn primary" href="#daftar">Daftar</a>
+                <a class="btn ghost" href="blog.php">Blog</a>
+                <a class="btn primary" href="#daftar">Daftar sekarang</a>
             </div>
         </div>
     </header>
@@ -433,7 +547,7 @@ function e($value)
                 <h1>Jadi bagian keluarga UKMI. Bergerak bareng, bertumbuh bareng.</h1>
                 <p class="lead">Halaman shortcut untuk mahasiswa baru Polmed yang mau nyemplung ke organisasi UKMI: cek agenda, kelas skill, jalur daftar tercepat, dan dokumentasi kegiatan.</p>
                 <div class="cta-row">
-                    <a class="btn primary" href="https://forms.gle/e4e6egXHiRnyQVPV7" target="_blank" rel="noopener">Daftar sekarang</a>
+                    <a class="btn primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener">Daftar sekarang</a>
                     <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/">Lihat arsip IG kami</a>
                 </div>
             </div>
@@ -444,8 +558,8 @@ function e($value)
                         <span>Mentoring, sosial, dan kreatif setiap minggunya.</span>
                     </div>
                     <div class="metric-card">
-                        <strong>6 divisi</strong>
-                        <span>Kaderisasi · Mentring Agama Islam · Pembinaan Tilawatil Quran · Syiar Media · Keputrian · Ekonomi.</span>
+                        <strong><?php echo e($divisionCount); ?> divisi</strong>
+                        <span><?php echo e(implode(' · ', $divisionNames)); ?>.</span>
                     </div>
                     <div class="metric-card">
                         <strong>Terbuka</strong>
@@ -458,10 +572,10 @@ function e($value)
         <section id="shortcut">
             <div class="section-title"><span class="pill">★</span>Shortcut paling dicari</div>
             <div class="grid">
-                <div class="card">
-                    <div class="tag"><?php echo e($agenda['tag']); ?></div>
-                    <h3><?php echo e($agenda['title']); ?></h3>
-                    <p><?php echo e($agenda['detail']); ?></p>
+                <div class="card agenda-rotator">
+                    <div class="tag agenda-swap" id="agenda-tag"><?php echo e($firstAgenda['tag']); ?></div>
+                    <h3 class="agenda-swap" id="agenda-title"><?php echo e($firstAgenda['title']); ?></h3>
+                    <p class="agenda-swap" id="agenda-detail"><?php echo e($firstAgenda['detail']); ?></p>
                 </div>
                 <div class="card">
                     <div class="tag">Skill Class</div>
@@ -504,14 +618,11 @@ function e($value)
         </section>
 
         <section id="divisi">
-            <div class="section-title"><span class="pill">◎</span>Divisi kepengurusan 2026-2027</div>
+            <div class="section-title"><span class="pill">◎</span>Divisi kepengurusan <?php echo e($divisionYearLabel); ?></div>
             <div class="grid">
-                <div class="card"><h3>Kaderisasi</h3><p>Merancang alur pembinaan anggota baru dan pelatihan berjenjang.</p></div>
-                <div class="card"><h3>Mentring Agama Islam</h3><p>Fokus mentoring iman-ilmu, kajian tematik, dan pendampingan rohani.</p></div>
-                <div class="card"><h3>Pembinaan Tilawatil Quran</h3><p>Kelas tahsin-tahfizh, halaqah rutin, dan penguatan literasi Quran.</p></div>
-                <div class="card"><h3>Syiar Media</h3><p>Mengelola konten digital, desain, foto-video, dan siaran kampanye kebaikan.</p></div>
-                <div class="card"><h3>Keputrian</h3><p>Program khusus muslimah: kelas, support system, dan kepemimpinan perempuan.</p></div>
-                <div class="card"><h3>Ekonomi</h3><p>Inisiatif kewirausahaan, fundrising program, dan pengelolaan dana kegiatan.</p></div>
+                <?php foreach ($divisions as $div): ?>
+                    <div class="card"><h3><?php echo e($div['name']); ?></h3><p><?php echo e($div['description']); ?></p></div>
+                <?php endforeach; ?>
             </div>
         </section>
 
@@ -536,7 +647,7 @@ function e($value)
             <div class="cta-banner">
                 <strong>Siap gas? Klik sekali untuk daftar.</strong>
                 <div class="cta-row">
-                    <a class="btn primary" href="https://forms.gle/e4e6egXHiRnyQVPV7" target="_blank" rel="noopener">Buka form pendaftaran</a>
+                    <a class="btn primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener">Buka form pendaftaran</a>
                     <a class="btn ghost" href="https://instagram.com/ukmipolmed" target="_blank" rel="noopener">Tanya via DM IG</a>
                     <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/">Lihat dokumentasi kegiatan</a>
                     <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/what-they-said/" target="_blank" rel="noopener">Testimoni</a>
@@ -548,22 +659,16 @@ function e($value)
         <section id="dokumentasi">
             <div class="section-title"><span class="pill">📸</span>Dokumentasi kegiatan</div>
             <div class="grid">
-                <div class="card">
-                    <div class="tag">Highlight</div>
-                    <h3>Arsip IG UKMI</h3>
-                    <p>Galeri kegiatan 2016-2025 dalam format slide dan grid. Cocok untuk stalking suasana UKMI.</p>
-                    <div class="cta-row" style="margin-top:12px;">
-                        <a class="btn primary" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/">Buka arsip IG</a>
+                <?php foreach ($docs as $doc): ?>
+                    <div class="card">
+                        <div class="tag"><?php echo e($doc['tag']); ?></div>
+                        <h3><?php echo e($doc['title']); ?></h3>
+                        <p><?php echo e($doc['description']); ?></p>
+                        <div class="cta-row" style="margin-top:12px;">
+                            <a class="btn primary" href="<?php echo e($doc['url']); ?>" target="_blank" rel="noopener">Buka</a>
+                        </div>
                     </div>
-                </div>
-                <div class="card">
-                    <div class="tag">PPI 2024</div>
-                    <h3>Dokumentasi PPI 2024</h3>
-                    <p>Index foto/video PPI 2024 lengkap dengan navigasi slide & grid view.</p>
-                    <div class="cta-row" style="margin-top:12px;">
-                        <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/">Buka dokumentasi PPI 2024</a>
-                    </div>
-                </div>
+                <?php endforeach; ?>
             </div>
         </section>
 
@@ -615,6 +720,31 @@ function e($value)
         ld.type = 'application/ld+json';
         ld.textContent = JSON.stringify(orgSchema);
         document.head.appendChild(ld);
+
+        // Rotasi agenda pada kartu shortcut (satu kartu, bergantian jika lebih dari satu entri).
+        const agendas = <?php echo json_encode($agendas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        const tagEl = document.getElementById('agenda-tag');
+        const titleEl = document.getElementById('agenda-title');
+        const detailEl = document.getElementById('agenda-detail');
+
+        let agendaIndex = 0;
+        function swapAgenda(next) {
+            if (!tagEl || !titleEl || !detailEl) return;
+            [tagEl, titleEl, detailEl].forEach(el => el.classList.add('flipping'));
+            setTimeout(() => {
+                tagEl.textContent = next.tag || '';
+                titleEl.textContent = next.title || '';
+                detailEl.textContent = next.detail || '';
+                [tagEl, titleEl, detailEl].forEach(el => el.classList.remove('flipping'));
+            }, 230);
+        }
+
+        if (agendas.length > 1) {
+            setInterval(() => {
+                agendaIndex = (agendaIndex + 1) % agendas.length;
+                swapAgenda(agendas[agendaIndex]);
+            }, 5200);
+        }
 
         // Mobile menu toggle
         const nav = document.getElementById('site-nav');

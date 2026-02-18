@@ -1,9 +1,16 @@
-<Files "admin.json">
+<Files "default.json">
+    Require all denied
+</Files>
+<Files "data.json">
     Require all denied
 </Files>
 
 # Legacy Apache 2.2 fallback
-<Files "admin.json">
+<Files "default.json">
+    Order allow,deny
+    Deny from all
+</Files>
+<Files "data.json">
     Order allow,deny
     Deny from all
 </Files>

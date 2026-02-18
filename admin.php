@@ -1,27 +1,93 @@
 <?php
 session_start();
 
-$configPath = __DIR__ . '/admin.json';
+$configPath = __DIR__ . '/data.json';
+$defaultPath = __DIR__ . '/default.json';
 
-$defaults = [
+$hardcodedDefaults = [
+	'user' => 'admin',
+	'key' => 'changeme',
 	'agenda' => [
 		'tag' => 'Agenda terdekat',
 		'title' => 'Pelantikan Ketum 2026-2027',
 		'detail' => 'Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027.'
 	],
+	'agendas' => [],
+	'agenda_archive' => [],
 	'logs' => [],
 	'logs_archive' => [],
+	'registration' => [
+		'platform' => 'Google Form',
+		'url' => 'https://forms.gle/e4e6egXHiRnyQVPV7',
+	],
+	'docs' => [
+		['tag' => 'Highlight', 'title' => 'Arsip IG UKMI', 'description' => 'Galeri kegiatan 2016-2025 dalam format slide dan grid. Cocok untuk stalking suasana UKMI.', 'url' => 'https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/'],
+		['tag' => 'PPI 2024', 'title' => 'Dokumentasi PPI 2024', 'description' => 'Index foto/video PPI 2024 lengkap dengan navigasi slide & grid view.', 'url' => 'https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/'],
+	],
+	'posts' => [],
+	'divisions' => [
+		['name' => 'Kaderisasi', 'description' => 'Merancang alur pembinaan anggota baru dan pelatihan berjenjang.'],
+		['name' => 'Mentoring Agama Islam', 'description' => 'Fokus mentoring iman-ilmu, kajian tematik, dan pendampingan rohani.'],
+		['name' => 'Pembinaan Tilawatil Quran', 'description' => 'Kelas tahsin-tahfizh, halaqah rutin, dan penguatan literasi Quran.'],
+		['name' => 'Syiar Media', 'description' => 'Mengelola konten digital, desain, foto-video, dan siaran kampanye kebaikan.'],
+		['name' => 'Keputrian', 'description' => 'Program khusus muslimah: kelas, support system, dan kepemimpinan perempuan.'],
+		['name' => 'Ekonomi', 'description' => 'Inisiatif kewirausahaan, fundrising program, dan pengelolaan dana kegiatan.'],
+	],
 	'session_version' => 1,
 ];
 
-if (!is_readable($configPath)) {
-	http_response_code(500);
-	exit('Admin config missing.');
+$defaults = $hardcodedDefaults;
+if (is_readable($defaultPath)) {
+	$defaultData = json_decode((string) file_get_contents($defaultPath), true);
+	if (is_array($defaultData)) {
+		if (!empty($defaultData['agenda']) && is_array($defaultData['agenda'])) {
+			$defaults['agenda'] = array_merge($defaults['agenda'], $defaultData['agenda']);
+		}
+		$defaults['user'] = $defaultData['user'] ?? $defaults['user'];
+		$defaults['key'] = $defaultData['key'] ?? $defaults['key'];
+		if (!empty($defaultData['registration']) && is_array($defaultData['registration'])) {
+			$defaults['registration'] = array_merge($defaults['registration'], $defaultData['registration']);
+		}
+		if (!empty($defaultData['divisions']) && is_array($defaultData['divisions'])) {
+			$defaults['divisions'] = $defaultData['divisions'];
+		}
+		if (!empty($defaultData['docs']) && is_array($defaultData['docs'])) {
+			$defaults['docs'] = $defaultData['docs'];
+		}
+		if (!empty($defaultData['posts']) && is_array($defaultData['posts'])) {
+			$defaults['posts'] = $defaultData['posts'];
+		}
+	}
 }
 
-$config = json_decode((string) file_get_contents($configPath), true);
+if (!is_readable($configPath)) {
+	$config = $defaults;
+	$initPayload = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+	if ($initPayload === false || file_put_contents($configPath, $initPayload) === false) {
+		http_response_code(500);
+		exit('Admin config missing and cannot be created.');
+	}
+} else {
+	$configRaw = (string) file_get_contents($configPath);
+	$config = json_decode($configRaw, true);
+	if (!is_array($config)) {
+		$config = $defaults;
+		$initPayload = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($initPayload === false || file_put_contents($configPath, $initPayload) === false) {
+			http_response_code(500);
+			exit('Admin config invalid and cannot be recreated.');
+		}
+	}
+}
 
-if (!is_array($config) || empty($config['user']) || empty($config['key'])) {
+if (empty($config['user']) && !empty($defaults['user'])) {
+	$config['user'] = $defaults['user'];
+}
+if (empty($config['key']) && !empty($defaults['key'])) {
+	$config['key'] = $defaults['key'];
+}
+
+if (empty($config['user']) || empty($config['key'])) {
 	http_response_code(500);
 	exit('Admin config invalid.');
 }
@@ -34,30 +100,144 @@ if (empty($config['logs_archive']) || !is_array($config['logs_archive'])) {
 	$config['logs_archive'] = [];
 }
 
+if (empty($config['agendas']) || !is_array($config['agendas'])) {
+	$config['agendas'] = [];
+}
+
+if (empty($config['agenda_archive']) || !is_array($config['agenda_archive'])) {
+	$config['agenda_archive'] = [];
+}
+
+if (empty($config['registration']) || !is_array($config['registration'])) {
+	$config['registration'] = $defaults['registration'];
+}
+
+if (empty($config['divisions']) || !is_array($config['divisions'])) {
+	$config['divisions'] = $defaults['divisions'];
+}
+
+if (empty($config['docs']) || !is_array($config['docs'])) {
+	$config['docs'] = $defaults['docs'];
+}
+
+if (empty($config['posts']) || !is_array($config['posts'])) {
+	$config['posts'] = $defaults['posts'];
+}
+
 $sessionVersion = isset($config['session_version']) ? (int) $config['session_version'] : 1;
 if ($sessionVersion < 1) {
 	$sessionVersion = 1;
 	$config['session_version'] = 1;
 }
 
-$agenda = $defaults['agenda'];
-if (!empty($config['agenda']) && is_array($config['agenda'])) {
-	$agenda = array_merge($agenda, array_intersect_key($config['agenda'], $agenda));
+// Back-compat: jika hanya ada 'agenda' tunggal, jadikan sebagai entri pertama 'agendas'.
+if (!empty($config['agenda']) && is_array($config['agenda']) && empty($config['agendas'])) {
+	$config['agendas'][] = array_merge($defaults['agenda'], array_intersect_key($config['agenda'], $defaults['agenda']));
 }
+
+$agendas = [];
+if (!empty($config['agendas']) && is_array($config['agendas'])) {
+	foreach ($config['agendas'] as $item) {
+		if (!is_array($item)) continue;
+		$agendas[] = array_merge($defaults['agenda'], array_intersect_key($item, $defaults['agenda']));
+	}
+}
+
+$primaryAgenda = $agendas[0] ?? $defaults['agenda'];
+$editingIdx = 0;
+$registrationDefaults = $defaults['registration'];
+$registration = $registrationDefaults;
+if (!empty($config['registration']) && is_array($config['registration'])) {
+	$registration = array_merge($registrationDefaults, array_intersect_key($config['registration'], $registrationDefaults));
+}
+$divisionDefaults = $defaults['divisions'];
+$divisions = [];
+if (!empty($config['divisions']) && is_array($config['divisions'])) {
+	foreach ($config['divisions'] as $item) {
+		if (!is_array($item)) continue;
+		$name = trim((string) ($item['name'] ?? ''));
+		$desc = trim((string) ($item['description'] ?? ''));
+		if ($name === '' && $desc === '') continue;
+		$divisions[] = [
+			'name' => $name ?: 'Divisi',
+			'description' => $desc ?: 'Deskripsi divisi.',
+		];
+	}
+}
+if (empty($divisions)) {
+	$divisions = $divisionDefaults;
+}
+$divisionYearStart = (int) date('Y');
+$divisionYearLabel = $divisionYearStart . '-' . ($divisionYearStart + 1);
+$docDefaults = $defaults['docs'];
+$docs = [];
+if (!empty($config['docs']) && is_array($config['docs'])) {
+	foreach ($config['docs'] as $item) {
+		if (!is_array($item)) continue;
+		$docs[] = [
+			'tag' => trim((string) ($item['tag'] ?? 'Dokumentasi')) ?: 'Dokumentasi',
+			'title' => trim((string) ($item['title'] ?? '')) ?: 'Judul dokumentasi',
+			'description' => trim((string) ($item['description'] ?? '')) ?: 'Deskripsi dokumentasi.',
+			'url' => trim((string) ($item['url'] ?? '')) ?: '#',
+		];
+	}
+}
+if (empty($docs)) {
+	$docs = $docDefaults;
+}
+
+$postDefaults = is_array($defaults['posts']) ? $defaults['posts'] : [];
+$posts = [];
+if (!empty($config['posts']) && is_array($config['posts'])) {
+	foreach ($config['posts'] as $post) {
+		if (!is_array($post)) continue;
+		$title = trim((string) ($post['title'] ?? ''));
+		$slug = trim((string) ($post['slug'] ?? ''));
+		$summary = trim((string) ($post['summary'] ?? ''));
+		$body = trim((string) ($post['body'] ?? ''));
+		$image = trim((string) ($post['image'] ?? ''));
+		$created = $post['created_at'] ?? date('c');
+		$updated = $post['updated_at'] ?? $created;
+		$posts[] = [
+			'title' => $title ?: 'Tanpa judul',
+			'slug' => $slug ?: '',
+			'summary' => $summary ?: '',
+			'body' => $body,
+			'image' => $image,
+			'created_at' => $created,
+			'updated_at' => $updated,
+		];
+	}
+}
+if (empty($posts)) {
+	$posts = $postDefaults;
+}
+$posts = array_slice($posts, 0, 10);
+
+$blogEditingIdx = -1;
+$blogDraft = [
+	'title' => '',
+	'slug' => '',
+	'summary' => '',
+	'body' => '',
+	'image' => '',
+];
 
 $maxLogs = 30;
 $archiveLimitDays = 60;
+$maxAgendaArchive = 50; // Aturan: simpan maksimal 50 arsip agenda, hapus selebihnya.
 
 function archiveOldLogs(&$config, $maxLogs, $archiveLimitDays)
 {
 	$logs = is_array($config['logs']) ? $config['logs'] : [];
 	$archive = is_array($config['logs_archive']) ? $config['logs_archive'] : [];
-	$threshold = time() - 86400; // 1 day
+	$thresholdArchive = time() - 86400; // >1 hari pindah ke arsip
+	$thresholdDelete = time() - (86400 * 7); // Aturan: hapus log yang lebih lama dari 7 hari
 	$kept = [];
 
 	foreach ($logs as $entry) {
 		$ts = strtotime($entry['time'] ?? '');
-		if ($ts !== false && $ts < $threshold) {
+		if ($ts !== false && $ts < $thresholdArchive) {
 			$day = date('Y-m-d', $ts);
 			if (!isset($archive[$day]) || !is_array($archive[$day])) {
 				$archive[$day] = [];
@@ -65,6 +245,14 @@ function archiveOldLogs(&$config, $maxLogs, $archiveLimitDays)
 			$archive[$day][] = $entry;
 		} else {
 			$kept[] = $entry;
+		}
+	}
+
+	// Bersihkan arsip yang lebih lama dari 7 hari
+	foreach ($archive as $day => $entries) {
+		$dayTs = strtotime($day);
+		if ($dayTs !== false && $dayTs < $thresholdDelete) {
+			unset($archive[$day]);
 		}
 	}
 
@@ -98,6 +286,17 @@ function appendLog(&$config, $configPath, $event, $maxLogs, $archiveLimitDays)
 	}
 }
 
+function makeSlug($text)
+{
+	$text = strtolower((string) $text);
+	$text = preg_replace('/[^a-z0-9]+/', '-', $text);
+	$text = trim((string) $text, '-');
+	if ($text === '') {
+		$text = 'post-' . substr(md5((string) microtime(true)), 0, 8);
+	}
+	return $text;
+}
+
 $error = null;
 $message = null;
 $flash = $_GET['msg'] ?? null;
@@ -129,6 +328,12 @@ if (isset($_POST['user'], $_POST['key'])) {
 
 $loggedIn = !empty($_SESSION['admin_logged_in']) && (($_SESSION['session_version'] ?? 0) === $sessionVersion);
 
+$divisionUnlocked = false;
+if (!empty($_SESSION['division_unlocked'])) {
+	$divisionUnlocked = true;
+	unset($_SESSION['division_unlocked']);
+}
+
 if (!empty($_SESSION['admin_logged_in']) && !$loggedIn) {
 	session_destroy();
 	$_SESSION = [];
@@ -146,21 +351,366 @@ if ($loggedIn && isset($_POST['logout_all'])) {
 
 appendLog($config, $configPath, $loggedIn ? 'view-auth' : 'view-guest', $maxLogs, $archiveLimitDays);
 
+$agendaArchive = is_array($config['agenda_archive']) ? $config['agenda_archive'] : [];
+
+// Arsipkan agenda aktif tertentu
+if ($loggedIn && isset($_POST['archive_idx'])) {
+	$idx = (int) $_POST['archive_idx'];
+	if (isset($agendas[$idx])) {
+		$archived = $agendas[$idx];
+		$archived['archived_at'] = date('c');
+		unset($agendas[$idx]);
+		$agendas = array_values($agendas);
+		array_unshift($agendaArchive, $archived);
+		$agendaArchive = array_slice($agendaArchive, 0, $maxAgendaArchive); // Aturan: simpan maks 50 arsip agenda
+		$config['agendas'] = $agendas;
+		$config['agenda_archive'] = $agendaArchive;
+		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+			$error = 'Gagal mengarsipkan agenda.';
+		} else {
+			$primaryAgenda = $agendas[0] ?? $defaults['agenda'];
+			$message = 'Agenda diarsipkan.';
+			appendLog($config, $configPath, 'agenda-archived', $maxLogs, $archiveLimitDays);
+		}
+	}
+}
+
+// Hapus agenda dari daftar aktif
+if ($loggedIn && isset($_POST['delete_idx'])) {
+	$idx = (int) $_POST['delete_idx'];
+	if (isset($agendas[$idx])) {
+		unset($agendas[$idx]);
+		$agendas = array_values($agendas);
+		$config['agendas'] = $agendas;
+		$config['agenda'] = $agendas[0] ?? $defaults['agenda']; // kompatibilitas
+		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+			$error = 'Gagal menghapus agenda.';
+		} else {
+			$primaryAgenda = $agendas[0] ?? $defaults['agenda'];
+			$editingIdx = 0;
+			$message = 'Agenda dihapus.';
+			appendLog($config, $configPath, 'agenda-deleted', $maxLogs, $archiveLimitDays);
+		}
+	}
+}
+
+// Geser urutan agenda aktif (naik/turun)
+if ($loggedIn && isset($_POST['move_idx'], $_POST['move_dir'])) {
+	$idx = (int) $_POST['move_idx'];
+	$dir = $_POST['move_dir'] === 'down' ? 'down' : 'up';
+	$maxIdx = count($agendas) - 1;
+	if ($idx >= 0 && $idx <= $maxIdx) {
+		$target = ($dir === 'up') ? $idx - 1 : $idx + 1;
+		if ($target >= 0 && $target <= $maxIdx) {
+			$tmp = $agendas[$idx];
+			$agendas[$idx] = $agendas[$target];
+			$agendas[$target] = $tmp;
+			$agendas = array_values($agendas);
+			$config['agendas'] = $agendas;
+			$config['agenda'] = $agendas[0] ?? $defaults['agenda'];
+			$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+			if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+				$error = 'Gagal mengubah urutan agenda.';
+			} else {
+				$primaryAgenda = $agendas[0] ?? $defaults['agenda'];
+				$editingIdx = 0;
+				$message = 'Urutan agenda diperbarui.';
+				appendLog($config, $configPath, 'agenda-reordered', $maxLogs, $archiveLimitDays);
+			}
+		}
+	}
+}
+
+// Perbarui link pendaftaran
+if ($loggedIn && (isset($_POST['registration_platform']) || isset($_POST['registration_reset']))) {
+	$platforms = ['Google Form', 'Website', 'WhatsApp', 'Telegram', 'Typeform', 'Microsoft Forms', 'Notion', 'Custom'];
+	if (isset($_POST['registration_reset'])) {
+		$registration = $registrationDefaults;
+	} else {
+		$platform = trim((string) ($_POST['registration_platform'] ?? ''));
+		if (!in_array($platform, $platforms, true)) {
+			$platform = 'Custom';
+		}
+		$url = trim((string) ($_POST['registration_url'] ?? ''));
+		if ($url === '') {
+			$url = $registrationDefaults['url'];
+		}
+		$registration = [
+			'platform' => $platform,
+			'url' => $url,
+		];
+	}
+
+	$config['registration'] = $registration;
+	$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+	if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+		$error = 'Gagal menyimpan link pendaftaran.';
+	} else {
+		$message = isset($_POST['registration_reset']) ? 'Link pendaftaran direset ke default.' : 'Link pendaftaran diperbarui.';
+		appendLog($config, $configPath, 'registration-updated', $maxLogs, $archiveLimitDays);
+	}
+}
+
+// Kembalikan agenda dari arsip ke daftar aktif
+if ($loggedIn && isset($_POST['restore_archive_idx'])) {
+	$idx = (int) $_POST['restore_archive_idx'];
+	if (isset($agendaArchive[$idx])) {
+		$restored = $agendaArchive[$idx];
+		unset($restored['archived_at']);
+		unset($agendaArchive[$idx]);
+		$agendaArchive = array_values($agendaArchive);
+		array_unshift($agendas, $restored);
+		$config['agendas'] = $agendas;
+		$config['agenda_archive'] = $agendaArchive;
+		$config['agenda'] = $agendas[0] ?? $defaults['agenda']; // kompatibilitas single agenda
+		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+			$error = 'Gagal memulihkan agenda arsip.';
+		} else {
+			$primaryAgenda = $agendas[0] ?? $defaults['agenda'];
+			$message = 'Agenda dikembalikan dari arsip.';
+			appendLog($config, $configPath, 'agenda-restored', $maxLogs, $archiveLimitDays);
+		}
+	}
+}
+
+// Muat agenda tertentu ke form untuk diedit
+if ($loggedIn && isset($_POST['edit_idx'])) {
+	$idx = (int) $_POST['edit_idx'];
+	if (isset($agendas[$idx])) {
+		$editingIdx = $idx;
+		$primaryAgenda = $agendas[$idx];
+	}
+}
+
+// Tambah/perbarui agenda aktif
 if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['agenda_detail'])) {
+	$mode = $_POST['agenda_mode'] ?? 'update';
+	$editIdx = isset($_POST['agenda_edit_idx']) ? max(0, (int) $_POST['agenda_edit_idx']) : 0;
 	$newAgenda = [
 		'tag' => trim((string) $_POST['agenda_tag']) ?: $defaults['agenda']['tag'],
 		'title' => trim((string) $_POST['agenda_title']) ?: $defaults['agenda']['title'],
 		'detail' => trim((string) $_POST['agenda_detail']) ?: $defaults['agenda']['detail'],
 	];
 
-	$config['agenda'] = $newAgenda;
+	if ($mode === 'new' || empty($agendas)) {
+		array_unshift($agendas, $newAgenda);
+		$editingIdx = 0;
+	} else {
+		if (isset($agendas[$editIdx])) {
+			$agendas[$editIdx] = $newAgenda;
+			$editingIdx = $editIdx;
+		} else {
+			$agendas[0] = $newAgenda;
+			$editingIdx = 0;
+		}
+	}
+
+	$config['agendas'] = $agendas;
+	$config['agenda'] = $agendas[0] ?? $newAgenda; // simpan juga untuk kompatibilitas
 	$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 	if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
 		$error = 'Gagal menyimpan data agenda.';
 	} else {
-		$agenda = $newAgenda;
-		$message = 'Agenda berhasil disimpan.';
+		$primaryAgenda = $agendas[$editingIdx] ?? ($agendas[0] ?? $newAgenda);
+		$editingIdx = 0; // reset setelah simpan
+		$message = ($mode === 'new') ? 'Agenda baru ditambahkan.' : 'Agenda diperbarui.';
 		appendLog($config, $configPath, 'agenda-updated', $maxLogs, $archiveLimitDays);
+	}
+}
+
+// Kode superadmin untuk mengelola divisi
+if ($loggedIn && isset($_POST['unlock_division_code'])) {
+	$code = trim((string) $_POST['unlock_division_code']);
+	if ($code === 'superadmin') {
+		$divisionUnlocked = true;
+		$_SESSION['division_unlocked'] = true; // expire on next page load
+		$message = 'Mode superadmin aktif untuk divisi.';
+	} else {
+		$error = 'Kode superadmin salah.';
+	}
+}
+
+// Perbarui divisi
+if ($loggedIn && isset($_POST['division_name'], $_POST['division_desc'])) {
+	if (!$divisionUnlocked) {
+		$error = 'Masukkan kode superadmin sebelum mengubah divisi.';
+	} else {
+		$names = (array) $_POST['division_name'];
+		$descs = (array) $_POST['division_desc'];
+		$newDivisions = [];
+		foreach ($names as $i => $nameVal) {
+			$name = trim((string) $nameVal);
+			$desc = trim((string) ($descs[$i] ?? ''));
+			if ($name === '' && $desc === '') continue;
+			$newDivisions[] = [
+				'name' => $name ?: 'Divisi',
+				'description' => $desc ?: 'Deskripsi divisi.',
+			];
+		}
+		if (empty($newDivisions)) {
+			$newDivisions = $divisionDefaults;
+		}
+		$divisions = $newDivisions;
+		$config['divisions'] = $divisions;
+		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+			$error = 'Gagal menyimpan divisi.';
+		} else {
+			$message = 'Divisi diperbarui.';
+			appendLog($config, $configPath, 'divisions-updated', $maxLogs, $archiveLimitDays);
+		}
+	}
+}
+
+// Perbarui kartu dokumentasi (maks 10) dengan 2 kartu default yang tidak bisa dihapus
+if ($loggedIn && isset($_POST['doc_tag'], $_POST['doc_title'], $_POST['doc_desc'], $_POST['doc_url'])) {
+	$tags = (array) $_POST['doc_tag'];
+	$titles = (array) $_POST['doc_title'];
+	$descs = (array) $_POST['doc_desc'];
+	$urls = (array) $_POST['doc_url'];
+
+	$protected = $docDefaults; // dua kartu wajib
+	$protectedCount = count($protected);
+	$newDocs = [];
+	$limit = max(0, 10 - $protectedCount);
+	foreach ($titles as $i => $titleVal) {
+		// Abaikan dua kartu pertama (default) meski disubmit
+		if ($i < $protectedCount) continue;
+		$title = trim((string) $titleVal);
+		$tag = trim((string) ($tags[$i] ?? 'Dokumentasi'));
+		$desc = trim((string) ($descs[$i] ?? ''));
+		$url = trim((string) ($urls[$i] ?? ''));
+		if ($title === '' && $desc === '' && $url === '') continue;
+		$newDocs[] = [
+			'tag' => $tag ?: 'Dokumentasi',
+			'title' => $title ?: 'Judul dokumentasi',
+			'description' => $desc ?: 'Deskripsi dokumentasi.',
+			'url' => $url ?: '#',
+		];
+		if (count($newDocs) >= $limit) break;
+	}
+
+	$docs = array_merge($protected, $newDocs);
+	$config['docs'] = $docs;
+	$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+	if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+		$error = 'Gagal menyimpan dokumentasi.';
+	} else {
+		$message = 'Kartu dokumentasi diperbarui.';
+		appendLog($config, $configPath, 'docs-updated', $maxLogs, $archiveLimitDays);
+	}
+}
+
+// Pilih blog untuk diedit
+if ($loggedIn && isset($_POST['blog_edit_idx'])) {
+	$reqIdx = (int) $_POST['blog_edit_idx'];
+	if (isset($posts[$reqIdx])) {
+		$blogEditingIdx = $reqIdx;
+		$blogDraft = [
+			'title' => $posts[$reqIdx]['title'] ?? '',
+			'slug' => $posts[$reqIdx]['slug'] ?? '',
+			'summary' => $posts[$reqIdx]['summary'] ?? '',
+				'body' => $posts[$reqIdx]['body'] ?? '',
+				'image' => $posts[$reqIdx]['image'] ?? '',
+		];
+	} elseif ($reqIdx === -1) {
+		$blogEditingIdx = -1;
+		$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => ''];
+	}
+}
+
+// Hapus blog
+if ($loggedIn && isset($_POST['delete_blog_idx'])) {
+	$delIdx = (int) $_POST['delete_blog_idx'];
+	if (isset($posts[$delIdx])) {
+		unset($posts[$delIdx]);
+		$posts = array_values($posts);
+		$config['posts'] = $posts;
+		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+			$error = 'Gagal menghapus postingan.';
+		} else {
+			$message = 'Postingan dihapus.';
+			appendLog($config, $configPath, 'blog-deleted', $maxLogs, $archiveLimitDays);
+		}
+	}
+}
+
+// Simpan blog baru atau edit
+if ($loggedIn && isset($_POST['blog_save'])) {
+	$title = trim((string) ($_POST['blog_title'] ?? ''));
+	$slugInput = trim((string) ($_POST['blog_slug'] ?? ''));
+	$summary = trim((string) ($_POST['blog_summary'] ?? ''));
+	$body = trim((string) ($_POST['blog_body'] ?? ''));
+	$image = trim((string) ($_POST['blog_image'] ?? ''));
+	$idx = isset($_POST['blog_edit_idx']) ? (int) $_POST['blog_edit_idx'] : -1;
+	$now = date('c');
+	$created = ($idx >= 0 && isset($posts[$idx])) ? ($posts[$idx]['created_at'] ?? $now) : $now;
+	$slug = makeSlug($slugInput !== '' ? $slugInput : $title);
+
+	// Tolak duplikasi judul atau slug (case-insensitive), abaikan entri yang sedang diedit.
+	$normTitle = strtolower($title);
+	$normSlug = strtolower($slug);
+	$duplicateFound = false;
+	foreach ($posts as $i => $p) {
+		$existingTitle = strtolower(trim((string) ($p['title'] ?? '')));
+		$existingSlug = strtolower(trim((string) ($p['slug'] ?? '')));
+		if ($i !== $idx && ($existingTitle === $normTitle || $existingSlug === $normSlug)) {
+			$error = 'Judul atau slug sudah dipakai. Gunakan yang lain.';
+			$duplicateFound = true;
+			$blogDraft = [
+				'title' => $title,
+				'slug' => $slugInput,
+				'summary' => $summary,
+				'body' => $body,
+				'image' => $image,
+			];
+			$blogEditingIdx = $idx;
+			break;
+		}
+	}
+
+	if (!$duplicateFound) {
+		if ($summary === '') {
+			$tmpSummary = strip_tags($body);
+			$tmpSummary = preg_replace('/\s+/', ' ', $tmpSummary);
+			$summary = substr($tmpSummary, 0, 180);
+			if (strlen($tmpSummary) > 180) {
+				$summary .= '...';
+			}
+		}
+		$newPost = [
+			'title' => $title ?: 'Tanpa judul',
+			'slug' => $slug,
+			'summary' => $summary,
+			'body' => $body,
+			'image' => $image,
+			'created_at' => $created,
+			'updated_at' => $now,
+		];
+
+		if ($idx >= 0 && isset($posts[$idx])) {
+			$posts[$idx] = $newPost;
+			$blogEditingIdx = $idx;
+		} else {
+			array_unshift($posts, $newPost);
+			$posts = array_slice($posts, 0, 10);
+			$blogEditingIdx = 0;
+		}
+
+		$config['posts'] = $posts;
+		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+			$error = 'Gagal menyimpan postingan.';
+		} else {
+			$message = 'Postingan disimpan.';
+			appendLog($config, $configPath, 'blog-updated', $maxLogs, $archiveLimitDays);
+			$blogEditingIdx = -1;
+			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => ''];
+		}
 	}
 }
 ?>
@@ -193,20 +743,27 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 						var(--bg);
 			color: var(--text);
 			display: flex;
-			align-items: center;
+			align-items: flex-start;
 			justify-content: center;
 			padding: 24px;
 		}
+
+		body.is-auth { padding: 32px 32px 40px; }
 
 		.card {
 			background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
 			border: 1px solid rgba(148, 163, 184, 0.2);
 			border-radius: 16px;
-			width: 100%;
-			max-width: 520px;
+			width: min(100%, 520px);
 			padding: 24px;
 			box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
 			backdrop-filter: blur(10px);
+		}
+
+		body.is-auth .card {
+			width: min(100%, 1240px);
+			max-width: 96vw;
+			padding: 28px 30px;
 		}
 
 		h1 {
@@ -237,7 +794,7 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 		input[type="text"],
 		input[type="password"],
 		textarea {
-			padding: 12px 14px;
+			padding: 10px 0;
 			border-radius: 10px;
 			border: 1px solid rgba(148, 163, 184, 0.3);
 			background: rgba(15, 23, 42, 0.4);
@@ -246,7 +803,28 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 			transition: border-color 0.2s ease, box-shadow 0.2s ease;
 		}
 
-		textarea { min-width: 168px; min-height: 110px; resize: both; font-family: inherit; }
+		textarea { min-width: 308px; min-height: 110px; resize: both; font-family: inherit; }
+
+		/* Override inline paddings to keep columns within card */
+		input[type="text"],
+		input[type="password"],
+		textarea,
+		select,
+		input[type="url"] {
+			padding: 10px 0 !important;
+		}
+
+		/* Prevent overflow/overlap in documentation cards on desktop */
+		.doc-item,
+		.doc-item * { min-width: 0; }
+		.doc-item input[type="text"],
+		.doc-item textarea { width: 100%; }
+
+		/* Prevent overflow/overlap in division cards on desktop */
+		.division-item,
+		.division-item * { min-width: 0; }
+		.division-item input[type="text"],
+		.division-item textarea { width: 100%; }
 
 		input[type="text"]:focus,
 		input[type="password"]:focus,
@@ -284,6 +862,52 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 		a.button-link:hover {
 			transform: translateY(-1px);
 			box-shadow: 0 14px 34px rgba(14, 165, 233, 0.45);
+		}
+
+		.toast-wrap {
+			position: fixed;
+			right: 18px;
+			bottom: 18px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			max-width: 340px;
+			z-index: 30;
+			pointer-events: none;
+		}
+
+		.toast {
+			pointer-events: auto;
+			padding: 12px 14px;
+			border-radius: 12px;
+			background: rgba(17, 24, 39, 0.95);
+			border: 1px solid rgba(148, 163, 184, 0.35);
+			color: var(--text);
+			box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+			transform: translateY(10px);
+			opacity: 0;
+			transition: transform 0.25s ease, opacity 0.25s ease;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 10px;
+		}
+
+		.toast.show {
+			transform: translateY(0);
+			opacity: 1;
+		}
+
+		.toast.success { border-color: rgba(56, 189, 248, 0.6); }
+		.toast.danger { border-color: rgba(248, 113, 113, 0.7); }
+
+		.toast button.toast-close {
+			background: transparent;
+			color: var(--text);
+			border: none;
+			cursor: pointer;
+			padding: 6px 8px;
+			border-radius: 8px;
 		}
 
 		button:active,
@@ -353,6 +977,13 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 			gap: 12px;
 		}
 
+		body.is-auth .field-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+		@media (min-width: 1280px) {
+			body.is-auth .card { width: min(100%, 1400px); }
+			body.is-auth .field-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+		}
+
 		.field-grid .full { grid-column: 1 / -1; }
 
 		.inline-actions {
@@ -415,7 +1046,23 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 		}
 	</style>
 </head>
-<body>
+<body class="<?php echo $loggedIn ? 'is-auth' : 'is-guest'; ?>">
+	<?php if ($message || $error): ?>
+	<div class="toast-wrap" id="toast-wrap">
+		<?php if ($message): ?>
+			<div class="toast success" data-kind="success">
+				<span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
+				<button type="button" class="toast-close" aria-label="Tutup">×</button>
+			</div>
+		<?php endif; ?>
+		<?php if ($error): ?>
+			<div class="toast danger" data-kind="danger">
+				<span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
+				<button type="button" class="toast-close" aria-label="Tutup">×</button>
+			</div>
+		<?php endif; ?>
+	</div>
+	<?php endif; ?>
 	<div class="card">
 		<div class="brand-admin">
 			<img src="logo-ukmi.png" alt="Logo UKMI Polmed">
@@ -433,27 +1080,258 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 			<div class="section">
 				<h2 style="margin:0 0 8px; font-size:16px;">Agenda terdekat</h2>
 				<form method="post" class="stack-sm">
+					<input type="hidden" name="agenda_edit_idx" value="<?php echo (int) $editingIdx; ?>">
 					<div class="field-grid">
 						<div>
 							<label for="agenda_tag">Tag</label>
-							<input type="text" id="agenda_tag" name="agenda_tag" value="<?php echo htmlspecialchars($agenda['tag'], ENT_QUOTES, 'UTF-8'); ?>" required>
+							<input type="text" id="agenda_tag" name="agenda_tag" value="<?php echo htmlspecialchars($primaryAgenda['tag'], ENT_QUOTES, 'UTF-8'); ?>" required>
 						</div>
 						<div>
 							<label for="agenda_title">Judul</label>
-							<input type="text" id="agenda_title" name="agenda_title" value="<?php echo htmlspecialchars($agenda['title'], ENT_QUOTES, 'UTF-8'); ?>" required>
+							<input type="text" id="agenda_title" name="agenda_title" value="<?php echo htmlspecialchars($primaryAgenda['title'], ENT_QUOTES, 'UTF-8'); ?>" required>
 						</div>
 						<div class="full">
 							<label for="agenda_detail">Detail</label>
-							<textarea id="agenda_detail" name="agenda_detail" required><?php echo htmlspecialchars($agenda['detail'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+							<textarea id="agenda_detail" name="agenda_detail" required><?php echo htmlspecialchars($primaryAgenda['detail'], ENT_QUOTES, 'UTF-8'); ?></textarea>
 							<p class="muted-text">Contoh: Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027.</p>
 						</div>
 					</div>
+						<div class="inline-actions" style="align-items:center;">
+							<label style="margin:0; display:flex; gap:6px; align-items:center; color: var(--muted); font-size:13px;">
+								<input type="radio" name="agenda_mode" value="update" <?php echo (!isset($_POST['agenda_mode']) || ($_POST['agenda_mode'] ?? '') !== 'new') ? 'checked' : ''; ?>> Perbarui agenda dipilih
+							</label>
+							<label style="margin:0; display:flex; gap:6px; align-items:center; color: var(--muted); font-size:13px;">
+								<input type="radio" name="agenda_mode" value="new" <?php echo (($_POST['agenda_mode'] ?? '') === 'new') ? 'checked' : ''; ?>> Simpan sebagai agenda baru
+							</label>
+						</div>
+						<p class="muted-text" style="margin:4px 0 0;">Saat ini mengedit agenda ke-<?php echo (int) $editingIdx + 1; ?> (klik Edit di daftar untuk memilih).</p>
 					<div class="inline-actions" style="margin-top: 4px;">
 						<button type="submit">Simpan agenda</button>
 						<a class="button-link" href="?logout=1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.3);">Keluar</a>
 					</div>
 				</form>
+						<div class="admin-box" style="margin-top:10px;">
+							<h3 style="margin:0 0 8px; font-size:15px;">Agenda aktif (diputar bergantian)</h3>
+							<?php if (empty($agendas)): ?>
+								<p class="muted-text" style="margin:0;">Belum ada agenda aktif.</p>
+							<?php else: ?>
+								<ul class="logs" style="margin-top:6px;">
+									<?php foreach ($agendas as $idx => $item): ?>
+										<li style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+											<div>
+												<strong><?php echo htmlspecialchars($item['title'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
+												<br><span style="color: var(--muted); font-size:12px;"><?php echo htmlspecialchars($item['tag'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
+												<br><span style="color: var(--muted); font-size:12px;">Detail: <?php echo htmlspecialchars($item['detail'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
+												<?php if ($idx === 0): ?><br><span style="font-size:12px; color: var(--accent);">(utama)</span><?php endif; ?>
+											</div>
+											<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+												<form method="post" style="margin:0;">
+													<input type="hidden" name="edit_idx" value="<?php echo $idx; ?>">
+													<button type="submit" style="min-width:80px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Edit</button>
+												</form>
+												<form method="post" style="margin:0;">
+													<input type="hidden" name="archive_idx" value="<?php echo $idx; ?>">
+													<button type="submit" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Arsipkan</button>
+												</form>
+												<form method="post" style="margin:0;" onsubmit="return confirm('Hapus agenda ini?');">
+													<input type="hidden" name="delete_idx" value="<?php echo $idx; ?>">
+													<button type="submit" style="min-width:90px; background: linear-gradient(135deg, #f87171, #ef4444); color: #0b1727; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35); border: none;">Hapus</button>
+												</form>
+												<div style="display:flex; gap:4px;">
+													<form method="post" style="margin:0;">
+														<input type="hidden" name="move_idx" value="<?php echo $idx; ?>">
+														<input type="hidden" name="move_dir" value="up">
+														<button type="submit" title="Naikkan urutan" style="min-width:40px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);" <?php echo $idx === 0 ? 'disabled' : ''; ?>>↑</button>
+													</form>
+													<form method="post" style="margin:0;">
+														<input type="hidden" name="move_idx" value="<?php echo $idx; ?>">
+														<input type="hidden" name="move_dir" value="down">
+														<button type="submit" title="Turunkan urutan" style="min-width:40px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);" <?php echo ($idx === count($agendas)-1) ? 'disabled' : ''; ?>>↓</button>
+													</form>
+												</div>
+											</div>
+										</li>
+									<?php endforeach; ?>
+								</ul>
+							<?php endif; ?>
+						</div>
+						<div class="admin-box" style="margin-top:8px;">
+							<h3 style="margin:0 0 8px; font-size:15px;">Arsip agenda</h3>
+							<?php if (empty($agendaArchive)): ?>
+								<p class="muted-text" style="margin:0;">Belum ada arsip agenda.</p>
+							<?php else: ?>
+								<ul class="logs" style="margin-top:6px; max-height:220px; overflow:auto;">
+									<?php foreach ($agendaArchive as $idx => $item): ?>
+										<li style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+											<div>
+												<strong><?php echo htmlspecialchars($item['title'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
+												<br><span style="color: var(--muted); font-size:12px;"><?php echo htmlspecialchars($item['tag'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
+												<br><span style="color: var(--muted); font-size:12px;">Detail: <?php echo htmlspecialchars($item['detail'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
+												<?php if (!empty($item['archived_at'])): ?><br><span style="font-size:12px; color: var(--muted);">Diarsipkan: <?php echo htmlspecialchars($item['archived_at'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+											</div>
+										<form method="post" style="margin:0;">
+											<input type="hidden" name="restore_archive_idx" value="<?php echo $idx; ?>">
+											<button type="submit" style="min-width:110px; background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: #0b1727; box-shadow: 0 10px 30px rgba(14, 165, 233, 0.35);">Pulihkan</button>
+										</form>
+									</li>
+									<?php endforeach; ?>
+								</ul>
+								<p class="muted-text" style="margin:6px 0 0;">Menampilkan sampai 50 arsip terbaru. Mengarsipkan agenda baru akan memotong yang paling lama.</p>
+							<?php endif; ?>
+						</div>
 			</div>
+				<div class="section" style="margin-top: 10px;">
+					<h2 style="margin:0 0 8px; font-size:16px;">Link form pendaftaran</h2>
+					<form method="post" class="stack-sm" id="registration-form">
+						<div class="field-grid">
+							<div>
+								<label for="registration_platform">Platform</label>
+								<select id="registration_platform" name="registration_platform" style="width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+									<?php
+									$platformOptions = ['Google Form', 'Website', 'WhatsApp', 'Telegram', 'Typeform', 'Microsoft Forms', 'Notion', 'Custom'];
+									foreach ($platformOptions as $opt):
+										$selected = ($registration['platform'] === $opt) ? 'selected' : '';
+									?>
+									<option value="<?php echo htmlspecialchars($opt, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $selected; ?>><?php echo htmlspecialchars($opt, ENT_QUOTES, 'UTF-8'); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</div>
+							<div class="full">
+								<label for="registration_url">Link form</label>
+								<input type="text" id="registration_url" name="registration_url" value="<?php echo htmlspecialchars($registration['url'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://forms.gle/..." style="width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+								<p class="muted-text" style="margin:4px 0 0;">Link akan dipakai di tombol "Daftar sekarang" di halaman utama. Kosongkan untuk kembali ke default.</p>
+							</div>
+						</div>
+						<div class="inline-actions" style="margin-top: 6px;">
+							<button type="submit" name="registration_save" value="1">Simpan link daftar</button>
+							<button type="submit" name="registration_reset" value="1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Reset ke default</button>
+							<button type="button" id="registration_fill_template" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Tempelkan template</button>
+						</div>
+					</form>
+				</div>
+				<div class="section" style="margin-top: 10px;">
+					<h2 style="margin:0 0 8px; font-size:16px;">Divisi kepengurusan <?php echo htmlspecialchars($divisionYearLabel, ENT_QUOTES, 'UTF-8'); ?></h2>
+					<form method="post" class="stack-sm">
+						<div class="inline-actions" style="align-items:center;">
+							<input type="text" name="unlock_division_code" placeholder="Ketik superadmin untuk mengubah" style="flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" autocomplete="off">
+							<button type="submit" style="max-width:180px;">Aktifkan mode divisi</button>
+						</div>
+					</form>
+					<form method="post" class="stack-sm" id="divisions-form" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
+						<div id="division-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
+							<?php foreach ($divisions as $idx => $div): ?>
+							<div class="division-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+								<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Nama divisi</label>
+								<input type="text" name="division_name[]" value="<?php echo htmlspecialchars($div['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+								<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Deskripsi</label>
+								<textarea name="division_desc[]" style="width:100%; min-height:72px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical;"><?php echo htmlspecialchars($div['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+								<div style="text-align:right; margin-top:6px;">
+									<button type="button" class="remove-division" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+								</div>
+							</div>
+							<?php endforeach; ?>
+						</div>
+						<div class="inline-actions" style="margin-top: 6px;">
+							<button type="button" id="add-division" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Tambah divisi</button>
+							<button type="submit">Simpan divisi</button>
+						</div>
+						<p class="muted-text" style="margin:4px 0 0;">Urutan di sini akan ditampilkan di halaman utama. Tahun kepengurusan otomatis: <?php echo htmlspecialchars($divisionYearLabel, ENT_QUOTES, 'UTF-8'); ?>.</p>
+					</form>
+				</div>
+				<div class="section" style="margin-top: 10px;">
+					<h2 style="margin:0 0 8px; font-size:16px;">Kartu dokumentasi kegiatan (maks 10)</h2>
+					<form method="post" class="stack-sm" id="docs-form">
+						<div id="doc-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
+							<?php foreach ($docs as $docIdx => $doc): $isProtectedDoc = $docIdx < count($docDefaults); ?>
+							<div class="doc-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+								<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Tag</label>
+								<input type="text" name="doc_tag[]" value="<?php echo htmlspecialchars($doc['tag'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php echo $isProtectedDoc ? 'readonly' : ''; ?> style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+								<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Judul</label>
+								<input type="text" name="doc_title[]" value="<?php echo htmlspecialchars($doc['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php echo $isProtectedDoc ? 'readonly' : ''; ?> style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+								<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Deskripsi</label>
+								<textarea name="doc_desc[]" <?php echo $isProtectedDoc ? 'readonly' : ''; ?> style="width:100%; min-height:72px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical;"><?php echo htmlspecialchars($doc['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+								<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Link</label>
+								<input type="text" name="doc_url[]" value="<?php echo htmlspecialchars($doc['url'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php echo $isProtectedDoc ? 'readonly' : ''; ?> style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="https://...">
+								<div style="text-align:right; margin-top:6px;">
+									<button type="button" class="remove-doc" <?php echo ($docIdx < count($docDefaults)) ? 'disabled' : ''; ?> style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+								</div>
+							</div>
+							<?php endforeach; ?>
+						</div>
+						<div class="inline-actions" style="margin-top: 6px;">
+							<button type="button" id="add-doc" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Tambah kartu</button>
+							<button type="submit">Simpan dokumentasi</button>
+						</div>
+						<p class="muted-text" style="margin:4px 0 0;">Maksimal 10 kartu. Jika semua kolom dikosongkan, akan kembali ke default.</p>
+					</form>
+				</div>
+				<div class="section" style="margin-top: 10px;">
+					<h2 style="margin:0 0 8px; font-size:16px;">Blog</h2>
+					<form method="post" class="stack-sm" id="blog-form">
+						<input type="hidden" name="blog_edit_idx" id="blog_edit_idx" value="<?php echo (int) $blogEditingIdx; ?>">
+						<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+							<div>
+								<label for="blog_title">Judul</label>
+								<input type="text" id="blog_title" name="blog_title" value="<?php echo htmlspecialchars($blogDraft['title'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Judul postingan" required>
+							</div>
+							<div>
+								<label for="blog_slug">Slug (opsional)</label>
+								<input type="text" id="blog_slug" name="blog_slug" value="<?php echo htmlspecialchars($blogDraft['slug'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="otomatis dari judul">
+								<p class="muted-text" style="margin:4px 0 0;">Dipakai di URL blog.php?slug=...</p>
+							</div>
+							<div>
+								<label for="blog_image">Gambar (opsional)</label>
+								<input type="text" id="blog_image" name="blog_image" value="<?php echo htmlspecialchars($blogDraft['image'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://...jpg atau data:image/jpeg;base64,...">
+								<input type="file" id="blog_image_file" accept="image/*" style="margin-top:6px;">
+								<p class="muted-text" style="margin:4px 0 0;">Pilih file untuk diunggah (auto compress <=1MB) atau tempel URL gambar.</p>
+							</div>
+							<div class="full">
+								<label for="blog_summary">Ringkas</label>
+								<textarea id="blog_summary" name="blog_summary" style="min-height:90px;"><?php echo htmlspecialchars($blogDraft['summary'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+								<p class="muted-text" style="margin:4px 0 0;">Kosongkan agar diringkas otomatis (180 karakter).</p>
+							</div>
+							<div class="full">
+								<label for="blog_body">Konten</label>
+								<textarea id="blog_body" name="blog_body" style="min-height:180px; resize: both;"><?php echo htmlspecialchars($blogDraft['body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+							</div>
+						</div>
+						<div class="inline-actions" style="margin-top: 6px; align-items:center;">
+							<button type="submit" name="blog_save" value="1">Simpan postingan</button>
+							<button type="button" id="blog_reset" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Bersihkan formulir</button>
+						</div>
+						<p class="muted-text" style="margin:4px 0 0;">Klik Edit pada daftar untuk memuat postingan ke formulir. Simpan akan overwrite entri terpilih atau menambah baru jika kosong.</p>
+					</form>
+					<div class="admin-box" style="margin-top:10px;">
+						<h3 style="margin:0 0 8px; font-size:15px;">Daftar postingan</h3>
+						<?php if (empty($posts)): ?>
+							<p class="muted-text" style="margin:0;">Belum ada postingan.</p>
+						<?php else: ?>
+							<ul class="logs" style="margin-top:6px; max-height:260px; overflow:auto;">
+								<?php foreach ($posts as $pIdx => $post): ?>
+									<li style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+										<div>
+											<strong><?php echo htmlspecialchars($post['title'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
+											<?php if (!empty($post['slug'])): ?><br><span style="color: var(--muted); font-size:12px;">Slug: <?php echo htmlspecialchars($post['slug'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+											<?php if (!empty($post['summary'])): ?><br><span style="color: var(--muted); font-size:12px;">Ringkas: <?php echo htmlspecialchars($post['summary'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+											<?php if (!empty($post['image'])): ?><br><span style="color: var(--muted); font-size:12px;">Gambar: <?php echo htmlspecialchars(strlen($post['image']) > 120 ? substr($post['image'], 0, 120) . '...' : $post['image'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+											<?php if (!empty($post['created_at'])): ?><br><span style="color: var(--muted); font-size:12px;">Dibuat: <?php echo htmlspecialchars($post['created_at'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+										</div>
+										<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+											<form method="post" style="margin:0;">
+												<input type="hidden" name="blog_edit_idx" value="<?php echo $pIdx; ?>">
+												<button type="submit" style="min-width:80px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Edit</button>
+											</form>
+											<form method="post" style="margin:0;" onsubmit="return confirm('Hapus postingan ini?');">
+												<input type="hidden" name="delete_blog_idx" value="<?php echo $pIdx; ?>">
+												<button type="submit" style="min-width:90px; background: linear-gradient(135deg, #f87171, #ef4444); color: #0b1727; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35); border: none;">Hapus</button>
+											</form>
+										</div>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+						<?php endif; ?>
+					</div>
+				</div>
 			<div class="section" style="margin-top: 10px;">
 				<h2 style="margin:0 0 8px; font-size:15px;">Sesi</h2>
 				<form method="post" class="stack-sm">
@@ -473,6 +1351,14 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 							<option value="view-auth">view-auth</option>
 							<option value="view-guest">view-guest</option>
 							<option value="agenda-updated">agenda-updated</option>
+							<option value="agenda-deleted">agenda-deleted</option>
+							<option value="agenda-restored">agenda-restored</option>
+							<option value="agenda-reordered">agenda-reordered</option>
+							<option value="registration-updated">registration-updated</option>
+								<option value="divisions-updated">divisions-updated</option>
+							<option value="docs-updated">docs-updated</option>
+							<option value="blog-updated">blog-updated</option>
+							<option value="blog-deleted">blog-deleted</option>
 							<option value="logout-all">logout-all</option>
 						</select>
 					</label>
@@ -557,7 +1443,245 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 				if (!target) return;
 				target.classList.toggle('open');
 			});
+
+
+		// Toast notifications
+		const toastWrap = document.getElementById('toast-wrap');
+		if (toastWrap) {
+			const toasts = Array.from(toastWrap.querySelectorAll('.toast'));
+			toasts.forEach((toast, idx) => {
+				requestAnimationFrame(() => toast.classList.add('show'));
+				const closer = toast.querySelector('.toast-close');
+				const hide = () => {
+					toast.classList.remove('show');
+					setTimeout(() => toast.remove(), 220);
+				};
+				closer?.addEventListener('click', hide);
+				setTimeout(hide, 5200 + (idx * 200));
+			});
+		}
+			// Pertahankan posisi scroll setelah submit agar tidak lompat ke atas.
+			const SCROLL_KEY = 'admin_scroll_y';
+			const savedScroll = sessionStorage.getItem(SCROLL_KEY);
+			if (savedScroll) {
+				const y = parseInt(savedScroll, 10);
+				if (!Number.isNaN(y)) {
+					history.scrollRestoration = 'manual';
+					requestAnimationFrame(() => window.scrollTo(0, y));
+				}
+				sessionStorage.removeItem(SCROLL_KEY);
+			}
+
+			document.querySelectorAll('form').forEach(form => {
+				form.addEventListener('submit', () => {
+					sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+				});
+			});
 		});
+
+		// Template link pendaftaran per platform
+		const regPlatform = document.getElementById('registration_platform');
+		const regUrl = document.getElementById('registration_url');
+		const regFill = document.getElementById('registration_fill_template');
+		const regTemplates = {
+			'Google Form': 'https://forms.gle/xxxxxxxxxxxxxxxxx',
+			'Website': 'https://domainkamu.com/daftar',
+			'WhatsApp': 'https://wa.me/62XXXXXXXXXX?text=Halo%2C%20saya%20mau%20daftar%20UKMI',
+			'Telegram': 'https://t.me/username_ukmi',
+			'Typeform': 'https://yourorg.typeform.com/formname',
+			'Microsoft Forms': 'https://forms.office.com/r/XXXXXXXX',
+			'Notion': 'https://www.notion.so/your-form-page',
+			'Custom': 'https://'
+		};
+
+		function applyRegPlaceholder() {
+			if (!regPlatform || !regUrl) return;
+			const tpl = regTemplates[regPlatform.value] || 'https://';
+			regUrl.placeholder = tpl;
+		}
+		applyRegPlaceholder();
+		regPlatform?.addEventListener('change', applyRegPlaceholder);
+		regFill?.addEventListener('click', () => {
+			if (!regPlatform || !regUrl) return;
+			const tpl = regTemplates[regPlatform.value] || '';
+			if (tpl) regUrl.value = tpl;
+		});
+
+		// Divisi: tambah/hapus baris
+		const divisionList = document.getElementById('division-list');
+		const addDivision = document.getElementById('add-division');
+		const templateHtml = () => `
+			<div class="division-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+				<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Nama divisi</label>
+				<input type="text" name="division_name[]" value="" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Deskripsi</label>
+				<textarea name="division_desc[]" style="width:100%; min-height:72px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical;"></textarea>
+				<div style="text-align:right; margin-top:6px;">
+					<button type="button" class="remove-division" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+				</div>
+			</div>`;
+		addDivision?.addEventListener('click', () => {
+			if (!divisionList) return;
+			const wrapper = document.createElement('div');
+			wrapper.innerHTML = templateHtml();
+			divisionList.appendChild(wrapper.firstElementChild);
+			attachRemoveHandlers();
+		});
+
+		function attachRemoveHandlers() {
+			document.querySelectorAll('.remove-division').forEach(btn => {
+				btn.onclick = () => {
+					const item = btn.closest('.division-item');
+					if (item && divisionList && divisionList.children.length > 1) {
+						item.remove();
+					}
+				};
+			});
+		}
+		attachRemoveHandlers();
+
+		// Dokumentasi: tambah/hapus baris, batasi 10
+		const docList = document.getElementById('doc-list');
+		const addDoc = document.getElementById('add-doc');
+		const docTemplate = () => `
+			<div class="doc-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+				<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Tag</label>
+				<input type="text" name="doc_tag[]" value="" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Judul</label>
+				<input type="text" name="doc_title[]" value="" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Deskripsi</label>
+				<textarea name="doc_desc[]" style="width:100%; min-height:72px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical;"></textarea>
+				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Link</label>
+				<input type="text" name="doc_url[]" value="" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="https://...">
+				<div style="text-align:right; margin-top:6px;">
+					<button type="button" class="remove-doc" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+				</div>
+			</div>`;
+
+		function updateDocLimitState() {
+			if (!docList || !addDoc) return;
+			addDoc.disabled = docList.children.length >= 10;
+			if (addDoc.disabled) {
+				addDoc.title = 'Maksimal 10 kartu';
+			} else {
+				addDoc.title = '';
+			}
+		}
+
+		addDoc?.addEventListener('click', () => {
+			if (!docList || docList.children.length >= 10) return;
+			const wrapper = document.createElement('div');
+			wrapper.innerHTML = docTemplate();
+			docList.appendChild(wrapper.firstElementChild);
+			attachDocRemove();
+			updateDocLimitState();
+		});
+
+		function attachDocRemove() {
+			document.querySelectorAll('.remove-doc').forEach(btn => {
+				btn.onclick = () => {
+					const item = btn.closest('.doc-item');
+					if (btn.disabled) return;
+					if (item && docList && docList.children.length > 1) {
+						item.remove();
+						updateDocLimitState();
+					}
+				};
+			});
+		}
+		attachDocRemove();
+		updateDocLimitState();
+
+		// Blog: file picker with compression (<=1MB) and reset helper
+		const blogImageFile = document.getElementById('blog_image_file');
+		const blogImageInput = document.getElementById('blog_image');
+		const blogForm = document.getElementById('blog-form');
+		const blogResetBtn = document.getElementById('blog_reset');
+		const blogEditIdxInput = document.getElementById('blog_edit_idx');
+		const MAX_IMAGE_BYTES = 1000000;
+
+		function dataUrlBytes(dataUrl) {
+			const comma = dataUrl.indexOf(',');
+			if (comma === -1) return dataUrl.length;
+			const base64 = dataUrl.slice(comma + 1);
+			return Math.ceil((base64.length * 3) / 4);
+		}
+
+		function loadImageFromFile(file) {
+			return new Promise((resolve, reject) => {
+				const reader = new FileReader();
+				const img = new Image();
+				reader.onload = () => {
+					img.onload = () => resolve(img);
+					img.onerror = () => reject(new Error('Gagal memuat gambar'));
+					img.src = reader.result;
+				};
+				reader.onerror = () => reject(new Error('Gagal membaca file'));
+				reader.readAsDataURL(file);
+			});
+		}
+
+		async function compressImage(file) {
+			const img = await loadImageFromFile(file);
+			let width = img.naturalWidth || img.width;
+			let height = img.naturalHeight || img.height;
+			const canvas = document.createElement('canvas');
+			const ctx = canvas.getContext('2d');
+			const maxDim = 1400;
+			if (width > maxDim || height > maxDim) {
+				const scale = Math.min(maxDim / width, maxDim / height);
+				width = Math.max(1, Math.round(width * scale));
+				height = Math.max(1, Math.round(height * scale));
+			}
+			let quality = 0.9;
+			let dataUrl = '';
+			for (let i = 0; i < 6; i++) {
+				canvas.width = width;
+				canvas.height = height;
+				ctx.clearRect(0, 0, width, height);
+				ctx.drawImage(img, 0, 0, width, height);
+				dataUrl = canvas.toDataURL('image/jpeg', quality);
+				if (dataUrlBytes(dataUrl) <= MAX_IMAGE_BYTES) return dataUrl;
+				width = Math.max(1, Math.round(width * 0.9));
+				height = Math.max(1, Math.round(height * 0.9));
+				quality = quality * 0.82;
+			}
+			return dataUrl;
+		}
+
+		blogImageFile?.addEventListener('change', async (e) => {
+			const file = e.target.files?.[0];
+			if (!file) return;
+			if (!file.type.startsWith('image/')) {
+				alert('File harus berupa gambar.');
+				e.target.value = '';
+				return;
+			}
+			try {
+				const dataUrl = await compressImage(file);
+				if (!dataUrl) throw new Error('Gagal kompres');
+				const size = dataUrlBytes(dataUrl);
+				if (size > MAX_IMAGE_BYTES) {
+					alert('Gambar masih di atas 1MB setelah kompres. Pilih file yang lebih kecil.');
+				} else if (blogImageInput) {
+					blogImageInput.value = dataUrl;
+				}
+			} catch (err) {
+				console.error(err);
+				alert('Gagal memproses gambar.');
+			} finally {
+				e.target.value = '';
+			}
+		});
+
+		function clearBlogForm() {
+			if (blogEditIdxInput) blogEditIdxInput.value = -1;
+			if (!blogForm) return;
+			blogForm.querySelectorAll('input[type="text"], textarea').forEach(el => { el.value = ''; });
+			if (blogImageFile) blogImageFile.value = '';
+		}
+
+		blogResetBtn?.addEventListener('click', clearBlogForm);
 
 		const filterEvent = document.getElementById('log-filter-event');
 		const filterText = document.getElementById('log-filter-text');
