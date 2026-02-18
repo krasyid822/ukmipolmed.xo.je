@@ -1443,7 +1443,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				if (!target) return;
 				target.classList.toggle('open');
 			});
-
+		});
 
 		// Toast notifications
 		const toastWrap = document.getElementById('toast-wrap');
@@ -1460,22 +1460,22 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				setTimeout(hide, 5200 + (idx * 200));
 			});
 		}
-			// Pertahankan posisi scroll setelah submit agar tidak lompat ke atas.
-			const SCROLL_KEY = 'admin_scroll_y';
-			const savedScroll = sessionStorage.getItem(SCROLL_KEY);
-			if (savedScroll) {
-				const y = parseInt(savedScroll, 10);
-				if (!Number.isNaN(y)) {
-					history.scrollRestoration = 'manual';
-					requestAnimationFrame(() => window.scrollTo(0, y));
-				}
-				sessionStorage.removeItem(SCROLL_KEY);
-			}
 
-			document.querySelectorAll('form').forEach(form => {
-				form.addEventListener('submit', () => {
-					sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
-				});
+		// Pertahankan posisi scroll setelah submit agar tidak lompat ke atas.
+		const SCROLL_KEY = 'admin_scroll_y';
+		const savedScroll = sessionStorage.getItem(SCROLL_KEY);
+		if (savedScroll) {
+			const y = parseInt(savedScroll, 10);
+			if (!Number.isNaN(y)) {
+				history.scrollRestoration = 'manual';
+				requestAnimationFrame(() => window.scrollTo(0, y));
+			}
+			sessionStorage.removeItem(SCROLL_KEY);
+		}
+
+		document.querySelectorAll('form').forEach(form => {
+			form.addEventListener('submit', () => {
+				sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
 			});
 		});
 
