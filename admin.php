@@ -1131,6 +1131,90 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		<?php if ($loggedIn): ?>
 			<h1>Panel Admin</h1>
 			<p>Kelola kartu "Agenda terdekat" yang muncul di halaman utama.</p>
+			<div class="section" style="margin-top: 8px;">
+				<h2 style="margin:0 0 8px; font-size:15px;">Sesi</h2>
+				<div class="inline-actions" style="align-items:center; gap:10px;">
+					<a class="button-link" href="?logout=1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.25);">Keluar</a>
+					<form method="post" class="stack-sm" style="margin:0;">
+						<input type="hidden" name="logout_all" value="1">
+						<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Logout semua sesi</button>
+					</form>
+				</div>
+				<p class="muted-text" style="margin:6px 0 0;">"Keluar" hanya mengakhiri sesi ini. "Logout semua sesi" memaksa semua browser keluar dan dicatat di log.</p>
+			</div>
+			<div class="admin-box" style="margin-top:10px;">
+				<h2 style="margin:0 0 10px; font-size:16px;">Log akses terbaru</h2>
+				<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; align-items:center;">
+					<label style="font-size:13px; color: var(--muted);">Event
+						<select id="log-filter-event" style="margin-left:6px; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+							<option value="">Semua</option>
+							<option value="login-success">login-success</option>
+							<option value="login-fail">login-fail</option>
+							<option value="view-auth">view-auth</option>
+							<option value="view-guest">view-guest</option>
+							<option value="agenda-updated">agenda-updated</option>
+							<option value="agenda-deleted">agenda-deleted</option>
+							<option value="agenda-restored">agenda-restored</option>
+							<option value="agenda-reordered">agenda-reordered</option>
+							<option value="registration-updated">registration-updated</option>
+							<option value="divisions-updated">divisions-updated</option>
+							<option value="docs-updated">docs-updated</option>
+							<option value="blog-updated">blog-updated</option>
+							<option value="blog-deleted">blog-deleted</option>
+							<option value="logout-all">logout-all</option>
+						</select>
+					</label>
+					<label style="font-size:13px; color: var(--muted);">Cari
+						<input id="log-filter-text" type="text" placeholder="IP/UA/keyword" style="margin-left:6px; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); width: 200px;">
+					</label>
+				</div>
+				<?php $recentLogs = array_slice($config['logs'], 0, 10); ?>
+				<?php if (empty($recentLogs)): ?>
+					<p style="margin:0; color: var(--muted);">Belum ada log akses.</p>
+				<?php else: ?>
+					<ul class="logs log-list">
+						<?php foreach ($recentLogs as $log): ?>
+							<li class="log-item" data-event="<?php echo htmlspecialchars($log['event'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>" data-text="<?php echo htmlspecialchars(($log['event'] ?? '-') . ' ' . ($log['time'] ?? '-') . ' ' . ($log['ip'] ?? '-') . ' ' . ($log['ua'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>">
+								<strong><?php echo htmlspecialchars($log['event'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
+								<br><?php echo htmlspecialchars($log['time'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
+								<br><?php echo htmlspecialchars($log['ip'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
+								<br><span style="opacity:0.8;">UA: <?php echo htmlspecialchars($log['ua'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+				<hr style="border: 0; border-top: 1px solid rgba(148,163,184,0.25); margin: 12px 0;">
+				<h3 style="margin:0 0 8px; font-size:15px;">Arsip (>1 hari)</h3>
+				<?php
+				$archiveDates = array_keys($config['logs_archive']);
+				rsort($archiveDates);
+				$archiveDates = array_slice($archiveDates, 0, 12);
+				?>
+				<?php if (empty($archiveDates)): ?>
+					<p style="margin:0; color: var(--muted);">Belum ada arsip.</p>
+				<?php else: ?>
+					<div class="archive-grid">
+						<?php foreach ($archiveDates as $idx => $day): $targetId = 'archive-'.$idx; $dayEntries = $config['logs_archive'][$day]; ?>
+							<button type="button" class="archive-day" data-target="<?php echo htmlspecialchars($targetId, ENT_QUOTES, 'UTF-8'); ?>">
+								<strong><?php echo htmlspecialchars($day, ENT_QUOTES, 'UTF-8'); ?></strong><br>
+								<small style="color: var(--muted);">Log: <?php echo count($dayEntries); ?></small>
+							</button>
+							<div class="archive-entries" id="<?php echo htmlspecialchars($targetId, ENT_QUOTES, 'UTF-8'); ?>">
+								<ul class="logs log-list" style="margin-top:6px;">
+									<?php foreach ($dayEntries as $log): ?>
+										<li class="log-item" data-event="<?php echo htmlspecialchars($log['event'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>" data-text="<?php echo htmlspecialchars(($log['event'] ?? '-') . ' ' . ($log['time'] ?? '-') . ' ' . ($log['ip'] ?? '-') . ' ' . ($log['ua'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>">
+											<strong><?php echo htmlspecialchars($log['event'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
+											<br><?php echo htmlspecialchars($log['time'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
+											<br><?php echo htmlspecialchars($log['ip'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
+											<br><span style="opacity:0.8;">UA: <?php echo htmlspecialchars($log['ua'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
+										</li>
+									<?php endforeach; ?>
+								</ul>
+							</div>
+						<?php endforeach; ?>
+					</div>
+				<?php endif; ?>
+			</div>
 			<?php if ($message): ?>
 				<div class="success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
 			<?php endif; ?>
@@ -1424,90 +1508,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 						<?php endif; ?>
 					</div>
 				</div>
-			<div class="section" style="margin-top: 10px;">
-				<h2 style="margin:0 0 8px; font-size:15px;">Sesi</h2>
-				<div class="inline-actions" style="align-items:center; gap:10px;">
-					<a class="button-link" href="?logout=1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.25);">Keluar</a>
-					<form method="post" class="stack-sm" style="margin:0;">
-						<input type="hidden" name="logout_all" value="1">
-						<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Logout semua sesi</button>
-					</form>
-				</div>
-				<p class="muted-text" style="margin:6px 0 0;">"Keluar" hanya mengakhiri sesi ini. "Logout semua sesi" memaksa semua browser keluar dan dicatat di log.</p>
-			</div>
-			<div class="admin-box">
-				<h2 style="margin:0 0 10px; font-size:16px;">Log akses terbaru</h2>
-				<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; align-items:center;">
-					<label style="font-size:13px; color: var(--muted);">Event
-						<select id="log-filter-event" style="margin-left:6px; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
-							<option value="">Semua</option>
-							<option value="login-success">login-success</option>
-							<option value="login-fail">login-fail</option>
-							<option value="view-auth">view-auth</option>
-							<option value="view-guest">view-guest</option>
-							<option value="agenda-updated">agenda-updated</option>
-							<option value="agenda-deleted">agenda-deleted</option>
-							<option value="agenda-restored">agenda-restored</option>
-							<option value="agenda-reordered">agenda-reordered</option>
-							<option value="registration-updated">registration-updated</option>
-								<option value="divisions-updated">divisions-updated</option>
-							<option value="docs-updated">docs-updated</option>
-							<option value="blog-updated">blog-updated</option>
-							<option value="blog-deleted">blog-deleted</option>
-							<option value="logout-all">logout-all</option>
-						</select>
-					</label>
-					<label style="font-size:13px; color: var(--muted);">Cari
-						<input id="log-filter-text" type="text" placeholder="IP/UA/keyword" style="margin-left:6px; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); width: 200px;">
-					</label>
-				</div>
-				<?php $recentLogs = array_slice($config['logs'], 0, 10); ?>
-				<?php if (empty($recentLogs)): ?>
-					<p style="margin:0; color: var(--muted);">Belum ada log akses.</p>
-				<?php else: ?>
-					<ul class="logs log-list">
-						<?php foreach ($recentLogs as $log): ?>
-							<li class="log-item" data-event="<?php echo htmlspecialchars($log['event'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>" data-text="<?php echo htmlspecialchars(($log['event'] ?? '-') . ' ' . ($log['time'] ?? '-') . ' ' . ($log['ip'] ?? '-') . ' ' . ($log['ua'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>">
-								<strong><?php echo htmlspecialchars($log['event'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
-								<br><?php echo htmlspecialchars($log['time'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
-								<br><?php echo htmlspecialchars($log['ip'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
-								<br><span style="opacity:0.8;">UA: <?php echo htmlspecialchars($log['ua'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
-							</li>
-						<?php endforeach; ?>
-					</ul>
-				<?php endif; ?>
-				<hr style="border: 0; border-top: 1px solid rgba(148,163,184,0.25); margin: 12px 0;">
-				<h3 style="margin:0 0 8px; font-size:15px;">Arsip (>1 hari)</h3>
-				<?php
-				$archiveDates = array_keys($config['logs_archive']);
-				rsort($archiveDates);
-				$archiveDates = array_slice($archiveDates, 0, 12);
-				?>
-				<?php if (empty($archiveDates)): ?>
-					<p style="margin:0; color: var(--muted);">Belum ada arsip.</p>
-				<?php else: ?>
-					<div class="archive-grid">
-						<?php foreach ($archiveDates as $idx => $day): $targetId = 'archive-'.$idx; $dayEntries = $config['logs_archive'][$day]; ?>
-							<button type="button" class="archive-day" data-target="<?php echo htmlspecialchars($targetId, ENT_QUOTES, 'UTF-8'); ?>">
-								<strong><?php echo htmlspecialchars($day, ENT_QUOTES, 'UTF-8'); ?></strong><br>
-								<small style="color: var(--muted);">Log: <?php echo count($dayEntries); ?></small>
-							</button>
-							<div class="archive-entries" id="<?php echo htmlspecialchars($targetId, ENT_QUOTES, 'UTF-8'); ?>">
-								<ul class="logs log-list" style="margin-top:6px;">
-									<?php foreach ($dayEntries as $log): ?>
-										<li class="log-item" data-event="<?php echo htmlspecialchars($log['event'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>" data-text="<?php echo htmlspecialchars(($log['event'] ?? '-') . ' ' . ($log['time'] ?? '-') . ' ' . ($log['ip'] ?? '-') . ' ' . ($log['ua'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>">
-											<strong><?php echo htmlspecialchars($log['event'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
-											<br><?php echo htmlspecialchars($log['time'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
-											<br><?php echo htmlspecialchars($log['ip'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
-											<br><span style="opacity:0.8;">UA: <?php echo htmlspecialchars($log['ua'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
-										</li>
-									<?php endforeach; ?>
-								</ul>
-							</div>
-						<?php endforeach; ?>
-					</div>
-				<?php endif; ?>
-			</div>
 		<?php else: ?>
 			<h1>Login Admin</h1>
 			<p>Masukkan user dan key untuk mengakses halaman admin.</p>
