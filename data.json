@@ -16,6 +16,42 @@
     "agenda_archive": [],
     "logs": [
         {
+            "time": "2026-02-19T04:22:25+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit\/605.1.15 (KHTML, like Gecko) Version\/18.5 Mobile\/15E148 Safari\/604.1",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-19T04:20:20+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit\/605.1.15 (KHTML, like Gecko) Version\/18.5 Mobile\/15E148 Safari\/604.1",
+            "event": "registration-updated"
+        },
+        {
+            "time": "2026-02-19T04:20:20+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit\/605.1.15 (KHTML, like Gecko) Version\/18.5 Mobile\/15E148 Safari\/604.1",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-19T04:20:11+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit\/605.1.15 (KHTML, like Gecko) Version\/18.5 Mobile\/15E148 Safari\/604.1",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-19T04:18:38+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit\/605.1.15 (KHTML, like Gecko) Version\/18.5 Mobile\/15E148 Safari\/604.1",
+            "event": "view-auth"
+        },
+        {
+            "time": "2026-02-19T04:18:00+01:00",
+            "ip": "127.0.0.1",
+            "ua": "Mozilla\/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit\/605.1.15 (KHTML, like Gecko) Version\/18.5 Mobile\/15E148 Safari\/604.1",
+            "event": "view-auth"
+        },
+        {
             "time": "2026-02-19T04:14:04+01:00",
             "ip": "127.0.0.1",
             "ua": "Mozilla\/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit\/605.1.15 (KHTML, like Gecko) Version\/18.5 Mobile\/15E148 Safari\/604.1",
@@ -158,36 +194,6 @@
             "ip": "127.0.0.1",
             "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
             "event": "blog-updated"
-        },
-        {
-            "time": "2026-02-19T02:41:14+01:00",
-            "ip": "127.0.0.1",
-            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
-            "event": "view-auth"
-        },
-        {
-            "time": "2026-02-19T02:41:07+01:00",
-            "ip": "127.0.0.1",
-            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
-            "event": "blog-updated"
-        },
-        {
-            "time": "2026-02-19T02:41:07+01:00",
-            "ip": "127.0.0.1",
-            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
-            "event": "view-auth"
-        },
-        {
-            "time": "2026-02-19T02:40:53+01:00",
-            "ip": "127.0.0.1",
-            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
-            "event": "blog-updated"
-        },
-        {
-            "time": "2026-02-19T02:40:53+01:00",
-            "ip": "127.0.0.1",
-            "ua": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/143.0.0.0 Safari\/537.36",
-            "event": "view-auth"
         }
     ],
     "logs_archive": [],
