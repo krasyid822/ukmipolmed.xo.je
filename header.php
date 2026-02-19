@@ -125,6 +125,7 @@ header.header {
 	if (headerEl) {
 		let lastY = window.scrollY;
 		window.addEventListener('scroll', () => {
+			if (nav && nav.classList.contains('is-open')) return; // keep header visible while menu expanded
 			const currentY = window.scrollY;
 			const scrollingUp = currentY < lastY;
 			if (scrollingUp || currentY < 10) {
