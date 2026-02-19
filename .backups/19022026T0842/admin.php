@@ -4,31 +4,61 @@ session_start();
 $configPath = __DIR__ . '/data.json';
 $defaultPath = __DIR__ . '/default.json';
 
-if (!is_readable($defaultPath)) {
-	http_response_code(500);
-	exit('default.json missing.');
-}
-
-$defaultData = json_decode((string) file_get_contents($defaultPath), true);
-if (!is_array($defaultData)) {
-	http_response_code(500);
-	exit('default.json invalid.');
-}
-
-$defaults = [
-	'user' => $defaultData['user'] ?? '',
-	'key' => $defaultData['key'] ?? '',
-	'agenda' => is_array($defaultData['agenda'] ?? null) ? $defaultData['agenda'] : [],
-	'agendas' => is_array($defaultData['agendas'] ?? null) ? $defaultData['agendas'] : [],
-	'agenda_archive' => is_array($defaultData['agenda_archive'] ?? null) ? $defaultData['agenda_archive'] : [],
-	'logs' => is_array($defaultData['logs'] ?? null) ? $defaultData['logs'] : [],
-	'logs_archive' => is_array($defaultData['logs_archive'] ?? null) ? $defaultData['logs_archive'] : [],
-	'registration' => is_array($defaultData['registration'] ?? null) ? $defaultData['registration'] : [],
-	'docs' => is_array($defaultData['docs'] ?? null) ? $defaultData['docs'] : [],
-	'posts' => is_array($defaultData['posts'] ?? null) ? $defaultData['posts'] : [],
-	'divisions' => is_array($defaultData['divisions'] ?? null) ? $defaultData['divisions'] : [],
-	'session_version' => isset($defaultData['session_version']) ? (int) $defaultData['session_version'] : 1,
+$hardcodedDefaults = [
+	'user' => 'admin',
+	'key' => 'changeme',
+	'agenda' => [
+		'tag' => 'Agenda terdekat',
+		'title' => 'Pelantikan Ketum 2026-2027',
+		'detail' => 'Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027.'
+	],
+	'agendas' => [],
+	'agenda_archive' => [],
+	'logs' => [],
+	'logs_archive' => [],
+	'registration' => [
+		'platform' => 'Google Form',
+		'url' => 'https://forms.gle/e4e6egXHiRnyQVPV7',
+	],
+	'docs' => [
+		['tag' => 'Highlight', 'title' => 'Arsip IG UKMI', 'description' => 'Galeri kegiatan 2016-2025 dalam format slide dan grid. Cocok untuk stalking suasana UKMI.', 'url' => 'https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/'],
+		['tag' => 'PPI 2024', 'title' => 'Dokumentasi PPI 2024', 'description' => 'Index foto/video PPI 2024 lengkap dengan navigasi slide & grid view.', 'url' => 'https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/'],
+	],
+	'posts' => [],
+	'divisions' => [
+		['name' => 'Kaderisasi', 'description' => 'Merancang alur pembinaan anggota baru dan pelatihan berjenjang.'],
+		['name' => 'Mentoring Agama Islam', 'description' => 'Fokus mentoring iman-ilmu, kajian tematik, dan pendampingan rohani.'],
+		['name' => 'Pembinaan Tilawatil Quran', 'description' => 'Kelas tahsin-tahfizh, halaqah rutin, dan penguatan literasi Quran.'],
+		['name' => 'Syiar Media', 'description' => 'Mengelola konten digital, desain, foto-video, dan siaran kampanye kebaikan.'],
+		['name' => 'Keputrian', 'description' => 'Program khusus muslimah: kelas, support system, dan kepemimpinan perempuan.'],
+		['name' => 'Ekonomi', 'description' => 'Inisiatif kewirausahaan, fundrising program, dan pengelolaan dana kegiatan.'],
+	],
+	'session_version' => 1,
 ];
+
+$defaults = $hardcodedDefaults;
+if (is_readable($defaultPath)) {
+	$defaultData = json_decode((string) file_get_contents($defaultPath), true);
+	if (is_array($defaultData)) {
+		if (!empty($defaultData['agenda']) && is_array($defaultData['agenda'])) {
+			$defaults['agenda'] = array_merge($defaults['agenda'], $defaultData['agenda']);
+		}
+		$defaults['user'] = $defaultData['user'] ?? $defaults['user'];
+		$defaults['key'] = $defaultData['key'] ?? $defaults['key'];
+		if (!empty($defaultData['registration']) && is_array($defaultData['registration'])) {
+			$defaults['registration'] = array_merge($defaults['registration'], $defaultData['registration']);
+		}
+		if (!empty($defaultData['divisions']) && is_array($defaultData['divisions'])) {
+			$defaults['divisions'] = $defaultData['divisions'];
+		}
+		if (!empty($defaultData['docs']) && is_array($defaultData['docs'])) {
+			$defaults['docs'] = $defaultData['docs'];
+		}
+		if (!empty($defaultData['posts']) && is_array($defaultData['posts'])) {
+			$defaults['posts'] = $defaultData['posts'];
+		}
+	}
+}
 
 if (!is_readable($configPath)) {
 	$config = $defaults;
@@ -166,18 +196,6 @@ if (!empty($config['posts']) && is_array($config['posts'])) {
 		$summary = trim((string) ($post['summary'] ?? ''));
 		$body = trim((string) ($post['body'] ?? ''));
 		$image = trim((string) ($post['image'] ?? ''));
-		$embedEnabled = !empty($post['embed_enabled']);
-		$embedList = [];
-		if (!empty($post['embeds']) && is_array($post['embeds'])) {
-			foreach ($post['embeds'] as $emb) {
-				$emb = trim((string) $emb);
-				if ($emb !== '') $embedList[] = $emb;
-			}
-		}
-		if (empty($embedList) && !empty($post['embed_html'])) {
-			$legacy = trim((string) $post['embed_html']);
-			if ($legacy !== '') $embedList[] = $legacy;
-		}
 		$created = $post['created_at'] ?? date('c');
 		$updated = $post['updated_at'] ?? $created;
 		$posts[] = [
@@ -186,8 +204,6 @@ if (!empty($config['posts']) && is_array($config['posts'])) {
 			'summary' => $summary ?: '',
 			'body' => $body,
 			'image' => $image,
-			'embed_enabled' => $embedEnabled,
-			'embeds' => $embedList,
 			'created_at' => $created,
 			'updated_at' => $updated,
 		];
@@ -205,8 +221,6 @@ $blogDraft = [
 	'summary' => '',
 	'body' => '',
 	'image' => '',
-	'embeds' => [],
-	'embed_enabled' => false,
 ];
 
 $maxLogs = 30;
@@ -599,14 +613,12 @@ if ($loggedIn && isset($_POST['blog_edit_idx'])) {
 			'title' => $posts[$reqIdx]['title'] ?? '',
 			'slug' => $posts[$reqIdx]['slug'] ?? '',
 			'summary' => $posts[$reqIdx]['summary'] ?? '',
-			'body' => $posts[$reqIdx]['body'] ?? '',
-			'image' => $posts[$reqIdx]['image'] ?? '',
-			'embeds' => !empty($posts[$reqIdx]['embeds']) && is_array($posts[$reqIdx]['embeds']) ? $posts[$reqIdx]['embeds'] : [],
-			'embed_enabled' => !empty($posts[$reqIdx]['embed_enabled']),
+				'body' => $posts[$reqIdx]['body'] ?? '',
+				'image' => $posts[$reqIdx]['image'] ?? '',
 		];
 	} elseif ($reqIdx === -1) {
 		$blogEditingIdx = -1;
-		$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'embeds' => [], 'embed_enabled' => false];
+		$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => ''];
 	}
 }
 
@@ -633,15 +645,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 	$slugInput = trim((string) ($_POST['blog_slug'] ?? ''));
 	$summary = trim((string) ($_POST['blog_summary'] ?? ''));
 	$body = trim((string) ($_POST['blog_body'] ?? ''));
-	$embedEnabled = isset($_POST['blog_embed_enabled']) && $_POST['blog_embed_enabled'] === '1';
-	$embedInputs = isset($_POST['blog_embed_html']) ? (array) $_POST['blog_embed_html'] : [];
-	$embedList = [];
-	foreach ($embedInputs as $emb) {
-		$emb = trim((string) $emb);
-		if ($emb !== '') {
-			$embedList[] = $emb;
-		}
-	}
 	$image = trim((string) ($_POST['blog_image'] ?? ''));
 	$idx = isset($_POST['blog_edit_idx']) ? (int) $_POST['blog_edit_idx'] : -1;
 	$now = date('c');
@@ -651,7 +654,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 	// Tolak duplikasi judul atau slug (case-insensitive), abaikan entri yang sedang diedit.
 	$normTitle = strtolower($title);
 	$normSlug = strtolower($slug);
-		$duplicateFound = false;
+	$duplicateFound = false;
 	foreach ($posts as $i => $p) {
 		$existingTitle = strtolower(trim((string) ($p['title'] ?? '')));
 		$existingSlug = strtolower(trim((string) ($p['slug'] ?? '')));
@@ -664,8 +667,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				'summary' => $summary,
 				'body' => $body,
 				'image' => $image,
-				'embeds' => $embedList,
-				'embed_enabled' => $embedEnabled,
 			];
 			$blogEditingIdx = $idx;
 			break;
@@ -680,9 +681,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			if (strlen($tmpSummary) > 180) {
 				$summary .= '...';
 			}
-			if ($summary === '' && $embedEnabled && !empty($embedList)) {
-				$summary = 'Konten tersemat tersedia.';
-			}
 		}
 		$newPost = [
 			'title' => $title ?: 'Tanpa judul',
@@ -690,8 +688,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			'summary' => $summary,
 			'body' => $body,
 			'image' => $image,
-			'embeds' => $embedList,
-			'embed_enabled' => $embedEnabled,
 			'created_at' => $created,
 			'updated_at' => $now,
 		];
@@ -713,7 +709,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			$message = 'Postingan disimpan.';
 			appendLog($config, $configPath, 'blog-updated', $maxLogs, $archiveLimitDays);
 			$blogEditingIdx = -1;
-			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'embeds' => [], 'embed_enabled' => false];
+			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => ''];
 		}
 	}
 }
@@ -728,19 +724,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 	<link rel="apple-touch-icon" href="logo-ukmi.png">
 	<link rel="shortcut icon" href="logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
-	<script>
-		(function() {
-			const SCROLL_KEY = 'admin_scroll_y';
-			const saved = sessionStorage.getItem(SCROLL_KEY);
-			if (saved) {
-				history.scrollRestoration = 'manual';
-				const y = parseInt(saved, 10);
-				if (!Number.isNaN(y)) {
-					window.__ADMIN_SAVED_SCROLL__ = y;
-				}
-			}
-		})();
-	</script>
 	<style>
 		:root {
 			--bg: #0f172a;
@@ -811,17 +794,16 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		input[type="text"],
 		input[type="password"],
 		textarea {
-			padding: 10px 0.1cm;
+			padding: 10px 0;
 			border-radius: 10px;
 			border: 1px solid rgba(148, 163, 184, 0.3);
 			background: rgba(15, 23, 42, 0.4);
 			color: var(--text);
 			font-size: 14px;
 			transition: border-color 0.2s ease, box-shadow 0.2s ease;
-			box-sizing: border-box;
 		}
 
-		textarea { width: 100%; min-width: 0; min-height: 110px; resize: both; font-family: inherit; }
+		textarea { min-width: 308px; min-height: 110px; resize: both; font-family: inherit; }
 
 		/* Override inline paddings to keep columns within card */
 		input[type="text"],
@@ -829,11 +811,8 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		textarea,
 		select,
 		input[type="url"] {
-			padding: 10px 0.1cm !important;
-			box-sizing: border-box;
+			padding: 10px 0 !important;
 		}
-
-		.field-grid > * { min-width: 0; }
 
 		/* Prevent overflow/overlap in documentation cards on desktop */
 		.doc-item,
@@ -934,45 +913,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		button:active,
 		a.button-link:active {
 			transform: translateY(0);
-		}
-
-		.toggle {
-			position: relative;
-			display: inline-block;
-			width: 48px;
-			height: 26px;
-		}
-
-		.toggle input { opacity: 0; width: 0; height: 0; }
-
-		.slider {
-			position: absolute;
-			cursor: pointer;
-			top: 0; left: 0; right: 0; bottom: 0;
-			background: rgba(148, 163, 184, 0.35);
-			transition: .2s;
-			border-radius: 26px;
-		}
-
-		.slider:before {
-			position: absolute;
-			content: '';
-			height: 20px;
-			width: 20px;
-			left: 3px;
-			bottom: 3px;
-			background: #0b1727;
-			transition: .2s;
-			border-radius: 50%;
-			box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-		}
-
-		input:checked + .slider {
-			background: linear-gradient(135deg, #38bdf8, #0ea5e9);
-		}
-
-		input:checked + .slider:before {
-			transform: translateX(22px);
 		}
 
 		.error {
@@ -1144,11 +1084,11 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 					<div class="field-grid">
 						<div>
 							<label for="agenda_tag">Tag</label>
-							<input type="text" id="agenda_tag" name="agenda_tag" style="min-width:260px;" value="<?php echo htmlspecialchars($primaryAgenda['tag'], ENT_QUOTES, 'UTF-8'); ?>" required>
+							<input type="text" id="agenda_tag" name="agenda_tag" value="<?php echo htmlspecialchars($primaryAgenda['tag'], ENT_QUOTES, 'UTF-8'); ?>" required>
 						</div>
 						<div>
 							<label for="agenda_title">Judul</label>
-							<input type="text" id="agenda_title" name="agenda_title" style="min-width:260px;" value="<?php echo htmlspecialchars($primaryAgenda['title'], ENT_QUOTES, 'UTF-8'); ?>" required>
+							<input type="text" id="agenda_title" name="agenda_title" value="<?php echo htmlspecialchars($primaryAgenda['title'], ENT_QUOTES, 'UTF-8'); ?>" required>
 						</div>
 						<div class="full">
 							<label for="agenda_detail">Detail</label>
@@ -1167,6 +1107,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 						<p class="muted-text" style="margin:4px 0 0;">Saat ini mengedit agenda ke-<?php echo (int) $editingIdx + 1; ?> (klik Edit di daftar untuk memilih).</p>
 					<div class="inline-actions" style="margin-top: 4px;">
 						<button type="submit">Simpan agenda</button>
+						<a class="button-link" href="?logout=1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.3);">Keluar</a>
 					</div>
 				</form>
 						<div class="admin-box" style="margin-top:10px;">
@@ -1273,7 +1214,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 					<form method="post" class="stack-sm">
 						<div class="inline-actions" style="align-items:center;">
 							<input type="text" name="unlock_division_code" placeholder="Ketik superadmin untuk mengubah" style="flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" autocomplete="off">
-							<button type="submit" style="max-width:180px;">Buka</button>
+							<button type="submit" style="max-width:180px;">Aktifkan mode divisi</button>
 						</div>
 					</form>
 					<form method="post" class="stack-sm" id="divisions-form" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
@@ -1352,39 +1293,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 							<div class="full">
 								<label for="blog_body">Konten</label>
 								<textarea id="blog_body" name="blog_body" style="min-height:180px; resize: both;"><?php echo htmlspecialchars($blogDraft['body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
-								<p class="muted-text" style="margin:4px 0 0;">Mendukung Markdown sederhana: judul (#), tebal (**bold**), miring (*italic*), kode (`inline`, ```blok```), dan tautan [teks](https://...).</p>
 							</div>
-						</div>
-						<div class="full" style="margin-top:6px;">
-							<label style="display:flex; align-items:center; gap:10px;">
-								<span>Mode embed HTML</span>
-								<label class="toggle">
-									<input type="checkbox" id="blog_embed_enabled" name="blog_embed_enabled" value="1" <?php echo !empty($blogDraft['embed_enabled']) ? 'checked' : ''; ?>>
-									<span class="slider"></span>
-								</label>
-							</label>
-							<div id="blog_embed_wrap" style="margin-top:6px; <?php echo !empty($blogDraft['embed_enabled']) ? '' : 'display:none;'; ?>">
-								<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
-									<label style="margin:0;">Daftar embed (gunakan [[EMBED1]], [[EMBED2]], ... di konten untuk posisi)</label>
-									<button type="button" id="add-embed" style="max-width:180px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Tambah embed</button>
-								</div>
-								<div id="blog_embed_list" class="stack-sm">
-									<?php
-									$embedsDraft = !empty($blogDraft['embeds']) && is_array($blogDraft['embeds']) ? $blogDraft['embeds'] : [];
-									if (empty($embedsDraft)) { $embedsDraft = ['']; }
-									foreach ($embedsDraft as $idx => $embHtml): ?>
-									<div class="embed-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
-										<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Embed <?php echo $idx + 1; ?></label>
-										<textarea name="blog_embed_html[]" style="min-height:120px; font-family: 'SFMono-Regular', Consolas, monospace; width:100%; resize: vertical;" placeholder="&lt;iframe ...&gt;&lt;/iframe&gt;"><?php echo htmlspecialchars($embHtml, ENT_QUOTES, 'UTF-8'); ?></textarea>
-										<div style="text-align:right; margin-top:6px;">
-											<button type="button" class="remove-embed" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
-										</div>
-									</div>
-									<?php endforeach; ?>
-								</div>
-								<p class="muted-text" style="margin:4px 0 0;">Letakkan token [[EMBED1]], [[EMBED2]], ... di konten untuk menentukan posisi. Embed yang tidak ditandai akan muncul di akhir.</p>
-							</div>
-						</div>
 						</div>
 						<div class="inline-actions" style="margin-top: 6px; align-items:center;">
 							<button type="submit" name="blog_save" value="1">Simpan postingan</button>
@@ -1405,7 +1314,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 											<?php if (!empty($post['slug'])): ?><br><span style="color: var(--muted); font-size:12px;">Slug: <?php echo htmlspecialchars($post['slug'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 											<?php if (!empty($post['summary'])): ?><br><span style="color: var(--muted); font-size:12px;">Ringkas: <?php echo htmlspecialchars($post['summary'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 											<?php if (!empty($post['image'])): ?><br><span style="color: var(--muted); font-size:12px;">Gambar: <?php echo htmlspecialchars(strlen($post['image']) > 120 ? substr($post['image'], 0, 120) . '...' : $post['image'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
-											<?php if (!empty($post['embed_enabled'])): ?><br><span style="color: var(--muted); font-size:12px;">Embed aktif (<?php echo isset($post['embeds']) && is_array($post['embeds']) ? count($post['embeds']) : 0; ?>)</span><?php endif; ?>
 											<?php if (!empty($post['created_at'])): ?><br><span style="color: var(--muted); font-size:12px;">Dibuat: <?php echo htmlspecialchars($post['created_at'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 										</div>
 										<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -1426,14 +1334,11 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				</div>
 			<div class="section" style="margin-top: 10px;">
 				<h2 style="margin:0 0 8px; font-size:15px;">Sesi</h2>
-				<div class="inline-actions" style="align-items:center; gap:10px;">
-					<a class="button-link" href="?logout=1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.25);">Keluar</a>
-					<form method="post" class="stack-sm" style="margin:0;">
-						<input type="hidden" name="logout_all" value="1">
-						<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Logout semua sesi</button>
-					</form>
-				</div>
-				<p class="muted-text" style="margin:6px 0 0;">"Keluar" hanya mengakhiri sesi ini. "Logout semua sesi" memaksa semua browser keluar dan dicatat di log.</p>
+				<form method="post" class="stack-sm">
+					<input type="hidden" name="logout_all" value="1">
+					<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Logout semua sesi</button>
+					<p class="muted-text">Memaksa semua sesi admin keluar di semua browser dan dicatat di log.</p>
+				</form>
 			</div>
 			<div class="admin-box">
 				<h2 style="margin:0 0 10px; font-size:16px;">Log akses terbaru</h2>
@@ -1556,15 +1461,15 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			});
 		}
 
-		// Pertahankan posisi scroll setelah submit agar tidak lompat ke atas (fast restore for mobile).
+		// Pertahankan posisi scroll setelah submit agar tidak lompat ke atas.
 		const SCROLL_KEY = 'admin_scroll_y';
-		const savedScroll = window.__ADMIN_SAVED_SCROLL__;
-		if (typeof savedScroll === 'number' && Number.isFinite(savedScroll)) {
-			const restore = () => window.scrollTo(0, savedScroll);
-			requestAnimationFrame(restore);
-			setTimeout(restore, 0);
-			setTimeout(restore, 120);
-			setTimeout(restore, 260);
+		const savedScroll = sessionStorage.getItem(SCROLL_KEY);
+		if (savedScroll) {
+			const y = parseInt(savedScroll, 10);
+			if (!Number.isNaN(y)) {
+				history.scrollRestoration = 'manual';
+				requestAnimationFrame(() => window.scrollTo(0, y));
+			}
 			sessionStorage.removeItem(SCROLL_KEY);
 		}
 
@@ -1693,10 +1598,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		const blogForm = document.getElementById('blog-form');
 		const blogResetBtn = document.getElementById('blog_reset');
 		const blogEditIdxInput = document.getElementById('blog_edit_idx');
-		const blogEmbedToggle = document.getElementById('blog_embed_enabled');
-		const blogEmbedWrap = document.getElementById('blog_embed_wrap');
-		const blogEmbedList = document.getElementById('blog_embed_list');
-		const blogEmbedAdd = document.getElementById('add-embed');
 		const MAX_IMAGE_BYTES = 1000000;
 
 		function dataUrlBytes(dataUrl) {
@@ -1778,61 +1679,9 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			if (!blogForm) return;
 			blogForm.querySelectorAll('input[type="text"], textarea').forEach(el => { el.value = ''; });
 			if (blogImageFile) blogImageFile.value = '';
-			if (blogEmbedToggle) blogEmbedToggle.checked = false;
-			syncEmbedVisibility();
-			if (blogEmbedList) {
-				blogEmbedList.innerHTML = '';
-				addEmbedItem('');
-			}
 		}
 
 		blogResetBtn?.addEventListener('click', clearBlogForm);
-
-		function syncEmbedVisibility() {
-			if (!blogEmbedWrap || !blogEmbedToggle) return;
-			blogEmbedWrap.style.display = blogEmbedToggle.checked ? '' : 'none';
-		}
-		blogEmbedToggle?.addEventListener('change', syncEmbedVisibility);
-		syncEmbedVisibility();
-
-		function renumberEmbeds() {
-			if (!blogEmbedList) return;
-			Array.from(blogEmbedList.querySelectorAll('.embed-item label')).forEach((label, idx) => {
-				label.textContent = `Embed ${idx + 1}`;
-			});
-		}
-
-		function attachEmbedRemoveHandlers() {
-			if (!blogEmbedList) return;
-			blogEmbedList.querySelectorAll('.remove-embed').forEach(btn => {
-				btn.onclick = () => {
-					const item = btn.closest('.embed-item');
-					if (item && blogEmbedList.children.length > 1) {
-						item.remove();
-						renumberEmbeds();
-					}
-				};
-			});
-		}
-
-		function addEmbedItem(value = '') {
-			if (!blogEmbedList) return;
-			const wrapper = document.createElement('div');
-			wrapper.className = 'embed-item';
-			wrapper.style = 'border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);';
-			wrapper.innerHTML = `
-				<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Embed</label>
-				<textarea name="blog_embed_html[]" style="min-height:120px; font-family: 'SFMono-Regular', Consolas, monospace; width:100%; resize: vertical;" placeholder="<iframe ...></iframe>">${value.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-				<div style="text-align:right; margin-top:6px;">
-					<button type="button" class="remove-embed" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
-				</div>`;
-			blogEmbedList.appendChild(wrapper);
-			renumberEmbeds();
-			attachEmbedRemoveHandlers();
-		}
-
-		blogEmbedAdd?.addEventListener('click', () => addEmbedItem(''));
-		attachEmbedRemoveHandlers();
 
 		const filterEvent = document.getElementById('log-filter-event');
 		const filterText = document.getElementById('log-filter-text');
