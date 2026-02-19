@@ -4,61 +4,31 @@ session_start();
 $configPath = __DIR__ . '/data.json';
 $defaultPath = __DIR__ . '/default.json';
 
-$hardcodedDefaults = [
-	'user' => 'admin',
-	'key' => 'changeme',
-	'agenda' => [
-		'tag' => 'Agenda terdekat',
-		'title' => 'Pelantikan Ketum 2026-2027',
-		'detail' => 'Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027.'
-	],
-	'agendas' => [],
-	'agenda_archive' => [],
-	'logs' => [],
-	'logs_archive' => [],
-	'registration' => [
-		'platform' => 'Google Form',
-		'url' => 'https://forms.gle/e4e6egXHiRnyQVPV7',
-	],
-	'docs' => [
-		['tag' => 'Highlight', 'title' => 'Arsip IG UKMI', 'description' => 'Galeri kegiatan 2016-2025 dalam format slide dan grid. Cocok untuk stalking suasana UKMI.', 'url' => 'https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/'],
-		['tag' => 'PPI 2024', 'title' => 'Dokumentasi PPI 2024', 'description' => 'Index foto/video PPI 2024 lengkap dengan navigasi slide & grid view.', 'url' => 'https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/'],
-	],
-	'posts' => [],
-	'divisions' => [
-		['name' => 'Kaderisasi', 'description' => 'Merancang alur pembinaan anggota baru dan pelatihan berjenjang.'],
-		['name' => 'Mentoring Agama Islam', 'description' => 'Fokus mentoring iman-ilmu, kajian tematik, dan pendampingan rohani.'],
-		['name' => 'Pembinaan Tilawatil Quran', 'description' => 'Kelas tahsin-tahfizh, halaqah rutin, dan penguatan literasi Quran.'],
-		['name' => 'Syiar Media', 'description' => 'Mengelola konten digital, desain, foto-video, dan siaran kampanye kebaikan.'],
-		['name' => 'Keputrian', 'description' => 'Program khusus muslimah: kelas, support system, dan kepemimpinan perempuan.'],
-		['name' => 'Ekonomi', 'description' => 'Inisiatif kewirausahaan, fundrising program, dan pengelolaan dana kegiatan.'],
-	],
-	'session_version' => 1,
-];
-
-$defaults = $hardcodedDefaults;
-if (is_readable($defaultPath)) {
-	$defaultData = json_decode((string) file_get_contents($defaultPath), true);
-	if (is_array($defaultData)) {
-		if (!empty($defaultData['agenda']) && is_array($defaultData['agenda'])) {
-			$defaults['agenda'] = array_merge($defaults['agenda'], $defaultData['agenda']);
-		}
-		$defaults['user'] = $defaultData['user'] ?? $defaults['user'];
-		$defaults['key'] = $defaultData['key'] ?? $defaults['key'];
-		if (!empty($defaultData['registration']) && is_array($defaultData['registration'])) {
-			$defaults['registration'] = array_merge($defaults['registration'], $defaultData['registration']);
-		}
-		if (!empty($defaultData['divisions']) && is_array($defaultData['divisions'])) {
-			$defaults['divisions'] = $defaultData['divisions'];
-		}
-		if (!empty($defaultData['docs']) && is_array($defaultData['docs'])) {
-			$defaults['docs'] = $defaultData['docs'];
-		}
-		if (!empty($defaultData['posts']) && is_array($defaultData['posts'])) {
-			$defaults['posts'] = $defaultData['posts'];
-		}
-	}
+if (!is_readable($defaultPath)) {
+	http_response_code(500);
+	exit('default.json missing.');
 }
+
+$defaultData = json_decode((string) file_get_contents($defaultPath), true);
+if (!is_array($defaultData)) {
+	http_response_code(500);
+	exit('default.json invalid.');
+}
+
+$defaults = [
+	'user' => $defaultData['user'] ?? '',
+	'key' => $defaultData['key'] ?? '',
+	'agenda' => is_array($defaultData['agenda'] ?? null) ? $defaultData['agenda'] : [],
+	'agendas' => is_array($defaultData['agendas'] ?? null) ? $defaultData['agendas'] : [],
+	'agenda_archive' => is_array($defaultData['agenda_archive'] ?? null) ? $defaultData['agenda_archive'] : [],
+	'logs' => is_array($defaultData['logs'] ?? null) ? $defaultData['logs'] : [],
+	'logs_archive' => is_array($defaultData['logs_archive'] ?? null) ? $defaultData['logs_archive'] : [],
+	'registration' => is_array($defaultData['registration'] ?? null) ? $defaultData['registration'] : [],
+	'docs' => is_array($defaultData['docs'] ?? null) ? $defaultData['docs'] : [],
+	'posts' => is_array($defaultData['posts'] ?? null) ? $defaultData['posts'] : [],
+	'divisions' => is_array($defaultData['divisions'] ?? null) ? $defaultData['divisions'] : [],
+	'session_version' => isset($defaultData['session_version']) ? (int) $defaultData['session_version'] : 1,
+];
 
 if (!is_readable($configPath)) {
 	$config = $defaults;
@@ -724,6 +694,19 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 	<link rel="apple-touch-icon" href="logo-ukmi.png">
 	<link rel="shortcut icon" href="logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
+	<script>
+		(function() {
+			const SCROLL_KEY = 'admin_scroll_y';
+			const saved = sessionStorage.getItem(SCROLL_KEY);
+			if (saved) {
+				history.scrollRestoration = 'manual';
+				const y = parseInt(saved, 10);
+				if (!Number.isNaN(y)) {
+					window.__ADMIN_SAVED_SCROLL__ = y;
+				}
+			}
+		})();
+	</script>
 	<style>
 		:root {
 			--bg: #0f172a;
@@ -794,16 +777,17 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		input[type="text"],
 		input[type="password"],
 		textarea {
-			padding: 10px 0;
+			padding: 10px 0.1cm;
 			border-radius: 10px;
 			border: 1px solid rgba(148, 163, 184, 0.3);
 			background: rgba(15, 23, 42, 0.4);
 			color: var(--text);
 			font-size: 14px;
 			transition: border-color 0.2s ease, box-shadow 0.2s ease;
+			box-sizing: border-box;
 		}
 
-		textarea { min-width: 308px; min-height: 110px; resize: both; font-family: inherit; }
+		textarea { width: 100%; min-width: 0; min-height: 110px; resize: both; font-family: inherit; }
 
 		/* Override inline paddings to keep columns within card */
 		input[type="text"],
@@ -811,8 +795,11 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		textarea,
 		select,
 		input[type="url"] {
-			padding: 10px 0 !important;
+			padding: 10px 0.1cm !important;
+			box-sizing: border-box;
 		}
+
+		.field-grid > * { min-width: 0; }
 
 		/* Prevent overflow/overlap in documentation cards on desktop */
 		.doc-item,
@@ -1084,11 +1071,11 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 					<div class="field-grid">
 						<div>
 							<label for="agenda_tag">Tag</label>
-							<input type="text" id="agenda_tag" name="agenda_tag" value="<?php echo htmlspecialchars($primaryAgenda['tag'], ENT_QUOTES, 'UTF-8'); ?>" required>
+							<input type="text" id="agenda_tag" name="agenda_tag" style="min-width:260px;" value="<?php echo htmlspecialchars($primaryAgenda['tag'], ENT_QUOTES, 'UTF-8'); ?>" required>
 						</div>
 						<div>
 							<label for="agenda_title">Judul</label>
-							<input type="text" id="agenda_title" name="agenda_title" value="<?php echo htmlspecialchars($primaryAgenda['title'], ENT_QUOTES, 'UTF-8'); ?>" required>
+							<input type="text" id="agenda_title" name="agenda_title" style="min-width:260px;" value="<?php echo htmlspecialchars($primaryAgenda['title'], ENT_QUOTES, 'UTF-8'); ?>" required>
 						</div>
 						<div class="full">
 							<label for="agenda_detail">Detail</label>
@@ -1107,7 +1094,6 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 						<p class="muted-text" style="margin:4px 0 0;">Saat ini mengedit agenda ke-<?php echo (int) $editingIdx + 1; ?> (klik Edit di daftar untuk memilih).</p>
 					<div class="inline-actions" style="margin-top: 4px;">
 						<button type="submit">Simpan agenda</button>
-						<a class="button-link" href="?logout=1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.3);">Keluar</a>
 					</div>
 				</form>
 						<div class="admin-box" style="margin-top:10px;">
@@ -1214,7 +1200,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 					<form method="post" class="stack-sm">
 						<div class="inline-actions" style="align-items:center;">
 							<input type="text" name="unlock_division_code" placeholder="Ketik superadmin untuk mengubah" style="flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" autocomplete="off">
-							<button type="submit" style="max-width:180px;">Aktifkan mode divisi</button>
+							<button type="submit" style="max-width:180px;">Buka</button>
 						</div>
 					</form>
 					<form method="post" class="stack-sm" id="divisions-form" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
@@ -1293,6 +1279,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 							<div class="full">
 								<label for="blog_body">Konten</label>
 								<textarea id="blog_body" name="blog_body" style="min-height:180px; resize: both;"><?php echo htmlspecialchars($blogDraft['body'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+								<p class="muted-text" style="margin:4px 0 0;">Mendukung Markdown sederhana: judul (#), tebal (**bold**), miring (*italic*), kode (`inline`, ```blok```), dan tautan [teks](https://...).</p>
 							</div>
 						</div>
 						<div class="inline-actions" style="margin-top: 6px; align-items:center;">
@@ -1334,11 +1321,14 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				</div>
 			<div class="section" style="margin-top: 10px;">
 				<h2 style="margin:0 0 8px; font-size:15px;">Sesi</h2>
-				<form method="post" class="stack-sm">
-					<input type="hidden" name="logout_all" value="1">
-					<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Logout semua sesi</button>
-					<p class="muted-text">Memaksa semua sesi admin keluar di semua browser dan dicatat di log.</p>
-				</form>
+				<div class="inline-actions" style="align-items:center; gap:10px;">
+					<a class="button-link" href="?logout=1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.25);">Keluar</a>
+					<form method="post" class="stack-sm" style="margin:0;">
+						<input type="hidden" name="logout_all" value="1">
+						<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Logout semua sesi</button>
+					</form>
+				</div>
+				<p class="muted-text" style="margin:6px 0 0;">"Keluar" hanya mengakhiri sesi ini. "Logout semua sesi" memaksa semua browser keluar dan dicatat di log.</p>
 			</div>
 			<div class="admin-box">
 				<h2 style="margin:0 0 10px; font-size:16px;">Log akses terbaru</h2>
@@ -1461,15 +1451,15 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			});
 		}
 
-		// Pertahankan posisi scroll setelah submit agar tidak lompat ke atas.
+		// Pertahankan posisi scroll setelah submit agar tidak lompat ke atas (fast restore for mobile).
 		const SCROLL_KEY = 'admin_scroll_y';
-		const savedScroll = sessionStorage.getItem(SCROLL_KEY);
-		if (savedScroll) {
-			const y = parseInt(savedScroll, 10);
-			if (!Number.isNaN(y)) {
-				history.scrollRestoration = 'manual';
-				requestAnimationFrame(() => window.scrollTo(0, y));
-			}
+		const savedScroll = window.__ADMIN_SAVED_SCROLL__;
+		if (typeof savedScroll === 'number' && Number.isFinite(savedScroll)) {
+			const restore = () => window.scrollTo(0, savedScroll);
+			requestAnimationFrame(restore);
+			setTimeout(restore, 0);
+			setTimeout(restore, 120);
+			setTimeout(restore, 260);
 			sessionStorage.removeItem(SCROLL_KEY);
 		}
 

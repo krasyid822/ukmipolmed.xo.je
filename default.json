@@ -6,6 +6,10 @@
     "title": "Pelantikan Ketum 2026-2027",
     "detail": "Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI Polmed 2026-2027."
   },
+  "agendas": [],
+  "agenda_archive": [],
+  "logs": [],
+  "logs_archive": [],
   "registration": {
     "platform": "Google Form",
     "url": "https://forms.gle/e4e6egXHiRnyQVPV7"
@@ -21,5 +25,7 @@
   "docs": [
     {"tag": "Highlight", "title": "Arsip IG UKMI", "description": "Galeri kegiatan 2016-2025 dalam format slide dan grid. Cocok untuk stalking suasana UKMI.", "url": "https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/"},
     {"tag": "PPI 2024", "title": "Dokumentasi PPI 2024", "description": "Index foto/video PPI 2024 lengkap dengan navigasi slide & grid view.", "url": "https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/"}
-  ]
+  ],
+  "posts": [],
+  "session_version": 1
 }
