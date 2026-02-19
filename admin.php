@@ -1130,7 +1130,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		</div>
 		<?php if ($loggedIn): ?>
 			<h1>Panel Admin</h1>
-			<p>Kelola kartu "Agenda terdekat" yang muncul di halaman utama.</p>
+			<p>Kelola, Anda adalah admin.</p>
 			<div class="section" style="margin-top: 8px;">
 				<h2 style="margin:0 0 8px; font-size:15px;">Sesi</h2>
 				<div class="inline-actions" style="align-items:center; gap:10px;">

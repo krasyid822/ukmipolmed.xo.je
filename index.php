@@ -121,7 +121,7 @@ function e($value)
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shortcut UKMI Polmed | Open Recruitment 2026</title>
+    <title>Shortcut UKMI Polmed | Open Recruitment <?php echo e(date('Y')); ?></title>
     <meta name="description" content="Gabung UKMI Polmed 2026: mentoring, tilawah, syiar media, keputrian, ekonomi, dan aksi sosial. Form pendaftaran, dokumentasi, dan kontak cepat di satu halaman.">
     <meta name="keywords" content="UKMI Polmed, open recruitment UKMI, organisasi Islam Polmed, mentoring kampus, UKM Islami Politeknik Negeri Medan">
     <meta name="robots" content="index, follow">
