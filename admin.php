@@ -156,6 +156,7 @@ if (empty($docs)) {
 	$docs = $docDefaults;
 }
 
+$maxPosts = 15; // Batasi jumlah postingan blog
 $postDefaults = is_array($defaults['posts']) ? $defaults['posts'] : [];
 $posts = [];
 if (!empty($config['posts']) && is_array($config['posts'])) {
@@ -196,7 +197,7 @@ if (!empty($config['posts']) && is_array($config['posts'])) {
 if (empty($posts)) {
 	$posts = $postDefaults;
 }
-$posts = array_slice($posts, 0, 10);
+$posts = array_slice($posts, 0, $maxPosts);
 
 $blogEditingIdx = -1;
 $blogDraft = [
@@ -648,72 +649,87 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 	$created = ($idx >= 0 && isset($posts[$idx])) ? ($posts[$idx]['created_at'] ?? $now) : $now;
 	$slug = makeSlug($slugInput !== '' ? $slugInput : $title);
 
-	// Tolak duplikasi judul atau slug (case-insensitive), abaikan entri yang sedang diedit.
-	$normTitle = strtolower($title);
-	$normSlug = strtolower($slug);
-		$duplicateFound = false;
-	foreach ($posts as $i => $p) {
-		$existingTitle = strtolower(trim((string) ($p['title'] ?? '')));
-		$existingSlug = strtolower(trim((string) ($p['slug'] ?? '')));
-		if ($i !== $idx && ($existingTitle === $normTitle || $existingSlug === $normSlug)) {
-			$error = 'Judul atau slug sudah dipakai. Gunakan yang lain.';
-			$duplicateFound = true;
-			$blogDraft = [
-				'title' => $title,
-				'slug' => $slugInput,
-				'summary' => $summary,
-				'body' => $body,
-				'image' => $image,
-				'embeds' => $embedList,
-				'embed_enabled' => $embedEnabled,
-			];
-			$blogEditingIdx = $idx;
-			break;
-		}
-	}
-
-	if (!$duplicateFound) {
-		if ($summary === '') {
-			$tmpSummary = strip_tags($body);
-			$tmpSummary = preg_replace('/\s+/', ' ', $tmpSummary);
-			$summary = substr($tmpSummary, 0, 180);
-			if (strlen($tmpSummary) > 180) {
-				$summary .= '...';
-			}
-			if ($summary === '' && $embedEnabled && !empty($embedList)) {
-				$summary = 'Konten tersemat tersedia.';
-			}
-		}
-		$newPost = [
-			'title' => $title ?: 'Tanpa judul',
-			'slug' => $slug,
+	$exceedsLimit = ($idx < 0 && count($posts) >= $maxPosts);
+	if ($exceedsLimit) {
+		$error = 'Maksimal ' . $maxPosts . ' postingan. Hapus salah satu sebelum menambah baru.';
+		$blogDraft = [
+			'title' => $title,
+			'slug' => $slugInput,
 			'summary' => $summary,
 			'body' => $body,
 			'image' => $image,
 			'embeds' => $embedList,
 			'embed_enabled' => $embedEnabled,
-			'created_at' => $created,
-			'updated_at' => $now,
 		];
-
-		if ($idx >= 0 && isset($posts[$idx])) {
-			$posts[$idx] = $newPost;
-			$blogEditingIdx = $idx;
-		} else {
-			array_unshift($posts, $newPost);
-			$posts = array_slice($posts, 0, 10);
-			$blogEditingIdx = 0;
+		$blogEditingIdx = -1;
+	} else {
+		// Tolak duplikasi judul atau slug (case-insensitive), abaikan entri yang sedang diedit.
+		$normTitle = strtolower($title);
+		$normSlug = strtolower($slug);
+		$duplicateFound = false;
+		foreach ($posts as $i => $p) {
+			$existingTitle = strtolower(trim((string) ($p['title'] ?? '')));
+			$existingSlug = strtolower(trim((string) ($p['slug'] ?? '')));
+			if ($i !== $idx && ($existingTitle === $normTitle || $existingSlug === $normSlug)) {
+				$error = 'Judul atau slug sudah dipakai. Gunakan yang lain.';
+				$duplicateFound = true;
+				$blogDraft = [
+					'title' => $title,
+					'slug' => $slugInput,
+					'summary' => $summary,
+					'body' => $body,
+					'image' => $image,
+					'embeds' => $embedList,
+					'embed_enabled' => $embedEnabled,
+				];
+				$blogEditingIdx = $idx;
+				break;
+			}
 		}
 
-		$config['posts'] = $posts;
-		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
-			$error = 'Gagal menyimpan postingan.';
-		} else {
-			$message = 'Postingan disimpan.';
-			appendLog($config, $configPath, 'blog-updated', $maxLogs, $archiveLimitDays);
-			$blogEditingIdx = -1;
-			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'embeds' => [], 'embed_enabled' => false];
+		if (!$duplicateFound) {
+			if ($summary === '') {
+				$tmpSummary = strip_tags($body);
+				$tmpSummary = preg_replace('/\s+/', ' ', $tmpSummary);
+				$summary = substr($tmpSummary, 0, 180);
+				if (strlen($tmpSummary) > 180) {
+					$summary .= '...';
+				}
+				if ($summary === '' && $embedEnabled && !empty($embedList)) {
+					$summary = 'Konten tersemat tersedia.';
+				}
+			}
+			$newPost = [
+				'title' => $title ?: 'Tanpa judul',
+				'slug' => $slug,
+				'summary' => $summary,
+				'body' => $body,
+				'image' => $image,
+				'embeds' => $embedList,
+				'embed_enabled' => $embedEnabled,
+				'created_at' => $created,
+				'updated_at' => $now,
+			];
+
+			if ($idx >= 0 && isset($posts[$idx])) {
+				$posts[$idx] = $newPost;
+				$blogEditingIdx = $idx;
+			} else {
+				array_unshift($posts, $newPost);
+				$posts = array_slice($posts, 0, $maxPosts);
+				$blogEditingIdx = 0;
+			}
+
+			$config['posts'] = $posts;
+			$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+			if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+				$error = 'Gagal menyimpan postingan.';
+			} else {
+				$message = 'Postingan disimpan.';
+				appendLog($config, $configPath, 'blog-updated', $maxLogs, $archiveLimitDays);
+				$blogEditingIdx = -1;
+				$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'embeds' => [], 'embed_enabled' => false];
+			}
 		}
 	}
 }
@@ -1410,6 +1426,8 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				</div>
 				<div class="section" style="margin-top: 10px;">
 					<h2 style="margin:0 0 8px; font-size:16px;">Blog</h2>
+					<?php $postCount = count($posts); $blogLimitReached = ($postCount >= $maxPosts && $blogEditingIdx === -1); ?>
+					<p class="muted-text" style="margin:0 0 10px; <?php echo $blogLimitReached ? 'color:#f87171;' : ''; ?>">Maksimal <?php echo $maxPosts; ?> postingan. Saat ini: <?php echo $postCount; ?><?php echo $blogLimitReached ? ' · Hapus satu postingan dulu sebelum menambah baru.' : ''; ?></p>
 					<form method="post" class="stack-sm" id="blog-form">
 						<input type="hidden" name="blog_edit_idx" id="blog_edit_idx" value="<?php echo (int) $blogEditingIdx; ?>">
 						<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
@@ -1471,7 +1489,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 						</div>
 						</div>
 						<div class="inline-actions" style="margin-top: 6px; align-items:center;">
-							<button type="submit" name="blog_save" value="1">Simpan postingan</button>
+							<button type="submit" name="blog_save" value="1" <?php echo $blogLimitReached ? 'disabled' : ''; ?>>Simpan postingan</button>
 							<button type="button" id="blog_reset" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Bersihkan formulir</button>
 						</div>
 						<p class="muted-text" style="margin:4px 0 0;">Klik Edit pada daftar untuk memuat postingan ke formulir. Simpan akan overwrite entri terpilih atau menambah baru jika kosong.</p>
