@@ -166,6 +166,18 @@ if (!empty($config['posts']) && is_array($config['posts'])) {
 		$summary = trim((string) ($post['summary'] ?? ''));
 		$body = trim((string) ($post['body'] ?? ''));
 		$image = trim((string) ($post['image'] ?? ''));
+		$embedEnabled = !empty($post['embed_enabled']);
+		$embedList = [];
+		if (!empty($post['embeds']) && is_array($post['embeds'])) {
+			foreach ($post['embeds'] as $emb) {
+				$emb = trim((string) $emb);
+				if ($emb !== '') $embedList[] = $emb;
+			}
+		}
+		if (empty($embedList) && !empty($post['embed_html'])) {
+			$legacy = trim((string) $post['embed_html']);
+			if ($legacy !== '') $embedList[] = $legacy;
+		}
 		$created = $post['created_at'] ?? date('c');
 		$updated = $post['updated_at'] ?? $created;
 		$posts[] = [
@@ -174,6 +186,8 @@ if (!empty($config['posts']) && is_array($config['posts'])) {
 			'summary' => $summary ?: '',
 			'body' => $body,
 			'image' => $image,
+			'embed_enabled' => $embedEnabled,
+			'embeds' => $embedList,
 			'created_at' => $created,
 			'updated_at' => $updated,
 		];
@@ -191,6 +205,8 @@ $blogDraft = [
 	'summary' => '',
 	'body' => '',
 	'image' => '',
+	'embeds' => [],
+	'embed_enabled' => false,
 ];
 
 $maxLogs = 30;
@@ -583,12 +599,14 @@ if ($loggedIn && isset($_POST['blog_edit_idx'])) {
 			'title' => $posts[$reqIdx]['title'] ?? '',
 			'slug' => $posts[$reqIdx]['slug'] ?? '',
 			'summary' => $posts[$reqIdx]['summary'] ?? '',
-				'body' => $posts[$reqIdx]['body'] ?? '',
-				'image' => $posts[$reqIdx]['image'] ?? '',
+			'body' => $posts[$reqIdx]['body'] ?? '',
+			'image' => $posts[$reqIdx]['image'] ?? '',
+			'embeds' => !empty($posts[$reqIdx]['embeds']) && is_array($posts[$reqIdx]['embeds']) ? $posts[$reqIdx]['embeds'] : [],
+			'embed_enabled' => !empty($posts[$reqIdx]['embed_enabled']),
 		];
 	} elseif ($reqIdx === -1) {
 		$blogEditingIdx = -1;
-		$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => ''];
+		$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'embeds' => [], 'embed_enabled' => false];
 	}
 }
 
@@ -615,6 +633,15 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 	$slugInput = trim((string) ($_POST['blog_slug'] ?? ''));
 	$summary = trim((string) ($_POST['blog_summary'] ?? ''));
 	$body = trim((string) ($_POST['blog_body'] ?? ''));
+	$embedEnabled = isset($_POST['blog_embed_enabled']) && $_POST['blog_embed_enabled'] === '1';
+	$embedInputs = isset($_POST['blog_embed_html']) ? (array) $_POST['blog_embed_html'] : [];
+	$embedList = [];
+	foreach ($embedInputs as $emb) {
+		$emb = trim((string) $emb);
+		if ($emb !== '') {
+			$embedList[] = $emb;
+		}
+	}
 	$image = trim((string) ($_POST['blog_image'] ?? ''));
 	$idx = isset($_POST['blog_edit_idx']) ? (int) $_POST['blog_edit_idx'] : -1;
 	$now = date('c');
@@ -624,7 +651,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 	// Tolak duplikasi judul atau slug (case-insensitive), abaikan entri yang sedang diedit.
 	$normTitle = strtolower($title);
 	$normSlug = strtolower($slug);
-	$duplicateFound = false;
+		$duplicateFound = false;
 	foreach ($posts as $i => $p) {
 		$existingTitle = strtolower(trim((string) ($p['title'] ?? '')));
 		$existingSlug = strtolower(trim((string) ($p['slug'] ?? '')));
@@ -637,6 +664,8 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				'summary' => $summary,
 				'body' => $body,
 				'image' => $image,
+				'embeds' => $embedList,
+				'embed_enabled' => $embedEnabled,
 			];
 			$blogEditingIdx = $idx;
 			break;
@@ -651,6 +680,9 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			if (strlen($tmpSummary) > 180) {
 				$summary .= '...';
 			}
+			if ($summary === '' && $embedEnabled && !empty($embedList)) {
+				$summary = 'Konten tersemat tersedia.';
+			}
 		}
 		$newPost = [
 			'title' => $title ?: 'Tanpa judul',
@@ -658,6 +690,8 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			'summary' => $summary,
 			'body' => $body,
 			'image' => $image,
+			'embeds' => $embedList,
+			'embed_enabled' => $embedEnabled,
 			'created_at' => $created,
 			'updated_at' => $now,
 		];
@@ -679,7 +713,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			$message = 'Postingan disimpan.';
 			appendLog($config, $configPath, 'blog-updated', $maxLogs, $archiveLimitDays);
 			$blogEditingIdx = -1;
-			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => ''];
+			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'embeds' => [], 'embed_enabled' => false];
 		}
 	}
 }
@@ -900,6 +934,45 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		button:active,
 		a.button-link:active {
 			transform: translateY(0);
+		}
+
+		.toggle {
+			position: relative;
+			display: inline-block;
+			width: 48px;
+			height: 26px;
+		}
+
+		.toggle input { opacity: 0; width: 0; height: 0; }
+
+		.slider {
+			position: absolute;
+			cursor: pointer;
+			top: 0; left: 0; right: 0; bottom: 0;
+			background: rgba(148, 163, 184, 0.35);
+			transition: .2s;
+			border-radius: 26px;
+		}
+
+		.slider:before {
+			position: absolute;
+			content: '';
+			height: 20px;
+			width: 20px;
+			left: 3px;
+			bottom: 3px;
+			background: #0b1727;
+			transition: .2s;
+			border-radius: 50%;
+			box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+		}
+
+		input:checked + .slider {
+			background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+		}
+
+		input:checked + .slider:before {
+			transform: translateX(22px);
 		}
 
 		.error {
@@ -1282,6 +1355,37 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 								<p class="muted-text" style="margin:4px 0 0;">Mendukung Markdown sederhana: judul (#), tebal (**bold**), miring (*italic*), kode (`inline`, ```blok```), dan tautan [teks](https://...).</p>
 							</div>
 						</div>
+						<div class="full" style="margin-top:6px;">
+							<label style="display:flex; align-items:center; gap:10px;">
+								<span>Mode embed HTML</span>
+								<label class="toggle">
+									<input type="checkbox" id="blog_embed_enabled" name="blog_embed_enabled" value="1" <?php echo !empty($blogDraft['embed_enabled']) ? 'checked' : ''; ?>>
+									<span class="slider"></span>
+								</label>
+							</label>
+							<div id="blog_embed_wrap" style="margin-top:6px; <?php echo !empty($blogDraft['embed_enabled']) ? '' : 'display:none;'; ?>">
+								<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+									<label style="margin:0;">Daftar embed (gunakan [[EMBED1]], [[EMBED2]], ... di konten untuk posisi)</label>
+									<button type="button" id="add-embed" style="max-width:180px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Tambah embed</button>
+								</div>
+								<div id="blog_embed_list" class="stack-sm">
+									<?php
+									$embedsDraft = !empty($blogDraft['embeds']) && is_array($blogDraft['embeds']) ? $blogDraft['embeds'] : [];
+									if (empty($embedsDraft)) { $embedsDraft = ['']; }
+									foreach ($embedsDraft as $idx => $embHtml): ?>
+									<div class="embed-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+										<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Embed <?php echo $idx + 1; ?></label>
+										<textarea name="blog_embed_html[]" style="min-height:120px; font-family: 'SFMono-Regular', Consolas, monospace; width:100%; resize: vertical;" placeholder="&lt;iframe ...&gt;&lt;/iframe&gt;"><?php echo htmlspecialchars($embHtml, ENT_QUOTES, 'UTF-8'); ?></textarea>
+										<div style="text-align:right; margin-top:6px;">
+											<button type="button" class="remove-embed" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
+										</div>
+									</div>
+									<?php endforeach; ?>
+								</div>
+								<p class="muted-text" style="margin:4px 0 0;">Letakkan token [[EMBED1]], [[EMBED2]], ... di konten untuk menentukan posisi. Embed yang tidak ditandai akan muncul di akhir.</p>
+							</div>
+						</div>
+						</div>
 						<div class="inline-actions" style="margin-top: 6px; align-items:center;">
 							<button type="submit" name="blog_save" value="1">Simpan postingan</button>
 							<button type="button" id="blog_reset" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Bersihkan formulir</button>
@@ -1301,6 +1405,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 											<?php if (!empty($post['slug'])): ?><br><span style="color: var(--muted); font-size:12px;">Slug: <?php echo htmlspecialchars($post['slug'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 											<?php if (!empty($post['summary'])): ?><br><span style="color: var(--muted); font-size:12px;">Ringkas: <?php echo htmlspecialchars($post['summary'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 											<?php if (!empty($post['image'])): ?><br><span style="color: var(--muted); font-size:12px;">Gambar: <?php echo htmlspecialchars(strlen($post['image']) > 120 ? substr($post['image'], 0, 120) . '...' : $post['image'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+											<?php if (!empty($post['embed_enabled'])): ?><br><span style="color: var(--muted); font-size:12px;">Embed aktif (<?php echo isset($post['embeds']) && is_array($post['embeds']) ? count($post['embeds']) : 0; ?>)</span><?php endif; ?>
 											<?php if (!empty($post['created_at'])): ?><br><span style="color: var(--muted); font-size:12px;">Dibuat: <?php echo htmlspecialchars($post['created_at'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 										</div>
 										<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
@@ -1588,6 +1693,10 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		const blogForm = document.getElementById('blog-form');
 		const blogResetBtn = document.getElementById('blog_reset');
 		const blogEditIdxInput = document.getElementById('blog_edit_idx');
+		const blogEmbedToggle = document.getElementById('blog_embed_enabled');
+		const blogEmbedWrap = document.getElementById('blog_embed_wrap');
+		const blogEmbedList = document.getElementById('blog_embed_list');
+		const blogEmbedAdd = document.getElementById('add-embed');
 		const MAX_IMAGE_BYTES = 1000000;
 
 		function dataUrlBytes(dataUrl) {
@@ -1669,9 +1778,61 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			if (!blogForm) return;
 			blogForm.querySelectorAll('input[type="text"], textarea').forEach(el => { el.value = ''; });
 			if (blogImageFile) blogImageFile.value = '';
+			if (blogEmbedToggle) blogEmbedToggle.checked = false;
+			syncEmbedVisibility();
+			if (blogEmbedList) {
+				blogEmbedList.innerHTML = '';
+				addEmbedItem('');
+			}
 		}
 
 		blogResetBtn?.addEventListener('click', clearBlogForm);
+
+		function syncEmbedVisibility() {
+			if (!blogEmbedWrap || !blogEmbedToggle) return;
+			blogEmbedWrap.style.display = blogEmbedToggle.checked ? '' : 'none';
+		}
+		blogEmbedToggle?.addEventListener('change', syncEmbedVisibility);
+		syncEmbedVisibility();
+
+		function renumberEmbeds() {
+			if (!blogEmbedList) return;
+			Array.from(blogEmbedList.querySelectorAll('.embed-item label')).forEach((label, idx) => {
+				label.textContent = `Embed ${idx + 1}`;
+			});
+		}
+
+		function attachEmbedRemoveHandlers() {
+			if (!blogEmbedList) return;
+			blogEmbedList.querySelectorAll('.remove-embed').forEach(btn => {
+				btn.onclick = () => {
+					const item = btn.closest('.embed-item');
+					if (item && blogEmbedList.children.length > 1) {
+						item.remove();
+						renumberEmbeds();
+					}
+				};
+			});
+		}
+
+		function addEmbedItem(value = '') {
+			if (!blogEmbedList) return;
+			const wrapper = document.createElement('div');
+			wrapper.className = 'embed-item';
+			wrapper.style = 'border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);';
+			wrapper.innerHTML = `
+				<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Embed</label>
+				<textarea name="blog_embed_html[]" style="min-height:120px; font-family: 'SFMono-Regular', Consolas, monospace; width:100%; resize: vertical;" placeholder="<iframe ...></iframe>">${value.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+				<div style="text-align:right; margin-top:6px;">
+					<button type="button" class="remove-embed" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
+				</div>`;
+			blogEmbedList.appendChild(wrapper);
+			renumberEmbeds();
+			attachEmbedRemoveHandlers();
+		}
+
+		blogEmbedAdd?.addEventListener('click', () => addEmbedItem(''));
+		attachEmbedRemoveHandlers();
 
 		const filterEvent = document.getElementById('log-filter-event');
 		const filterText = document.getElementById('log-filter-text');

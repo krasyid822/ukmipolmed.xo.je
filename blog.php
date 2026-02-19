@@ -127,12 +127,43 @@ function render_markdown($text)
 	return $html;
 }
 
+function apply_embeds($html, $embeds, $enabled)
+{
+	if (!$enabled || empty($embeds) || !is_array($embeds)) return $html;
+	$remaining = $embeds;
+	$output = $html;
+	foreach ($embeds as $idx => $emb) {
+		$token = '[[EMBED' . ($idx + 1) . ']]';
+		$pos = stripos($output, $token);
+		if ($pos !== false) {
+			$output = substr_replace($output, '<div class="embed-box">' . $emb . '</div>', $pos, strlen($token));
+			unset($remaining[$idx]);
+		}
+	}
+	if (!empty($remaining)) {
+		$output .= "\n" . implode("\n", array_map(fn($emb) => '<div class="embed-box">' . $emb . '</div>', $remaining));
+	}
+	return $output;
+}
+
 $posts = array_map(function ($post) {
 	$title = trim((string) ($post['title'] ?? ''));
 	$slug = trim((string) ($post['slug'] ?? ''));
 	$summary = trim((string) ($post['summary'] ?? ''));
 	$body = (string) ($post['body'] ?? '');
 	$image = trim((string) ($post['image'] ?? ''));
+	$embedHtml = (string) ($post['embed_html'] ?? '');
+	$embedEnabled = !empty($post['embed_enabled']);
+	$embedList = [];
+	if (!empty($post['embeds']) && is_array($post['embeds'])) {
+		foreach ($post['embeds'] as $emb) {
+			$emb = trim((string) $emb);
+			if ($emb !== '') $embedList[] = $emb;
+		}
+	}
+	if (empty($embedList) && $embedHtml !== '') {
+		$embedList[] = $embedHtml;
+	}
 	$created = $post['created_at'] ?? '';
 	$updated = $post['updated_at'] ?? $created;
 	$bodyHtml = render_markdown($body);
@@ -144,6 +175,8 @@ $posts = array_map(function ($post) {
 		'body' => $body,
 		'body_html' => $bodyHtml,
 		'image' => $image,
+		'embeds' => $embedList,
+		'embed_enabled' => $embedEnabled,
 		'created_at' => $created,
 		'updated_at' => $updated,
 	];
@@ -222,7 +255,7 @@ if ($filterSlug !== '') {
 
 			.card h3 { margin: 0 0 6px; font-size: 18px; }
 			.card .meta { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
-			.card .summary { color: var(--text); font-size: 14px; line-height: 1.5; }
+			.card .summary { color: var(--text); font-size: 14px; line-height: 1.5; word-break: break-word; overflow-wrap: anywhere; white-space: normal; }
 
 		.article {
 			background: var(--card);
@@ -236,10 +269,13 @@ if ($filterSlug !== '') {
 		.article h2 { margin: 0 0 8px; font-size: 24px; }
 		.article .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
 		.article .body { color: var(--text); font-size: 15px; line-height: 1.7; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
+		.article .body * { word-break: break-word; overflow-wrap: anywhere; }
 		.article .body pre { background: rgba(255,255,255,0.04); border: 1px solid var(--stroke); padding: 10px; border-radius: 10px; overflow-x: auto; }
 		.article .body code { background: rgba(255,255,255,0.04); padding: 2px 4px; border-radius: 6px; border: 1px solid var(--stroke); }
 		.article .body p { margin: 0 0 12px; }
 		.article .body ul, .article .body ol { margin: 0 0 12px 18px; }
+		.embed-box { margin: 14px 0 0; padding: 14px; border: 1px solid var(--stroke); border-radius: 12px; background: rgba(255,255,255,0.03); }
+		.embed-box iframe { width: 100%; }
 	</style>
 </head>
 <body>
@@ -255,7 +291,7 @@ if ($filterSlug !== '') {
 				<?php if (!empty($posts[0]['image'])): ?>
 					<div style="margin:10px 0 14px;"><img src="<?php echo e($posts[0]['image']); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; border-radius:12px; border:1px solid var(--stroke);"></div>
 				<?php endif; ?>
-				<div class="body"><?php echo $posts[0]['body_html']; ?></div>
+				<div class="body"><?php echo apply_embeds($posts[0]['body_html'], $posts[0]['embeds'] ?? [], !empty($posts[0]['embed_enabled'])); ?></div>
 			</div>
 		<?php else: ?>
 			<div class="grid">
