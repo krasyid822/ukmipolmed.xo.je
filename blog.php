@@ -201,9 +201,6 @@ if ($filterSlug !== '') {
 	<title>Blog UKMI Polmed</title>
 	<link rel="icon" type="image/png" href="logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
 	<style>
 		:root {
 			--bg: #0b1020;
@@ -212,136 +209,29 @@ if ($filterSlug !== '') {
 			--text: #e9eef7;
 			--muted: #c3cddc;
 			--accent: #38bdf8;
+			--accent-2: #7cc9ff;
 		}
 
 		* { box-sizing: border-box; }
 		body {
 			margin: 0;
-			font-family: 'Manrope', 'Space Grotesk', system-ui, sans-serif;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 			min-height: 100vh;
-			background: radial-gradient(circle at 20% 20%, rgba(108, 247, 197, 0.12), transparent 35%),
-				radial-gradient(circle at 80% 0%, rgba(124, 201, 255, 0.14), transparent 36%),
-				linear-gradient(145deg, #050814, #0e1427 55%, #0a0f20 100%);
+			background: radial-gradient(circle at 25% 20%, rgba(56, 189, 248, 0.14), transparent 35%),
+				radial-gradient(circle at 80% 0%, rgba(248, 113, 113, 0.12), transparent 32%),
+				var(--bg);
 			color: var(--text);
-			padding: 0 18px 40px;
-			overflow-x: hidden;
+			padding: 0 0 40px;
 		}
-
-		.glow {
-			position: fixed;
-			inset: 0;
-			background: radial-gradient(circle at 30% 40%, rgba(108, 247, 197, 0.13), transparent 35%),
-				radial-gradient(circle at 80% 20%, rgba(124, 201, 255, 0.12), transparent 30%);
-			filter: blur(50px);
-			pointer-events: none;
-			z-index: 0;
-		}
-
-		header.header {
-			position: sticky;
-			top: 0;
-			z-index: 10;
-			backdrop-filter: blur(12px);
-			background: linear-gradient(180deg, rgba(7, 11, 26, 0.9), rgba(7, 11, 26, 0.65));
-			border-bottom: 1px solid var(--stroke);
-			transition: transform 0.25s ease;
-		}
-
-		.header.hide { transform: translateY(-100%); }
-
-		.nav {
-			max-width: 1120px;
-			margin: 0 auto;
-			padding: 16px 6px;
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			gap: 12px;
-			flex-wrap: wrap;
-		}
-
-		.brand {
-			display: flex;
-			align-items: center;
-			gap: 10px;
-			font-weight: 700;
-			letter-spacing: 0.4px;
-		}
-
-		.logo {
-			width: 34px;
-			height: 34px;
-			border-radius: 50%;
-			object-fit: cover;
-			border: 1px solid var(--stroke);
-		}
-
-		.pulse-dot {
-			width: 14px;
-			height: 14px;
-			border-radius: 50%;
-			background: linear-gradient(135deg, #6cf7c5, #7cc9ff);
-			box-shadow: 0 0 0 0 rgba(108, 247, 197, 0.4);
-			animation: pulse 2.2s ease-out infinite;
-		}
-
-		@keyframes pulse {
-			0% { box-shadow: 0 0 0 0 rgba(108, 247, 197, 0.4); }
-			70% { box-shadow: 0 0 0 18px rgba(108, 247, 197, 0); }
-			100% { box-shadow: 0 0 0 0 rgba(108, 247, 197, 0); }
-		}
-
-		.nav-actions {
-			display: flex;
-			gap: 12px;
-			align-items: center;
-		}
-
-		.menu-toggle {
-			display: none;
-			background: rgba(255, 255, 255, 0.07);
-			border: 1px solid var(--stroke);
-			color: var(--text);
-			border-radius: 12px;
-			padding: 10px 12px;
-			cursor: pointer;
-			font-weight: 700;
-		}
-
-		.btn {
-			display: inline-flex;
-			align-items: center;
-			gap: 10px;
-			padding: 11px 16px;
-			border-radius: 14px;
-			border: 1px solid var(--stroke);
-			text-decoration: none;
-			color: var(--text);
-			font-weight: 600;
-			transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-			backdrop-filter: blur(6px);
-		}
-
-		.btn.primary {
-			background: linear-gradient(120deg, #6cf7c5, #7cc9ff);
-			color: #061028;
-			box-shadow: 0 12px 32px rgba(108, 247, 197, 0.25);
-			border: none;
-		}
-
-		.btn.ghost { background: rgba(255, 255, 255, 0.07); }
-		.btn:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(0,0,0,0.35); }
 
 		.container {
 			max-width: 1120px;
 			margin: 0 auto;
+			padding: 32px 18px 0;
 			width: 100%;
-			padding: 32px 0 0;
-			position: relative;
-			z-index: 1;
 		}
 
-		h1 { margin: 0 0 8px; font-size: 28px; font-family: 'Space Grotesk', 'Manrope', sans-serif; }
+		h1 { margin: 0 0 8px; font-size: 28px; }
 		p.lead { margin: 0 0 20px; color: var(--muted); }
 
 			.grid {
@@ -349,6 +239,30 @@ if ($filterSlug !== '') {
 			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 			gap: 16px;
 		}
+
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 10px;
+				padding: 10px 14px;
+				border-radius: 12px;
+				border: 1px solid var(--stroke);
+				text-decoration: none;
+				color: var(--text);
+				font-weight: 600;
+				transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+				backdrop-filter: blur(6px);
+			}
+
+			.btn.primary {
+				background: linear-gradient(120deg, var(--accent), var(--accent-2));
+				color: #061028;
+				box-shadow: 0 12px 32px rgba(108, 247, 197, 0.25);
+				border: none;
+			}
+
+			.btn.ghost { background: rgba(255, 255, 255, 0.07); }
+			.btn:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(0,0,0,0.35); }
 
 			.card {
 				background: var(--card);
@@ -388,50 +302,10 @@ if ($filterSlug !== '') {
 		.article .body ul, .article .body ol { margin: 0 0 12px 18px; }
 		.embed-box { margin: 14px 0 0; padding: 14px; border: 1px solid var(--stroke); border-radius: 12px; background: rgba(255,255,255,0.03); }
 		.embed-box iframe { width: 100%; }
-
-		@media (max-width: 640px) {
-			.nav { padding: 14px 8px; }
-			.nav-actions { width: 100%; display: none; flex-direction: column; }
-			.nav.is-open .nav-actions { display: flex; }
-			.nav-actions a { width: 100%; justify-content: center; }
-			.menu-toggle { display: inline-flex; }
-			.brand { width: 100%; justify-content: space-between; }
-			.container { padding-top: 24px; }
-		}
 	</style>
 </head>
 <body>
-	<div class="glow" aria-hidden="true"></div>
-	<header class="header">
-		<div class="nav" id="site-nav">
-			<div class="brand">
-				<div style="display:flex; align-items:center; gap:10px;">
-					<img class="logo" src="logo-ukmi.png" alt="Logo UKMI Polmed">
-					<span class="pulse-dot"></span>
-					<script>
-					(function(){
-						const dot = document.querySelector('.pulse-dot');
-						if (!dot) return;
-						dot.style.cursor = 'pointer';
-						dot.addEventListener('click', () => {
-							window.open('https://share.google/BuCPuMmJQqGoRqHQp', '_blank', 'noopener');
-						});
-					})();
-					</script>
-					<span>UKMI Polmed</span>
-				</div>
-				<button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-actions">Menu</button>
-			</div>
-			<div class="nav-actions" id="nav-actions">
-				<a class="btn ghost" href="index.php#program">Program</a>
-				<a class="btn ghost" href="index.php#divisi">Divisi</a>
-				<a class="btn ghost" href="index.php#dokumentasi">Dokumentasi</a>
-				<a class="btn ghost" href="blog.php" aria-current="page">Blog</a>
-				<a class="btn primary" href="index.php#daftar">Daftar sekarang</a>
-			</div>
-		</div>
-	</header>
-
+		<?php include __DIR__ . '/header.php'; ?>
 	<div class="container">
 		<h1>Blog UKMI Polmed</h1>
 		<p class="lead">Catatan kegiatan, rilis, dan tulisan terbaru.</p>
@@ -463,34 +337,5 @@ if ($filterSlug !== '') {
 			</div>
 		<?php endif; ?>
 	</div>
-
-	<script>
-		// Mobile menu toggle
-		const nav = document.getElementById('site-nav');
-		const toggle = document.querySelector('.menu-toggle');
-		const actions = document.getElementById('nav-actions');
-
-		if (toggle && nav && actions) {
-			toggle.addEventListener('click', () => {
-				const isOpen = nav.classList.toggle('is-open');
-				toggle.setAttribute('aria-expanded', String(isOpen));
-			});
-		}
-
-		// Show header when scrolling up
-		const headerEl = document.querySelector('.header');
-		let lastY = window.scrollY;
-		window.addEventListener('scroll', () => {
-			if (!headerEl) return;
-			const currentY = window.scrollY;
-			const scrollingUp = currentY < lastY;
-			if (scrollingUp || currentY < 10) {
-				headerEl.classList.remove('hide');
-			} else {
-				headerEl.classList.add('hide');
-			}
-			lastY = currentY;
-		});
-	</script>
 </body>
 </html>
