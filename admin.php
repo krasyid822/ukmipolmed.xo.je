@@ -1312,7 +1312,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				$insightLimitMB = round($insightMaxBytes / (1024 * 1024), 2);
 			?>
 			<div class="section" style="margin-top: 10px;">
-				<h2 style="margin:0 0 8px; font-size:15px;">Insight store (insights.json)</h2>
+				<h2 style="margin:0 0 8px; font-size:15px;">Penyimpanan insight</h2>
 				<p class="muted-text" style="margin:0 0 8px;">Ukuran saat ini: <?php echo htmlspecialchars(number_format($insightSizeMB, 2), ENT_QUOTES, 'UTF-8'); ?> MB / <?php echo htmlspecialchars($insightLimitMB, ENT_QUOTES, 'UTF-8'); ?> MB.</p>
 				<form method="post" class="stack-sm" style="margin-bottom:8px;">
 					<div class="inline-actions" style="align-items:center; gap:10px;">
@@ -1449,7 +1449,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			<?php endif; ?>
 			<div class="section">
 				<h2 style="margin:0 0 8px; font-size:16px;">Agenda terdekat</h2>
-				<form method="post" class="stack-sm">
+				<form method="post" class="stack-sm" id="agenda-form" data-autosave-key="agenda">
 					<input type="hidden" name="agenda_edit_idx" value="<?php echo (int) $editingIdx; ?>">
 					<div class="field-grid">
 						<div>
@@ -1551,7 +1551,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			</div>
 				<div class="section" style="margin-top: 10px;">
 					<h2 style="margin:0 0 8px; font-size:16px;">Link form pendaftaran</h2>
-					<form method="post" class="stack-sm" id="registration-form">
+					<form method="post" class="stack-sm" id="registration-form" data-autosave-key="registration">
 						<div class="field-grid">
 							<div>
 								<label for="registration_platform">Platform</label>
@@ -1586,7 +1586,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 							<button type="submit" style="max-width:180px;">Buka</button>
 						</div>
 					</form>
-					<form method="post" class="stack-sm" id="divisions-form" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
+					<form method="post" class="stack-sm" id="divisions-form" data-autosave-key="divisions" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
 						<div id="division-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
 							<?php foreach ($divisions as $idx => $div): ?>
 							<div class="division-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
@@ -1609,7 +1609,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				</div>
 				<div class="section" style="margin-top: 10px;">
 					<h2 style="margin:0 0 8px; font-size:16px;">Kartu dokumentasi kegiatan (maks 10)</h2>
-					<form method="post" class="stack-sm" id="docs-form">
+					<form method="post" class="stack-sm" id="docs-form" data-autosave-key="docs">
 						<div id="doc-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
 							<?php foreach ($docs as $docIdx => $doc): $isProtectedDoc = $docIdx < count($docDefaults); ?>
 							<div class="doc-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
@@ -1638,7 +1638,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 					<h2 style="margin:0 0 8px; font-size:16px;">Blog</h2>
 					<?php $postCount = count($posts); $blogLimitReached = ($postCount >= $maxPosts && $blogEditingIdx === -1); ?>
 					<p class="muted-text" style="margin:0 0 10px; <?php echo $blogLimitReached ? 'color:#f87171;' : ''; ?>">Maksimal <?php echo $maxPosts; ?> postingan. Saat ini: <?php echo $postCount; ?><?php echo $blogLimitReached ? ' · Hapus satu postingan dulu sebelum menambah baru.' : ''; ?></p>
-					<form method="post" class="stack-sm" id="blog-form">
+					<form method="post" class="stack-sm" id="blog-form" data-autosave-key="blog">
 						<input type="hidden" name="blog_edit_idx" id="blog_edit_idx" value="<?php echo (int) $blogEditingIdx; ?>">
 						<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
 							<div>
@@ -2061,6 +2061,82 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 
 		blogEmbedAdd?.addEventListener('click', () => addEmbedItem(''));
 		attachEmbedRemoveHandlers();
+
+		// Autosave draft untuk mencegah kehilangan progres saat submit gagal (mis. koneksi putus).
+		(function enableAutosave() {
+			if (!document.body.classList.contains('is-auth')) return;
+			const PREFIX = 'admin_autosave_';
+			const forms = document.querySelectorAll('form[data-autosave-key]');
+
+			function serialize(form) {
+				const data = {};
+				form.querySelectorAll('input, textarea, select').forEach(el => {
+					if (!el.name) return;
+					const type = (el.type || '').toLowerCase();
+					if (['submit', 'button', 'file', 'password', 'hidden'].includes(type)) return;
+					if (type === 'checkbox' || type === 'radio') {
+						data[el.name] = !!el.checked;
+					} else {
+						data[el.name] = el.value;
+					}
+				});
+				return data;
+			}
+
+			function restore(form, data) {
+				form.querySelectorAll('input, textarea, select').forEach(el => {
+					if (!el.name) return;
+					const type = (el.type || '').toLowerCase();
+					if (['submit', 'button', 'file', 'password', 'hidden'].includes(type)) return;
+					if (!(el.name in data)) return;
+					const val = data[el.name];
+					if (type === 'checkbox' || type === 'radio') {
+						el.checked = !!val;
+					} else if (typeof val === 'string') {
+						el.value = val;
+					}
+				});
+			}
+
+			forms.forEach(form => {
+				const key = form.getAttribute('data-autosave-key');
+				if (!key) return;
+				const storageKey = PREFIX + key;
+				let saveTimer = null;
+
+				const triggerSave = () => {
+					clearTimeout(saveTimer);
+					saveTimer = setTimeout(() => {
+						try {
+							localStorage.setItem(storageKey, JSON.stringify(serialize(form)));
+						} catch (_) {}
+					}, 240);
+				};
+
+				const raw = localStorage.getItem(storageKey);
+				if (raw) {
+					try {
+						const data = JSON.parse(raw);
+						const hasExisting = Array.from(form.querySelectorAll('input, textarea, select')).some(el => {
+							const type = (el.type || '').toLowerCase();
+							if (['submit', 'button', 'file', 'password', 'hidden'].includes(type)) return false;
+							if (!el.name) return false;
+							if (type === 'checkbox' || type === 'radio') return el.checked;
+							return !!el.value;
+						});
+						if (!hasExisting && data && typeof data === 'object') {
+							restore(form, data);
+						}
+					} catch (_) {}
+				}
+
+				form.addEventListener('input', triggerSave);
+				form.addEventListener('change', triggerSave);
+				form.addEventListener('submit', () => {
+					localStorage.removeItem(storageKey);
+				});
+			});
+		})();
 
 		const filterEvent = document.getElementById('log-filter-event');
 		const filterText = document.getElementById('log-filter-text');
