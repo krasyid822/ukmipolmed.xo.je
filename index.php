@@ -456,7 +456,7 @@ function e($value)
             width: 100%;
             height: auto;
             border-radius: 18px;
-            background: #111;
+            background: #11111100;
             filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.4));
             object-fit: cover;
         }
