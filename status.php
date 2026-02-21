@@ -277,6 +277,13 @@ if ($view === 'ui') {
 			}
 			.metric strong { display:block; font-size:22px; }
 			.metric span { color: var(--muted); font-size: 13px; }
+			@media (max-width: 640px) {
+				header { padding: 16px 14px; }
+				main { padding: 18px 14px 32px; }
+				.hero-metrics { grid-template-columns: repeat(2, minmax(140px, 1fr)); gap: 10px; }
+				.metric { padding: 12px; }
+				.metric strong { font-size: 19px; }
+			}
 		</style>
 	</head>
 	<body>

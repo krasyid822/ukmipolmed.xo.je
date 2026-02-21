@@ -119,28 +119,49 @@ function e($value)
 <!doctype html>
 <html lang="id">
 <head>
+    <!-- Google Tag Manager (deferred for INP) -->
+    <script>
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','GTM-WS2XLWDK');
+        }, 2000);
+    });
+    </script>
+    <!-- End Google Tag Manager -->
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>, Agenda, dan Dokumentasi</title>
-    <meta name="description" content="Open recruitment UKMI Polmed <?php echo e($divisionYearLabel); ?>: mentoring, tilawah, syiar media, keputrian, ekonomi, dan aksi sosial. Form daftar, agenda terbaru, serta dokumentasi kegiatan tersedia di satu halaman.">
-    <meta name="keywords" content="UKMI Polmed, open recruitment UKMI Polmed, organisasi Islam Polmed, mentoring kampus, UKM Islami Politeknik Negeri Medan">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="http://ukmipolmed.xo.je/">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <link rel="alternate" hreflang="id" href="https://ukmipolmed.xo.je/">
+    <link rel="alternate" hreflang="x-default" href="https://ukmipolmed.xo.je/">
+    <title>UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?> | Daftar, Agenda & Dokumentasi Kegiatan</title>
+    <meta name="description" content="Gabung UKMI Polmed <?php echo e($divisionYearLabel); ?>: open recruitment mentoring, tilawah, syiar media, keputrian & ekonomi. Daftar sekarang, cek agenda terbaru, dan lihat dokumentasi kegiatan UKM Islami Politeknik Negeri Medan.">
+    <meta name="keywords" content="UKMI Polmed, open recruitment UKMI Polmed <?php echo e($divisionYearLabel); ?>, organisasi Islam Polmed, mentoring kampus Polmed, UKM Islami Politeknik Negeri Medan, pendaftaran UKMI, kegiatan dakwah kampus Medan">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <link rel="canonical" href="https://ukmipolmed.xo.je/">
     <meta property="og:locale" content="id_ID">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>">
-    <meta property="og:description" content="Semua shortcut untuk gabung UKMI Polmed: form pendaftaran, agenda terbaru, dokumentasi kegiatan, dan daftar divisi kepengurusan.">
-    <meta property="og:url" content="http://ukmipolmed.xo.je/">
-    <meta property="og:image" content="http://ukmipolmed.xo.je/logo-ukmi.png">
+    <meta property="og:title" content="UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?> | Daftar Sekarang">
+    <meta property="og:description" content="<?php echo e($divisionCount); ?> divisi menanti kamu: mentoring, tilawah, syiar media, keputrian & ekonomi. Cek agenda, lihat dokumentasi, dan langsung daftar UKMI Polmed.">
+    <meta property="og:url" content="https://ukmipolmed.xo.je/">
+    <meta property="og:image" content="https://ukmipolmed.xo.je/logo-ukmi.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:image:alt" content="Logo UKMI Politeknik Negeri Medan">
     <meta property="og:site_name" content="UKMI Polmed">
-    <link rel="icon" type="image/png" href="logo-ukmi.png">
-    <link rel="apple-touch-icon" href="logo-ukmi.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="logo-ukmi.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="logo-ukmi.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="logo-ukmi.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="logo-ukmi.png">
     <link rel="shortcut icon" href="logo-ukmi.png">
     <meta name="theme-color" content="#0f172a">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>">
-    <meta name="twitter:description" content="Form pendaftaran, agenda terbaru, dokumentasi kegiatan, dan divisi UKMI Polmed <?php echo e($divisionYearLabel); ?>.">
-    <meta name="twitter:image" content="http://ukmipolmed.xo.je/logo-ukmi.png">
+    <meta name="twitter:title" content="UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?> | Daftar Sekarang">
+    <meta name="twitter:description" content="<?php echo e($divisionCount); ?> divisi terbuka untuk semua jurusan. Daftar UKMI Polmed <?php echo e($divisionYearLabel); ?>, cek agenda & dokumentasi kegiatan.">
+    <meta name="twitter:image" content="https://ukmipolmed.xo.je/logo-ukmi.png">
+    <meta name="twitter:image:alt" content="Logo UKMI Politeknik Negeri Medan">
     <?php
     $faqSchema = [
         '@context' => 'https://schema.org',
@@ -175,6 +196,83 @@ function e($value)
     $faqJson = json_encode($faqSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     ?>
     <script type="application/ld+json"><?php echo $faqJson; ?></script>
+    <?php
+    $websiteSchema = [
+        '@context' => 'https://schema.org',
+        '@type' => 'WebSite',
+        'name' => 'UKMI Polmed',
+        'url' => 'https://ukmipolmed.xo.je/',
+        'description' => 'Website resmi UKMI Politeknik Negeri Medan – organisasi kerohanian Islam mahasiswa.',
+        'publisher' => [
+            '@type' => 'Organization',
+            'name' => 'UKMI Polmed',
+            'logo' => [
+                '@type' => 'ImageObject',
+                'url' => 'https://ukmipolmed.xo.je/logo-ukmi.png',
+            ],
+        ],
+    ];
+    $breadcrumbSchema = [
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => [
+            [
+                '@type' => 'ListItem',
+                'position' => 1,
+                'name' => 'Beranda',
+                'item' => 'https://ukmipolmed.xo.je/',
+            ],
+        ],
+    ];
+    $eventSchemaItems = [];
+    foreach ($agendas as $agendaItem) {
+        $eventSchemaItems[] = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Event',
+            'name' => $agendaItem['title'] ?? 'Agenda UKMI Polmed',
+            'description' => $agendaItem['detail'] ?? '',
+            'organizer' => [
+                '@type' => 'Organization',
+                'name' => 'UKMI Polmed',
+                'url' => 'https://ukmipolmed.xo.je/',
+            ],
+            'performer' => [
+                '@type' => 'Organization',
+                'name' => 'UKMI Polmed',
+                'url' => 'https://ukmipolmed.xo.je/',
+            ],
+            'image' => 'https://ukmipolmed.xo.je/logo-ukmi.png',
+            'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
+            'eventStatus' => 'https://schema.org/EventScheduled',
+            'startDate' => date('c'),
+            'endDate' => date('c', strtotime('+2 hours')),
+            'offers' => [
+                '@type' => 'Offer',
+                'price' => '0',
+                'priceCurrency' => 'IDR',
+                'url' => $registration['url'] ?? 'https://ukmipolmed.xo.je/',
+                'availability' => 'https://schema.org/InStock',
+                'validFrom' => date('c'),
+            ],
+            'location' => [
+                '@type' => 'Place',
+                'name' => 'Politeknik Negeri Medan',
+                'address' => [
+                    '@type' => 'PostalAddress',
+                    'streetAddress' => 'Jl. Almamater No.1 Kampus USU',
+                    'addressLocality' => 'Medan',
+                    'addressRegion' => 'Sumatera Utara',
+                    'addressCountry' => 'ID'
+                ]
+            ],
+        ];
+    }
+    ?>
+    <script type="application/ld+json"><?php echo json_encode($websiteSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?></script>
+    <script type="application/ld+json"><?php echo json_encode($breadcrumbSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?></script>
+    <?php foreach ($eventSchemaItems as $evSchema): ?>
+    <script type="application/ld+json"><?php echo json_encode($evSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?></script>
+    <?php endforeach; ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
@@ -273,8 +371,11 @@ function e($value)
             text-decoration: none;
             color: var(--text);
             font-weight: 600;
+            font-size: 15px;
+            min-height: 48px;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
             backdrop-filter: blur(6px);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .btn.primary {
@@ -418,15 +519,23 @@ function e($value)
         .socials a {
             color: var(--text);
             text-decoration: none;
-            padding: 8px 12px;
+            padding: 10px 14px;
             border-radius: 12px;
             border: 1px solid var(--stroke);
             background: rgba(255, 255, 255, 0.05);
+            font-size: 14px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1 1 160px;
         }
 
         @media (max-width: 640px) {
             main { padding: 28px 16px 64px; }
             .hero { padding: 20px; }
+            .socials { flex-wrap: wrap; gap: 10px; }
+            .socials a { flex: 1 1 48%; }
         }
 
         .loading-overlay {
@@ -468,6 +577,9 @@ function e($value)
             transform: translate(-50%, -50%);
             width: 40%;
             max-width: 170px;
+            max-height: 170px;
+            aspect-ratio: 1 / 1;
+            object-fit: contain;
             filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
         }
 
@@ -510,10 +622,14 @@ function e($value)
     </style>
 </head>
 <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WS2XLWDK"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <div class="loading-overlay" id="page-loading" aria-live="polite">
         <div class="loading-stack">
-            <img class="loading-gif" src="palestine.gif" alt="Animasi pemuatan">
-            <img class="loading-logo" src="logo-ukmi.png" alt="Logo UKMI">
+            <img class="loading-gif" src="palestine.gif" alt="Animasi pemuatan" fetchpriority="high" width="420" height="420">
+            <img class="loading-logo" src="logo-ukmi.png" alt="Logo UKMI" width="170" height="170">
         </div>
         <div class="loading-card">
             <div>Memuat konten, mohon tunggu...</div>
@@ -528,8 +644,8 @@ function e($value)
             <div>
                 <div class="eyebrow">Open Recruitment · <span id="current-year"></span></div>
                 <script>document.getElementById('current-year').textContent = new Date().getFullYear();</script>
-                <h1>Jadi bagian keluarga UKMI. Bergerak bareng, bertumbuh bareng.</h1>
-                <p class="lead">Halaman shortcut untuk mahasiswa baru Polmed yang mau nyemplung ke organisasi UKMI: cek agenda, kelas skill, jalur daftar tercepat, dan dokumentasi kegiatan.</p>
+                <h1>Gabung UKMI Polmed <?php echo e($divisionYearLabel); ?> – Bergerak Bareng, Bertumbuh Bareng</h1>
+                <p class="lead">Kamu mahasiswa baru Politeknik Negeri Medan? Ini shortcut selengkapnya: open recruitment <?php echo e($divisionCount); ?> divisi, agenda kegiatan, kelas skill, jalur daftar tercepat, dan dokumentasi UKMI Polmed.</p>
                 <div class="cta-row">
                     <a class="btn primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener" data-insight="cta_daftar_hero">Daftar sekarang</a>
                     <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/" data-insight="cta_arsip_hero">Lihat arsip IG kami</a>
@@ -632,7 +748,7 @@ function e($value)
                 <strong>Siap gas? Klik sekali untuk daftar.</strong>
                 <div class="cta-row">
                     <a class="btn primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener" data-insight="cta_daftar_banner">Buka form pendaftaran</a>
-                    <a class="btn ghost" href="https://instagram.com/ukmipolmed" target="_blank" rel="noopener" data-insight="cta_dm_ig">Tanya via DM IG</a>
+                    <a class="btn ghost" href="https://www.instagram.com/ukmipolmed/" target="_blank" rel="noopener" data-insight="cta_dm_ig">Tanya via DM IG</a>
                     <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/" data-insight="cta_dokumentasi">Lihat dokumentasi kegiatan</a>
                     <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/what-they-said/" target="_blank" rel="noopener" data-insight="cta_testimoni">Testimoni</a>
                 </div>
@@ -658,12 +774,32 @@ function e($value)
 
         <footer>
             <div>UKMI Politeknik Negeri Medan · Bersama bertumbuh dalam kebaikan.</div>
-            <div class="socials">
-                <a href="https://instagram.com/ukmipolmed" target="_blank" rel="noopener">Instagram</a>
-                <a href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/">Arsip IG</a>
-                <a href="https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/">PPI 2024</a>
-                <a href="#daftar">Daftar</a>
-            </div>
+            <nav aria-label="Media sosial UKMI Polmed" style="margin-top:8px;">
+                <div class="socials">
+                    <a href="https://www.instagram.com/ukmipolmed/" target="_blank" rel="noopener">Instagram</a>
+                    <a href="https://www.youtube.com/c/UKMIPolmedTV" target="_blank" rel="noopener">YouTube</a>
+                    <a href="https://web.facebook.com/ukmipolmedmedan/" target="_blank" rel="noopener">Facebook</a>
+                    <a href="https://x.com/ukmipolmed" target="_blank" rel="noopener">X (Twitter)</a>
+                    <a href="https://www.linkedin.com/company/unit-kegiatan-mahasiswa-islam-ukmi-politeknik-negeri-medan" target="_blank" rel="noopener">LinkedIn</a>
+                </div>
+            </nav>
+            <nav aria-label="Navigasi situs" style="margin-top:10px;">
+                <div class="socials">
+                    <a href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/">Arsip IG</a>
+                    <a href="https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/">PPI 2024</a>
+                    <a href="#daftar">Daftar</a>
+                    <a href="blog.php">Blog</a>
+                </div>
+            </nav>
+            <nav aria-label="Sumber terkait" style="margin-top:10px;">
+                <p style="font-size:13px; color:var(--muted); margin:0 0 6px;">Sumber & referensi terkait:</p>
+                <div class="socials">
+                    <a href="https://polmed.ac.id" target="_blank" rel="noopener">Politeknik Negeri Medan</a>
+                    <a href="https://ldii.or.id" target="_blank" rel="noopener">LDII</a>
+                    <a href="https://kemenag.go.id" target="_blank" rel="noopener">Kemenag RI</a>
+                    <a href="https://nu.or.id" target="_blank" rel="noopener">NU Online</a>
+                </div>
+            </nav>
         </footer>
     </main>
 
@@ -675,17 +811,14 @@ function e($value)
             setTimeout(() => loadingEl.remove(), 600);
         });
 
-        // Smooth scroll for in-page anchors
+        // Smooth scroll for in-page anchors (passive listener for INP)
         document.querySelectorAll('a[href^="#"]').forEach(link => {
             link.addEventListener('click', (e) => {
                 const targetId = link.getAttribute('href');
                 const target = document.querySelector(targetId);
                 if (target) {
                     e.preventDefault();
-                    window.scrollTo({
-                        top: target.offsetTop - 60,
-                        behavior: 'smooth'
-                    });
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             });
         });
@@ -695,17 +828,27 @@ function e($value)
             '@context': 'https://schema.org',
             '@type': 'Organization',
             name: 'UKMI Polmed',
-            url: './',
-            logo: 'logo-ukmi.png',
+            alternateName: 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
+            url: 'https://ukmipolmed.xo.je/',
+            logo: 'https://ukmipolmed.xo.je/logo-ukmi.png',
             sameAs: [
-                'https://instagram.com/ukmipolmed',
+                'https://www.instagram.com/ukmipolmed/',
+                'https://www.youtube.com/c/UKMIPolmedTV',
+                'https://web.facebook.com/ukmipolmedmedan/',
+                'https://x.com/ukmipolmed',
+                'https://www.linkedin.com/company/unit-kegiatan-mahasiswa-islam-ukmi-politeknik-negeri-medan',
                 'https://forms.gle/e4e6egXHiRnyQVPV7'
             ],
             contactPoint: [{
                 '@type': 'ContactPoint',
                 contactType: 'student affairs',
-                url: 'https://instagram.com/ukmipolmed'
-            }]
+                url: 'https://www.instagram.com/ukmipolmed/'
+            }],
+            parentOrganization: {
+                '@type': 'CollegeOrUniversity',
+                name: 'Politeknik Negeri Medan',
+                url: 'https://polmed.ac.id'
+            }
         };
         const ld = document.createElement('script');
         ld.type = 'application/ld+json';
@@ -737,13 +880,24 @@ function e($value)
             }, 5200);
         }
 
-        // Insight tracking for key interactions.
+        // Insight tracking for key interactions (deferred to avoid blocking main thread).
         function sendInsight(name) {
             if (!name) return;
-            fetch('status.php?event=' + encodeURIComponent(name), {
-                method: 'POST',
-                keepalive: true,
-            }).catch(() => {});
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => {
+                    fetch('status.php?event=' + encodeURIComponent(name), {
+                        method: 'POST',
+                        keepalive: true,
+                    }).catch(() => {});
+                });
+            } else {
+                setTimeout(() => {
+                    fetch('status.php?event=' + encodeURIComponent(name), {
+                        method: 'POST',
+                        keepalive: true,
+                    }).catch(() => {});
+                }, 100);
+            }
         }
 
         window.addEventListener('load', () => {

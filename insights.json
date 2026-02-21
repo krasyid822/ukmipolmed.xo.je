@@ -1,37 +1,6 @@
 {
-    "total": 38,
-    "events": {
-        "nav_daftar": 4,
-        "cta_daftar_banner": 3,
-        "slug": 1,
-        "doc_2": 1,
-        "doc_0": 1,
-        "agenda_admin_update": 6,
-        "blog_view": 2,
-        "blog_view_coming-soon-oprec-ukmi-2026": 3,
-        "blog_view_ketua-umum-terpilih-ukmi-polmed": 9,
-        "home_view": 4,
-        "cta_daftar_hero": 1,
-        "blog_view_455454578": 3
-    },
-    "history": {
-        "2026-02-21": {
-            "total": 38,
-            "events": {
-                "nav_daftar": 4,
-                "cta_daftar_banner": 3,
-                "slug": 1,
-                "doc_2": 1,
-                "doc_0": 1,
-                "agenda_admin_update": 6,
-                "blog_view": 2,
-                "blog_view_coming-soon-oprec-ukmi-2026": 3,
-                "blog_view_ketua-umum-terpilih-ukmi-polmed": 9,
-                "home_view": 4,
-                "cta_daftar_hero": 1,
-                "blog_view_455454578": 3
-            }
-        }
-    },
-    "updated_at": "2026-02-21T09:40:54+01:00"
+    "total": 0,
+    "events": [],
+    "history": [],
+    "updated_at": "2026-02-21T12:19:22+01:00"
 }

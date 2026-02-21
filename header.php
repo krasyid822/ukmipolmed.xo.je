@@ -34,7 +34,8 @@ header.header {
 	width: 34px;
 	height: 34px;
 	border-radius: 50%;
-	object-fit: cover;
+	object-fit: contain;
+	aspect-ratio: 1 / 1;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -65,16 +66,20 @@ header.header {
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	color: var(--text);
 	border-radius: 12px;
-	padding: 10px 12px;
+	padding: 12px 16px;
 	cursor: pointer;
 	font-weight: 700;
+	font-size: 15px;
+	min-height: 48px;
+	min-width: 48px;
+	-webkit-tap-highlight-color: transparent;
 }
 
 @media (max-width: 640px) {
 	.nav { padding: 14px 16px; }
-	.nav-actions { width: 100%; display: none; flex-direction: column; }
+	.nav-actions { width: 100%; display: none; flex-direction: column; gap: 8px; }
 	.nav.is-open .nav-actions { display: flex; }
-	.nav-actions a { width: 100%; justify-content: center; }
+	.nav-actions a { width: 100%; justify-content: center; min-height: 48px; font-size: 15px; }
 	.menu-toggle { display: inline-flex; }
 	.brand { width: 100%; justify-content: space-between; }
 }
