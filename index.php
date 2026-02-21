@@ -121,25 +121,26 @@ function e($value)
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shortcut UKMI Polmed | Open Recruitment <?php echo e(date('Y')); ?></title>
-    <meta name="description" content="Gabung UKMI Polmed 2026: mentoring, tilawah, syiar media, keputrian, ekonomi, dan aksi sosial. Form pendaftaran, dokumentasi, dan kontak cepat di satu halaman.">
-    <meta name="keywords" content="UKMI Polmed, open recruitment UKMI, organisasi Islam Polmed, mentoring kampus, UKM Islami Politeknik Negeri Medan">
+    <title>UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>, Agenda, dan Dokumentasi</title>
+    <meta name="description" content="Open recruitment UKMI Polmed <?php echo e($divisionYearLabel); ?>: mentoring, tilawah, syiar media, keputrian, ekonomi, dan aksi sosial. Form daftar, agenda terbaru, serta dokumentasi kegiatan tersedia di satu halaman.">
+    <meta name="keywords" content="UKMI Polmed, open recruitment UKMI Polmed, organisasi Islam Polmed, mentoring kampus, UKM Islami Politeknik Negeri Medan">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="./">
+    <link rel="canonical" href="http://ukmipolmed.xo.je/">
+    <meta property="og:locale" content="id_ID">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Shortcut UKMI Polmed | Open Recruitment 2026">
-    <meta property="og:description" content="Semua shortcut untuk gabung UKMI Polmed: form daftar, dokumentasi kegiatan, dan divisi kepengurusan 2026-2027.">
-    <meta property="og:url" content="./">
-    <meta property="og:image" content="logo-ukmi.png">
+    <meta property="og:title" content="UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>">
+    <meta property="og:description" content="Semua shortcut untuk gabung UKMI Polmed: form pendaftaran, agenda terbaru, dokumentasi kegiatan, dan daftar divisi kepengurusan.">
+    <meta property="og:url" content="http://ukmipolmed.xo.je/">
+    <meta property="og:image" content="http://ukmipolmed.xo.je/logo-ukmi.png">
     <meta property="og:site_name" content="UKMI Polmed">
     <link rel="icon" type="image/png" href="logo-ukmi.png">
     <link rel="apple-touch-icon" href="logo-ukmi.png">
     <link rel="shortcut icon" href="logo-ukmi.png">
     <meta name="theme-color" content="#0f172a">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Shortcut UKMI Polmed | Open Recruitment 2026">
-    <meta name="twitter:description" content="Form daftar, dokumentasi kegiatan, dan divisi UKMI Polmed 2026-2027 dalam satu halaman.">
-    <meta name="twitter:image" content="logo-ukmi.png">
+    <meta name="twitter:title" content="UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>">
+    <meta name="twitter:description" content="Form pendaftaran, agenda terbaru, dokumentasi kegiatan, dan divisi UKMI Polmed <?php echo e($divisionYearLabel); ?>.">
+    <meta name="twitter:image" content="http://ukmipolmed.xo.je/logo-ukmi.png">
     <?php
     $faqSchema = [
         '@context' => 'https://schema.org',
@@ -315,6 +316,7 @@ function e($value)
             gap: 10px;
             font-size: 18px;
             letter-spacing: 0.3px;
+            margin: 0 0 12px;
         }
 
         .pill {
@@ -552,7 +554,7 @@ function e($value)
         </section>
 
         <section id="shortcut">
-            <div class="section-title"><span class="pill">★</span>Shortcut paling dicari</div>
+            <h2 class="section-title"><span class="pill">★</span>Shortcut paling dicari</h2>
             <div class="grid">
                 <div class="card agenda-rotator">
                     <div class="tag agenda-swap" id="agenda-tag"><?php echo e($firstAgenda['tag']); ?></div>
@@ -578,7 +580,7 @@ function e($value)
         </section>
 
         <section id="program">
-            <div class="section-title"><span class="pill">→</span>Kenapa harus gabung?</div>
+            <h2 class="section-title"><span class="pill">→</span>Kenapa harus gabung UKMI Polmed?</h2>
             <div class="grid">
                 <div class="card">
                     <h3>Teman seperjuangan</h3>
@@ -600,7 +602,7 @@ function e($value)
         </section>
 
         <section id="divisi">
-            <div class="section-title"><span class="pill">◎</span>Divisi kepengurusan <?php echo e($divisionYearLabel); ?></div>
+            <h2 class="section-title"><span class="pill">◎</span>Divisi kepengurusan <?php echo e($divisionYearLabel); ?></h2>
             <div class="grid">
                 <?php foreach ($divisions as $div): ?>
                     <div class="card"><h3><?php echo e($div['name']); ?></h3><p><?php echo e($div['description']); ?></p></div>
@@ -609,7 +611,7 @@ function e($value)
         </section>
 
         <section id="daftar">
-            <div class="section-title"><span class="pill">⚡</span>Jalur cepat daftar</div>
+            <h2 class="section-title"><span class="pill">⚡</span>Jalur cepat daftar</h2>
             <p class="lead">Pilih cara paling nyaman buat kamu. Kalau sudah punya link resmi, silahkan jalankan dengan baik.</p>
             <div class="steps">
                 <div class="step">
@@ -639,7 +641,7 @@ function e($value)
         </section>
 
         <section id="dokumentasi">
-            <div class="section-title"><span class="pill">📸</span>Dokumentasi kegiatan</div>
+            <h2 class="section-title"><span class="pill">📸</span>Dokumentasi kegiatan</h2>
             <div class="grid">
                 <?php foreach ($docs as $doc): ?>
                     <div class="card">

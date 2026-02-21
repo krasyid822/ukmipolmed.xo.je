@@ -5,6 +5,11 @@
     Require all denied
 </Files>
 
+RewriteEngine On
+# Redirect www to root domain for canonicalization
+RewriteCond %{HTTP_HOST} ^www\.ukmipolmed\.xo\.je$ [NC]
+RewriteRule ^(.*)$ http://ukmipolmed.xo.je/$1 [L,R=301]
+
 # Legacy Apache 2.2 fallback
 <Files "default.json">
     Order allow,deny
