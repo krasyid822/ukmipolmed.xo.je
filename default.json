@@ -27,5 +27,8 @@
     {"tag": "PPI 2024", "title": "Dokumentasi PPI 2024", "description": "Index foto/video PPI 2024 lengkap dengan navigasi slide & grid view.", "url": "https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/"}
   ],
   "posts": [],
-  "session_version": 1
+  "session_version": 1,
+  "insights": {
+    "max_bytes": 10485760
+  }
 }

@@ -3,6 +3,7 @@ session_start();
 
 $configPath = __DIR__ . '/data.json';
 $defaultPath = __DIR__ . '/default.json';
+$insightPath = __DIR__ . '/insights.json';
 
 if (!is_readable($defaultPath)) {
 	http_response_code(500);
@@ -28,7 +29,9 @@ $defaults = [
 	'posts' => is_array($defaultData['posts'] ?? null) ? $defaultData['posts'] : [],
 	'divisions' => is_array($defaultData['divisions'] ?? null) ? $defaultData['divisions'] : [],
 	'session_version' => isset($defaultData['session_version']) ? (int) $defaultData['session_version'] : 1,
+	'insights' => is_array($defaultData['insights'] ?? null) ? $defaultData['insights'] : ['max_bytes' => 10 * 1024 * 1024],
 ];
+$insightMaxBytes = isset($defaults['insights']['max_bytes']) ? (int) $defaults['insights']['max_bytes'] : (10 * 1024 * 1024);
 
 if (!is_readable($configPath)) {
 	$config = $defaults;
@@ -273,6 +276,65 @@ function appendLog(&$config, $configPath, $event, $maxLogs, $archiveLimitDays)
 	}
 }
 
+function bumpInsightEvent(string $event, string $insightPath, int $insightMaxBytes): void
+{
+	$cleanEvent = preg_replace('/[^a-zA-Z0-9_-]/', '', $event);
+	if ($cleanEvent === '') {
+		return;
+	}
+
+	if (file_exists($insightPath) && (int) filesize($insightPath) > $insightMaxBytes) {
+		return; // stop logging when store already exceeds cap
+	}
+
+	$todayKey = date('Y-m-d');
+	$defaultPayload = [
+		'total' => 0,
+		'events' => [],
+		'history' => [],
+		'updated_at' => date('c'),
+	];
+
+	$payload = $defaultPayload;
+	if (is_readable($insightPath)) {
+		$tmp = json_decode((string) file_get_contents($insightPath), true);
+		if (is_array($tmp)) {
+			$payload['total'] = (int) ($tmp['total'] ?? 0);
+			$payload['events'] = is_array($tmp['events'] ?? null) ? $tmp['events'] : [];
+			$payload['history'] = is_array($tmp['history'] ?? null) ? $tmp['history'] : [];
+			$payload['updated_at'] = $tmp['updated_at'] ?? date('c');
+		}
+	}
+
+	$payload['events'][$cleanEvent] = (int) ($payload['events'][$cleanEvent] ?? 0) + 1;
+	$payload['total'] = (int) ($payload['total'] ?? 0) + 1;
+	$payload['updated_at'] = date('c');
+
+	if (!isset($payload['history'][$todayKey])) {
+		$payload['history'][$todayKey] = ['total' => 0, 'events' => []];
+	}
+	$payload['history'][$todayKey]['total'] = (int) ($payload['history'][$todayKey]['total'] ?? 0) + 1;
+	$payload['history'][$todayKey]['events'][$cleanEvent] = (int) ($payload['history'][$todayKey]['events'][$cleanEvent] ?? 0) + 1;
+
+	$data = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+	$fh = @fopen($insightPath, 'c+');
+	if (!$fh || $data === false) {
+		return;
+	}
+
+	try {
+		if (!flock($fh, LOCK_EX)) {
+			return;
+		}
+		ftruncate($fh, 0);
+		fwrite($fh, $data);
+		fflush($fh);
+		flock($fh, LOCK_UN);
+	} finally {
+		fclose($fh);
+	}
+}
+
 function makeSlug($text)
 {
 	$text = strtolower((string) $text);
@@ -322,6 +384,12 @@ $divisionUnlocked = false;
 if (!empty($_SESSION['division_unlocked'])) {
 	$divisionUnlocked = true;
 	unset($_SESSION['division_unlocked']);
+}
+
+$insightsUnlocked = false;
+if (!empty($_SESSION['insights_unlocked'])) {
+	$insightsUnlocked = true;
+	unset($_SESSION['insights_unlocked']);
 }
 
 $credentialUnlocked = false;
@@ -397,6 +465,7 @@ if ($loggedIn && isset($_POST['archive_idx'])) {
 			$primaryAgenda = $agendas[0] ?? $defaults['agenda'];
 			$message = 'Agenda diarsipkan.';
 			appendLog($config, $configPath, 'agenda-archived', $maxLogs, $archiveLimitDays);
+			bumpInsightEvent('agenda_admin_update', $insightPath, $insightMaxBytes);
 		}
 	}
 }
@@ -443,6 +512,7 @@ if ($loggedIn && isset($_POST['move_idx'], $_POST['move_dir'])) {
 				$editingIdx = 0;
 				$message = 'Urutan agenda diperbarui.';
 				appendLog($config, $configPath, 'agenda-reordered', $maxLogs, $archiveLimitDays);
+				bumpInsightEvent('agenda_admin_update', $insightPath, $insightMaxBytes);
 			}
 		}
 	}
@@ -497,6 +567,7 @@ if ($loggedIn && isset($_POST['restore_archive_idx'])) {
 			$primaryAgenda = $agendas[0] ?? $defaults['agenda'];
 			$message = 'Agenda dikembalikan dari arsip.';
 			appendLog($config, $configPath, 'agenda-restored', $maxLogs, $archiveLimitDays);
+			bumpInsightEvent('agenda_admin_update', $insightPath, $insightMaxBytes);
 		}
 	}
 }
@@ -543,6 +614,7 @@ if ($loggedIn && isset($_POST['agenda_tag'], $_POST['agenda_title'], $_POST['age
 		$editingIdx = 0; // reset setelah simpan
 		$message = ($mode === 'new') ? 'Agenda baru ditambahkan.' : 'Agenda diperbarui.';
 		appendLog($config, $configPath, 'agenda-updated', $maxLogs, $archiveLimitDays);
+		bumpInsightEvent('agenda_admin_update', $insightPath, $insightMaxBytes);
 	}
 }
 
@@ -565,6 +637,18 @@ if ($loggedIn && isset($_POST['unlock_credential_code'])) {
 		$credentialUnlocked = true;
 		$_SESSION['credential_unlocked'] = true; // expire on next page load
 		$message = 'Mode superadmin aktif untuk kredensial admin.';
+	} else {
+		$error = 'Kode superadmin salah.';
+	}
+}
+
+// Kode superadmin untuk mengelola insight store
+if ($loggedIn && isset($_POST['unlock_insights_code'])) {
+	$code = trim((string) $_POST['unlock_insights_code']);
+	if ($code === 'superadmin') {
+		$insightsUnlocked = true;
+		$_SESSION['insights_unlocked'] = true; // expire on next page load
+		$message = 'Mode superadmin aktif untuk reset insight.';
 	} else {
 		$error = 'Kode superadmin salah.';
 	}
@@ -598,6 +682,31 @@ if ($loggedIn && isset($_POST['division_name'], $_POST['division_desc'])) {
 		} else {
 			$message = 'Divisi diperbarui.';
 			appendLog($config, $configPath, 'divisions-updated', $maxLogs, $archiveLimitDays);
+		}
+	}
+}
+
+// Reset insight store (superadmin + size threshold)
+if ($loggedIn && isset($_POST['reset_insights'])) {
+	$insightSizeBytes = file_exists($insightPath) ? (int) filesize($insightPath) : 0;
+	$insightLimitMB = round($insightMaxBytes / (1024 * 1024), 2);
+	if (!$insightsUnlocked) {
+		$error = 'Masukkan kode superadmin sebelum mereset insight.';
+	} elseif ($insightSizeBytes < $insightMaxBytes) {
+		$error = 'Reset hanya diizinkan jika ukuran sudah mencapai batas ' . $insightLimitMB . 'MB.';
+	} else {
+		$newData = [
+			'total' => 0,
+			'events' => [],
+			'history' => [],
+			'updated_at' => date('c'),
+		];
+		$encoded = json_encode($newData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($insightPath, $encoded) === false) {
+			$error = 'Gagal mereset insights.json.';
+		} else {
+			$message = 'insights.json berhasil dikosongkan.';
+			appendLog($config, $configPath, 'insights-reset', $maxLogs, $archiveLimitDays);
 		}
 	}
 }
@@ -1197,6 +1306,26 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 		<?php if ($loggedIn): ?>
 			<h1>Panel Admin</h1>
 			<p>Kelola, Anda adalah admin.</p>
+			<?php
+				$insightSizeBytes = file_exists($insightPath) ? (int) filesize($insightPath) : 0;
+				$insightSizeMB = round($insightSizeBytes / (1024 * 1024), 2);
+				$insightLimitMB = round($insightMaxBytes / (1024 * 1024), 2);
+			?>
+			<div class="section" style="margin-top: 10px;">
+				<h2 style="margin:0 0 8px; font-size:15px;">Insight store (insights.json)</h2>
+				<p class="muted-text" style="margin:0 0 8px;">Ukuran saat ini: <?php echo htmlspecialchars(number_format($insightSizeMB, 2), ENT_QUOTES, 'UTF-8'); ?> MB / <?php echo htmlspecialchars($insightLimitMB, ENT_QUOTES, 'UTF-8'); ?> MB.</p>
+				<form method="post" class="stack-sm" style="margin-bottom:8px;">
+					<div class="inline-actions" style="align-items:center; gap:10px;">
+						<input type="text" name="unlock_insights_code" placeholder="Ketik superadmin untuk reset" style="flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" autocomplete="off">
+						<button type="submit" style="max-width:180px;">Buka</button>
+					</div>
+				</form>
+				<form method="post" class="stack-sm" style="<?php echo ($insightsUnlocked && $insightSizeBytes >= $insightMaxBytes) ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
+					<input type="hidden" name="reset_insights" value="1">
+					<p class="muted-text" style="margin:0 0 6px;">Reset hanya diizinkan jika ukuran sudah mencapai batas <?php echo htmlspecialchars(number_format($insightLimitMB, 2), ENT_QUOTES, 'UTF-8'); ?> MB.</p>
+					<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Kosongkan insights.json</button>
+				</form>
+			</div>
 			<div class="section" style="margin-top: 8px;">
 				<h2 style="margin:0 0 8px; font-size:15px;">Sesi</h2>
 				<div class="inline-actions" style="align-items:center; gap:10px;">
