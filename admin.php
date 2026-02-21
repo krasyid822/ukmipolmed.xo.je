@@ -688,12 +688,8 @@ if ($loggedIn && isset($_POST['division_name'], $_POST['division_desc'])) {
 
 // Reset insight store (superadmin + size threshold)
 if ($loggedIn && isset($_POST['reset_insights'])) {
-	$insightSizeBytes = file_exists($insightPath) ? (int) filesize($insightPath) : 0;
-	$insightLimitMB = round($insightMaxBytes / (1024 * 1024), 2);
 	if (!$insightsUnlocked) {
 		$error = 'Masukkan kode superadmin sebelum mereset insight.';
-	} elseif ($insightSizeBytes < $insightMaxBytes) {
-		$error = 'Reset hanya diizinkan jika ukuran sudah mencapai batas ' . $insightLimitMB . 'MB.';
 	} else {
 		$newData = [
 			'total' => 0,
@@ -1320,9 +1316,9 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 						<button type="submit" style="max-width:180px;">Buka</button>
 					</div>
 				</form>
-				<form method="post" class="stack-sm" style="<?php echo ($insightsUnlocked && $insightSizeBytes >= $insightMaxBytes) ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
+				<form method="post" class="stack-sm" style="<?php echo $insightsUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
 					<input type="hidden" name="reset_insights" value="1">
-					<p class="muted-text" style="margin:0 0 6px;">Reset hanya diizinkan jika ukuran sudah mencapai batas <?php echo htmlspecialchars(number_format($insightLimitMB, 2), ENT_QUOTES, 'UTF-8'); ?> MB.</p>
+					<p class="muted-text" style="margin:0 0 6px;">Sebaiknya hanya bersihkan jika terjadi pergantian kepengurusan.</p>
 					<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Kosongkan insights.json</button>
 				</form>
 			</div>

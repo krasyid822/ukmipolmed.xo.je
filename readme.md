@@ -12,3 +12,31 @@ Klik tombol daftar, adalah berapakali tombol dibagian Buka form pendaftaran dikl
 Pembaruan agenda, adalah berapakali admin sudah melakukan pembaruan pada web (termasuk menghapus, mengedit, menambah postingan. dan lain lain).
 Blog dibuka (total), adalah berapakali postingan di Blog dibuka pengunjung.
 Kunjungan halaman utama, adalah berapakali web ukmipolmed.xo.je dibuka pengunjung.
+
+perbarui kebijakan: boleh hapus walau belum 10MB
+
+khusus untuk embed ig jika ngawur layoutnya:
+<style>
+.instagram-embed-wrapper {
+  max-width: 100%;           /* batasi lebar maksimal */
+  margin: 1em auto;          /* optional: biar rapi di tengah */
+  overflow: hidden;          /* sembunyikan jika masih ada yang nyempil */
+}
+
+.instagram-embed-wrapper .instagram-media {
+  margin: 0 !important;      /* hilangkan margin default Instagram */
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;   /* penting: lawan min-width:326px */
+}
+
+/* Target iframe yang di-inject script */
+.instagram-embed-wrapper iframe.instagram-media {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+</style>
+<div class="instagram-embed-wrapper">
+ ..masukkan kode embed disini..
+</div>

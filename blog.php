@@ -197,8 +197,8 @@ $baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
 $scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
 $baseUrl = $scheme . '://' . $baseHost;
 
-$metaTitle = 'Blog UKMI Polmed';
-$metaDesc = 'Catatan kegiatan, rilis, dan tulisan terbaru UKMI Polmed.';
+$metaTitle = 'Blog UKMI Polmed – Catatan Kegiatan & Tulisan Terbaru';
+$metaDesc = 'Baca catatan kegiatan, berita rilis, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan. Update terbaru seputar dakwah kampus, mentoring, dan event.';
 $metaImage = $baseUrl . '/logo-ukmi.png';
 $metaUrl = $baseUrl . '/blog.php' . ($filterSlug !== '' ? ('?slug=' . urlencode($filterSlug)) : '');
 $metaType = 'website';
@@ -217,20 +217,59 @@ if ($filterSlug !== '' && count($posts) === 1) {
 <html lang="id">
 <head>
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+	<link rel="alternate" hreflang="id" href="<?php echo e($metaUrl); ?>">
+	<link rel="alternate" hreflang="x-default" href="<?php echo e($metaUrl); ?>">
 	<title><?php echo e($metaTitle); ?></title>
-	<link rel="icon" type="image/png" href="logo-ukmi.png">
+	<link rel="icon" type="image/png" sizes="192x192" href="logo-ukmi.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="logo-ukmi.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="logo-ukmi.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
 	<meta name="description" content="<?php echo e($metaDesc); ?>">
+	<meta name="keywords" content="blog UKMI Polmed, kegiatan UKMI Polmed, berita dakwah kampus Medan, mentoring Islam Polmed">
+	<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+	<link rel="canonical" href="<?php echo e($metaUrl); ?>">
+	<meta property="og:locale" content="id_ID">
+	<meta property="og:site_name" content="UKMI Polmed">
 	<meta property="og:title" content="<?php echo e($metaTitle); ?>">
 	<meta property="og:description" content="<?php echo e($metaDesc); ?>">
 	<meta property="og:type" content="<?php echo e($metaType); ?>">
 	<meta property="og:url" content="<?php echo e($metaUrl); ?>">
 	<meta property="og:image" content="<?php echo e($metaImage); ?>">
+	<meta property="og:image:alt" content="<?php echo e($metaTitle); ?>">
 	<meta name="twitter:card" content="summary_large_image">
 	<meta name="twitter:title" content="<?php echo e($metaTitle); ?>">
 	<meta name="twitter:description" content="<?php echo e($metaDesc); ?>">
 	<meta name="twitter:image" content="<?php echo e($metaImage); ?>">
+	<meta name="twitter:image:alt" content="<?php echo e($metaTitle); ?>">
+	<?php if ($filterSlug !== '' && count($posts) === 1): ?>
+	<script type="application/ld+json">
+	<?php echo json_encode([
+		'@context' => 'https://schema.org',
+		'@type' => 'Article',
+		'headline' => $posts[0]['title'] ?? 'Blog UKMI Polmed',
+		'description' => $posts[0]['summary'] ?? $metaDesc,
+		'image' => !empty($posts[0]['image']) ? $posts[0]['image'] : ($baseUrl . '/logo-ukmi.png'),
+		'datePublished' => $posts[0]['created_at'] ?? '',
+		'dateModified' => $posts[0]['updated_at'] ?? $posts[0]['created_at'] ?? '',
+		'author' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'url' => 'https://ukmipolmed.xo.je/'],
+		'publisher' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://ukmipolmed.xo.je/logo-ukmi.png']],
+		'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $metaUrl],
+	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?>
+	</script>
+	<?php else: ?>
+	<script type="application/ld+json">
+	<?php echo json_encode([
+		'@context' => 'https://schema.org',
+		'@type' => 'Blog',
+		'name' => 'Blog UKMI Polmed',
+		'description' => 'Catatan kegiatan, berita rilis, dan tulisan terbaru UKMI Politeknik Negeri Medan.',
+		'url' => $baseUrl . '/blog.php',
+		'publisher' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://ukmipolmed.xo.je/logo-ukmi.png']],
+	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?>
+	</script>
+	<?php endif; ?>
 	<style>
 		:root {
 			--bg: #0b1020;
@@ -274,14 +313,17 @@ if ($filterSlug !== '' && count($posts) === 1) {
 				display: inline-flex;
 				align-items: center;
 				gap: 10px;
-				padding: 10px 14px;
+				padding: 12px 16px;
 				border-radius: 12px;
 				border: 1px solid var(--stroke);
 				text-decoration: none;
 				color: var(--text);
 				font-weight: 600;
+				font-size: 15px;
+				min-height: 48px;
 				transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 				backdrop-filter: blur(6px);
+				-webkit-tap-highlight-color: transparent;
 			}
 
 			.btn.primary {
@@ -426,8 +468,8 @@ if ($filterSlug !== '' && count($posts) === 1) {
 	</div>
 		<?php include __DIR__ . '/header.php'; ?>
 	<div class="container">
-		<h1>Blog UKMI Polmed</h1>
-		<p class="lead">Catatan kegiatan, rilis, dan tulisan terbaru.</p>
+		<h1>Blog UKMI Polmed – Catatan Kegiatan & Tulisan Terbaru</h1>
+		<p class="lead">Baca berita, catatan kegiatan, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan.</p>
 		<?php if (empty($posts)): ?>
 			<p class="lead">Belum ada postingan.</p>
 		<?php elseif ($filterSlug !== '' && count($posts) === 1): ?>
