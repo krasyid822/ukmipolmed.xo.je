@@ -190,27 +190,7 @@ usort($posts, function ($a, $b) {
 
 $filterSlug = isset($_GET['slug']) ? trim((string) $_GET['slug']) : '';
 if ($filterSlug !== '') {
-    $posts = array_values(array_filter($posts, fn($p) => ($p['slug'] ?? '') === $filterSlug));
-}
-
-$baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
-$scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
-$baseUrl = $scheme . '://' . $baseHost;
-
-$metaTitle = 'Blog UKMI Polmed';
-$metaDesc = 'Catatan kegiatan, rilis, dan tulisan terbaru UKMI Polmed.';
-$metaImage = $baseUrl . '/logo-ukmi.png';
-$metaUrl = $baseUrl . '/blog.php' . ($filterSlug !== '' ? ('?slug=' . urlencode($filterSlug)) : '');
-$metaType = 'website';
-
-if ($filterSlug !== '' && count($posts) === 1) {
-    $postMeta = $posts[0];
-    $metaTitle = trim((string) ($postMeta['title'] ?? 'Blog UKMI Polmed'));
-    $metaDesc = trim((string) ($postMeta['summary'] ?? $metaDesc));
-    if (!empty($postMeta['image'])) {
-        $metaImage = $postMeta['image'];
-    }
-    $metaType = 'article';
+	$posts = array_values(array_filter($posts, fn($p) => ($p['slug'] ?? '') === $filterSlug));
 }
 ?>
 <!doctype html>
@@ -218,19 +198,9 @@ if ($filterSlug !== '' && count($posts) === 1) {
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title><?php echo e($metaTitle); ?></title>
+	<title>Blog UKMI Polmed</title>
 	<link rel="icon" type="image/png" href="logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
-	<meta name="description" content="<?php echo e($metaDesc); ?>">
-	<meta property="og:title" content="<?php echo e($metaTitle); ?>">
-	<meta property="og:description" content="<?php echo e($metaDesc); ?>">
-	<meta property="og:type" content="<?php echo e($metaType); ?>">
-	<meta property="og:url" content="<?php echo e($metaUrl); ?>">
-	<meta property="og:image" content="<?php echo e($metaImage); ?>">
-	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="<?php echo e($metaTitle); ?>">
-	<meta name="twitter:description" content="<?php echo e($metaDesc); ?>">
-	<meta name="twitter:image" content="<?php echo e($metaImage); ?>">
 	<style>
 		:root {
 			--bg: #0b1020;
@@ -360,7 +330,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 			width: 100%;
 			height: auto;
 			border-radius: 16px;
-			background: #11111100;
+			background: #111;
 			filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.4));
 			object-fit: cover;
 		}
@@ -433,7 +403,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 		<?php elseif ($filterSlug !== '' && count($posts) === 1): ?>
 			<div class="article">
 				<h2><?php echo e($posts[0]['title']); ?></h2>
-					<div class="meta">Dipublikasikan: <?php echo e($posts[0]['created_at'] ?: '-'); ?><?php if (!empty($posts[0]['updated_at'])): ?> · Diubah: <?php echo e($posts[0]['updated_at']); ?><?php endif; ?> · Views: <span id="blog-views-inline">-</span></div>
+				<div class="meta">Dipublikasikan: <?php echo e($posts[0]['created_at'] ?: '-'); ?><?php if (!empty($posts[0]['updated_at'])): ?> · Diubah: <?php echo e($posts[0]['updated_at']); ?><?php endif; ?></div>
 				<?php if (!empty($posts[0]['image'])): ?>
 					<div style="margin:10px 0 14px;"><img src="<?php echo e($posts[0]['image']); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; border-radius:12px; border:1px solid var(--stroke);"></div>
 				<?php endif; ?>
@@ -458,48 +428,11 @@ if ($filterSlug !== '' && count($posts) === 1) {
 	</div>
 	<script>
 		const loadingEl = document.getElementById('page-loading');
-		const blogSlug = <?php echo json_encode($filterSlug, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-
 		window.addEventListener('load', () => {
-			if (loadingEl) {
-				loadingEl.classList.add('fade-out');
-				setTimeout(() => loadingEl.remove(), 600);
-			}
-			trackBlogView();
-			loadBlogViews();
+			if (!loadingEl) return;
+			loadingEl.classList.add('fade-out');
+			setTimeout(() => loadingEl.remove(), 600);
 		});
-
-		function sendInsight(name) {
-			if (!name) return;
-			fetch('status.php?event=' + encodeURIComponent(name), {
-				method: 'POST',
-				keepalive: true,
-			}).catch(() => {});
-		}
-
-		function trackBlogView() {
-			if (!blogSlug) return;
-			const slugEvent = String(blogSlug).replace(/[^a-zA-Z0-9_-]/g, '');
-			if (slugEvent) {
-				sendInsight('blog_view_' + slugEvent);
-			}
-		}
-
-		async function loadBlogViews() {
-			const inlineEl = document.getElementById('blog-views-inline');
-			if (!inlineEl) return;
-			try {
-				const res = await fetch('status.php?view=json');
-				const data = await res.json();
-				const bySlug = data?.org_specific?.blog_views_by_slug || {};
-				const views = blogSlug && bySlug[blogSlug];
-				if (typeof views === 'number') {
-					inlineEl.textContent = views.toLocaleString('id-ID');
-				}
-			} catch (e) {
-				console.warn('Load blog views failed', e);
-			}
-		}
 	</script>
 </body>
 </html>
