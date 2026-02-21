@@ -121,26 +121,25 @@ function e($value)
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>, Agenda, dan Dokumentasi</title>
-    <meta name="description" content="Open recruitment UKMI Polmed <?php echo e($divisionYearLabel); ?>: mentoring, tilawah, syiar media, keputrian, ekonomi, dan aksi sosial. Form daftar, agenda terbaru, serta dokumentasi kegiatan tersedia di satu halaman.">
-    <meta name="keywords" content="UKMI Polmed, open recruitment UKMI Polmed, organisasi Islam Polmed, mentoring kampus, UKM Islami Politeknik Negeri Medan">
+    <title>Shortcut UKMI Polmed | Open Recruitment <?php echo e(date('Y')); ?></title>
+    <meta name="description" content="Gabung UKMI Polmed 2026: mentoring, tilawah, syiar media, keputrian, ekonomi, dan aksi sosial. Form pendaftaran, dokumentasi, dan kontak cepat di satu halaman.">
+    <meta name="keywords" content="UKMI Polmed, open recruitment UKMI, organisasi Islam Polmed, mentoring kampus, UKM Islami Politeknik Negeri Medan">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="http://ukmipolmed.xo.je/">
-    <meta property="og:locale" content="id_ID">
+    <link rel="canonical" href="./">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>">
-    <meta property="og:description" content="Semua shortcut untuk gabung UKMI Polmed: form pendaftaran, agenda terbaru, dokumentasi kegiatan, dan daftar divisi kepengurusan.">
-    <meta property="og:url" content="http://ukmipolmed.xo.je/">
-    <meta property="og:image" content="http://ukmipolmed.xo.je/logo-ukmi.png">
+    <meta property="og:title" content="Shortcut UKMI Polmed | Open Recruitment 2026">
+    <meta property="og:description" content="Semua shortcut untuk gabung UKMI Polmed: form daftar, dokumentasi kegiatan, dan divisi kepengurusan 2026-2027.">
+    <meta property="og:url" content="./">
+    <meta property="og:image" content="logo-ukmi.png">
     <meta property="og:site_name" content="UKMI Polmed">
     <link rel="icon" type="image/png" href="logo-ukmi.png">
     <link rel="apple-touch-icon" href="logo-ukmi.png">
     <link rel="shortcut icon" href="logo-ukmi.png">
     <meta name="theme-color" content="#0f172a">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="UKMI Polmed | Open Recruitment <?php echo e($divisionYearLabel); ?>">
-    <meta name="twitter:description" content="Form pendaftaran, agenda terbaru, dokumentasi kegiatan, dan divisi UKMI Polmed <?php echo e($divisionYearLabel); ?>.">
-    <meta name="twitter:image" content="http://ukmipolmed.xo.je/logo-ukmi.png">
+    <meta name="twitter:title" content="Shortcut UKMI Polmed | Open Recruitment 2026">
+    <meta name="twitter:description" content="Form daftar, dokumentasi kegiatan, dan divisi UKMI Polmed 2026-2027 dalam satu halaman.">
+    <meta name="twitter:image" content="logo-ukmi.png">
     <?php
     $faqSchema = [
         '@context' => 'https://schema.org',
@@ -316,7 +315,6 @@ function e($value)
             gap: 10px;
             font-size: 18px;
             letter-spacing: 0.3px;
-            margin: 0 0 12px;
         }
 
         .pill {
@@ -428,98 +426,9 @@ function e($value)
             main { padding: 28px 16px 64px; }
             .hero { padding: 20px; }
         }
-
-        .loading-overlay {
-            position: fixed;
-            inset: 0;
-            display: grid;
-            place-items: center;
-            background: radial-gradient(circle at 20% 20%, rgba(197, 255, 106, 0.18), transparent 32%),
-                        radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.15), transparent 36%),
-                        linear-gradient(135deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.9));
-            z-index: 9999;
-            transition: opacity 0.5s ease, visibility 0.5s ease;
-        }
-
-        .loading-overlay.fade-out {
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        .loading-stack {
-            position: relative;
-            width: min(420px, 72vw);
-        }
-
-        .loading-gif {
-            display: block;
-            width: 100%;
-            height: auto;
-            border-radius: 18px;
-            background: #111;
-            filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.4));
-            object-fit: cover;
-        }
-
-        .loading-logo {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 40%;
-            max-width: 170px;
-            filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
-        }
-
-        .loading-card {
-            margin-top: 12px;
-            padding: 14px 16px 16px;
-            border-radius: 14px;
-            background: rgba(0, 0, 0, 0.55);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(12px);
-            color: #f6f8fb;
-            text-align: center;
-            font-family: 'Manrope', 'Space Grotesk', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .loading-card .progress-track {
-            margin-top: 10px;
-            width: 100%;
-            height: 10px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.12);
-            overflow: hidden;
-        }
-
-        .loading-card .progress-bar {
-            position: relative;
-            display: block;
-            height: 100%;
-            width: 38%;
-            background: linear-gradient(90deg, rgba(197, 255, 106, 0.3), #c5ff6a);
-            border-radius: inherit;
-            animation: loading-pulse 1.6s ease-in-out infinite;
-        }
-
-        @keyframes loading-pulse {
-            0% { left: -45%; width: 32%; }
-            50% { left: 30%; width: 45%; }
-            100% { left: 100%; width: 32%; }
-        }
     </style>
 </head>
 <body>
-    <div class="loading-overlay" id="page-loading" aria-live="polite">
-        <div class="loading-stack">
-            <img class="loading-gif" src="palestine.gif" alt="Animasi pemuatan">
-            <img class="loading-logo" src="logo-ukmi.png" alt="Logo UKMI">
-        </div>
-        <div class="loading-card">
-            <div>Memuat konten, mohon tunggu...</div>
-            <div class="progress-track" aria-hidden="true"><span class="progress-bar"></span></div>
-        </div>
-    </div>
     <div class="glow" aria-hidden="true"></div>
     <?php include __DIR__ . '/header.php'; ?>
 
@@ -554,7 +463,7 @@ function e($value)
         </section>
 
         <section id="shortcut">
-            <h2 class="section-title"><span class="pill">★</span>Shortcut paling dicari</h2>
+            <div class="section-title"><span class="pill">★</span>Shortcut paling dicari</div>
             <div class="grid">
                 <div class="card agenda-rotator">
                     <div class="tag agenda-swap" id="agenda-tag"><?php echo e($firstAgenda['tag']); ?></div>
@@ -580,7 +489,7 @@ function e($value)
         </section>
 
         <section id="program">
-            <h2 class="section-title"><span class="pill">→</span>Kenapa harus gabung UKMI Polmed?</h2>
+            <div class="section-title"><span class="pill">→</span>Kenapa harus gabung?</div>
             <div class="grid">
                 <div class="card">
                     <h3>Teman seperjuangan</h3>
@@ -602,7 +511,7 @@ function e($value)
         </section>
 
         <section id="divisi">
-            <h2 class="section-title"><span class="pill">◎</span>Divisi kepengurusan <?php echo e($divisionYearLabel); ?></h2>
+            <div class="section-title"><span class="pill">◎</span>Divisi kepengurusan <?php echo e($divisionYearLabel); ?></div>
             <div class="grid">
                 <?php foreach ($divisions as $div): ?>
                     <div class="card"><h3><?php echo e($div['name']); ?></h3><p><?php echo e($div['description']); ?></p></div>
@@ -611,7 +520,7 @@ function e($value)
         </section>
 
         <section id="daftar">
-            <h2 class="section-title"><span class="pill">⚡</span>Jalur cepat daftar</h2>
+            <div class="section-title"><span class="pill">⚡</span>Jalur cepat daftar</div>
             <p class="lead">Pilih cara paling nyaman buat kamu. Kalau sudah punya link resmi, silahkan jalankan dengan baik.</p>
             <div class="steps">
                 <div class="step">
@@ -641,7 +550,7 @@ function e($value)
         </section>
 
         <section id="dokumentasi">
-            <h2 class="section-title"><span class="pill">📸</span>Dokumentasi kegiatan</h2>
+            <div class="section-title"><span class="pill">📸</span>Dokumentasi kegiatan</div>
             <div class="grid">
                 <?php foreach ($docs as $doc): ?>
                     <div class="card">
@@ -668,13 +577,6 @@ function e($value)
     </main>
 
     <script>
-        const loadingEl = document.getElementById('page-loading');
-        window.addEventListener('load', () => {
-            if (!loadingEl) return;
-            loadingEl.classList.add('fade-out');
-            setTimeout(() => loadingEl.remove(), 600);
-        });
-
         // Smooth scroll for in-page anchors
         document.querySelectorAll('a[href^="#"]').forEach(link => {
             link.addEventListener('click', (e) => {

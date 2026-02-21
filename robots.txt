@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Sitemap: http://ukmipolmed.xo.je/sitemap.xml
+Host: ukmipolmed.xo.je
