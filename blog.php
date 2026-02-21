@@ -428,13 +428,12 @@ if ($filterSlug !== '' && count($posts) === 1) {
 	<div class="container">
 		<h1>Blog UKMI Polmed</h1>
 		<p class="lead">Catatan kegiatan, rilis, dan tulisan terbaru.</p>
-		<div class="meta" id="blog-views">Views: <strong id="blog-views-count">-</strong></div>
 		<?php if (empty($posts)): ?>
 			<p class="lead">Belum ada postingan.</p>
 		<?php elseif ($filterSlug !== '' && count($posts) === 1): ?>
 			<div class="article">
 				<h2><?php echo e($posts[0]['title']); ?></h2>
-				<div class="meta">Dipublikasikan: <?php echo e($posts[0]['created_at'] ?: '-'); ?><?php if (!empty($posts[0]['updated_at'])): ?> · Diubah: <?php echo e($posts[0]['updated_at']); ?><?php endif; ?></div>
+					<div class="meta">Dipublikasikan: <?php echo e($posts[0]['created_at'] ?: '-'); ?><?php if (!empty($posts[0]['updated_at'])): ?> · Diubah: <?php echo e($posts[0]['updated_at']); ?><?php endif; ?> · Views: <span id="blog-views-inline">-</span></div>
 				<?php if (!empty($posts[0]['image'])): ?>
 					<div style="margin:10px 0 14px;"><img src="<?php echo e($posts[0]['image']); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; border-radius:12px; border:1px solid var(--stroke);"></div>
 				<?php endif; ?>
@@ -487,15 +486,15 @@ if ($filterSlug !== '' && count($posts) === 1) {
 		}
 
 		async function loadBlogViews() {
-			const counterEl = document.getElementById('blog-views-count');
-			if (!counterEl) return;
+			const inlineEl = document.getElementById('blog-views-inline');
+			if (!inlineEl) return;
 			try {
 				const res = await fetch('status.php?view=json');
 				const data = await res.json();
 				const bySlug = data?.org_specific?.blog_views_by_slug || {};
 				const views = blogSlug && bySlug[blogSlug];
 				if (typeof views === 'number') {
-					counterEl.textContent = views.toLocaleString('id-ID');
+					inlineEl.textContent = views.toLocaleString('id-ID');
 				}
 			} catch (e) {
 				console.warn('Load blog views failed', e);
