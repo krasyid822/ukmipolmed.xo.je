@@ -95,7 +95,7 @@ header.header {
 			<a class="btn ghost" href="index.php#divisi">Divisi</a>
 			<a class="btn ghost" href="index.php#dokumentasi">Dokumentasi</a>
 			<a class="btn ghost" href="blog.php">Blog</a>
-			<a class="btn primary" href="index.php#daftar">Daftar sekarang</a>
+			<a class="btn primary" href="index.php#daftar" data-insight="nav_daftar">Daftar sekarang</a>
 		</div>
 	</div>
 </header>

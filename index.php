@@ -531,8 +531,8 @@ function e($value)
                 <h1>Jadi bagian keluarga UKMI. Bergerak bareng, bertumbuh bareng.</h1>
                 <p class="lead">Halaman shortcut untuk mahasiswa baru Polmed yang mau nyemplung ke organisasi UKMI: cek agenda, kelas skill, jalur daftar tercepat, dan dokumentasi kegiatan.</p>
                 <div class="cta-row">
-                    <a class="btn primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener">Daftar sekarang</a>
-                    <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/">Lihat arsip IG kami</a>
+                    <a class="btn primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener" data-insight="cta_daftar_hero">Daftar sekarang</a>
+                    <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/" data-insight="cta_arsip_hero">Lihat arsip IG kami</a>
                 </div>
             </div>
             <div>
@@ -631,10 +631,10 @@ function e($value)
             <div class="cta-banner">
                 <strong>Siap gas? Klik sekali untuk daftar.</strong>
                 <div class="cta-row">
-                    <a class="btn primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener">Buka form pendaftaran</a>
-                    <a class="btn ghost" href="https://instagram.com/ukmipolmed" target="_blank" rel="noopener">Tanya via DM IG</a>
-                    <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/">Lihat dokumentasi kegiatan</a>
-                    <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/what-they-said/" target="_blank" rel="noopener">Testimoni</a>
+                    <a class="btn primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener" data-insight="cta_daftar_banner">Buka form pendaftaran</a>
+                    <a class="btn ghost" href="https://instagram.com/ukmipolmed" target="_blank" rel="noopener" data-insight="cta_dm_ig">Tanya via DM IG</a>
+                    <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/" data-insight="cta_dokumentasi">Lihat dokumentasi kegiatan</a>
+                    <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/what-they-said/" target="_blank" rel="noopener" data-insight="cta_testimoni">Testimoni</a>
                 </div>
                 <small style="color: var(--muted);">Form utama mengarah ke Google Forms mentoring UKMI. Link cadangan tersedia di halaman testimoni.</small>
             </div>
@@ -643,13 +643,13 @@ function e($value)
         <section id="dokumentasi">
             <h2 class="section-title"><span class="pill">📸</span>Dokumentasi kegiatan</h2>
             <div class="grid">
-                <?php foreach ($docs as $doc): ?>
+                <?php foreach ($docs as $idx => $doc): ?>
                     <div class="card">
                         <div class="tag"><?php echo e($doc['tag']); ?></div>
                         <h3><?php echo e($doc['title']); ?></h3>
                         <p><?php echo e($doc['description']); ?></p>
                         <div class="cta-row" style="margin-top:12px;">
-                            <a class="btn primary" href="<?php echo e($doc['url']); ?>" target="_blank" rel="noopener">Buka</a>
+                            <a class="btn primary" href="<?php echo e($doc['url']); ?>" target="_blank" rel="noopener" data-insight="doc_<?php echo e($idx); ?>">Buka</a>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -736,6 +736,23 @@ function e($value)
                 swapAgenda(agendas[agendaIndex]);
             }, 5200);
         }
+
+        // Insight tracking for key interactions.
+        function sendInsight(name) {
+            if (!name) return;
+            fetch('status.php?event=' + encodeURIComponent(name), {
+                method: 'POST',
+                keepalive: true,
+            }).catch(() => {});
+        }
+
+        window.addEventListener('load', () => {
+            sendInsight('home_view');
+        });
+
+        document.querySelectorAll('[data-insight]').forEach(el => {
+            el.addEventListener('click', () => sendInsight(el.getAttribute('data-insight')));
+        });
 
     </script>
 </body>
