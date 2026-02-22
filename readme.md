@@ -42,4 +42,11 @@ perbarui kebijakan: boleh hapus walau belum 10MB
  ..masukkan kode embed disini..
 </div>
 ```
-admin diizinkan membersihkan komentar
+admin diizinkan membersihkan komentar: sepertinya tidsk perlu
+
+Singkatnya — saat tombol hapus postingan ditekan, yang terjadi saat ini:
+Entri posting dihapus dari data.json — semua komentar yang tersimpan di bawah entri itu ikut hilang karena komentar disimpan inline pada post.
+Berkas di folder .uploads TIDAK langsung dihapus. Fungsi cleanup_uploads() hanya menghapus file yang tidak lagi direferensikan dan lebih tua dari 1 hari (best‑effort).
+Insight/metrics (insights.json) dan counter view tidak dibersihkan otomatis — tetap ada kecuali dihapus eksplisit.
+Jika posting dipindah ke arsip (bukan benar‑benar dihapus), komentarnya tetap ada di data.json/arsip.
+Bila diinginkan: bisa ditambahkan penghapusan langsung untuk file .uploads yang direferensikan oleh post, pembersihan insight terkait, atau opsi soft‑delete/arsipkan. Mau ditambahkan salah satu?
