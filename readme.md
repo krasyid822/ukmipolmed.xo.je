@@ -15,7 +15,8 @@ Kunjungan halaman utama, adalah berapakali web ukmipolmed.xo.je dibuka pengunjun
 
 perbarui kebijakan: boleh hapus walau belum 10MB
 
-khusus untuk embed ig jika ngawur layoutnya:
+### Khusus untuk embed ig jika ngawur layoutnya:
+```html
 <style>
 .instagram-embed-wrapper {
   max-width: 100%;           /* batasi lebar maksimal */
@@ -40,3 +41,4 @@ khusus untuk embed ig jika ngawur layoutnya:
 <div class="instagram-embed-wrapper">
  ..masukkan kode embed disini..
 </div>
+```
