@@ -137,6 +137,41 @@ function buildSummary(array $insights, string $todayKey, string $storeFile, floa
 		'runtime_ms' => round((microtime(true) - $start) * 1000, 2),
 	];
 
+	// .uploads directory usage
+	$uploadsDir = __DIR__ . '/.uploads';
+	$uploadsInfo = [
+		'exists' => is_dir($uploadsDir),
+		'file_count' => 0,
+		'size_bytes' => 0,
+		'size_mb' => 0,
+	];
+	if (is_dir($uploadsDir)) {
+		$files = @scandir($uploadsDir);
+		if (is_array($files)) {
+			foreach ($files as $f) {
+				if ($f === '.' || $f === '..') continue;
+				$path = $uploadsDir . '/' . $f;
+				if (is_file($path)) {
+					$uploadsInfo['file_count']++;
+					$uploadsInfo['size_bytes'] += (int) @filesize($path);
+				}
+			}
+			$uploadsInfo['size_mb'] = round($uploadsInfo['size_bytes'] / (1024*1024), 2);
+		}
+	}
+
+	// data.json info
+	$dataJsonPath = __DIR__ . '/data.json';
+	$dataJsonInfo = [
+		'exists' => file_exists($dataJsonPath),
+		'readable' => is_readable($dataJsonPath),
+		'size_bytes' => file_exists($dataJsonPath) ? (int) filesize($dataJsonPath) : 0,
+		'size_mb' => file_exists($dataJsonPath) ? round(filesize($dataJsonPath) / (1024*1024), 2) : 0,
+	];
+
+	$technical['uploads'] = $uploadsInfo;
+	$technical['data_json'] = $dataJsonInfo;
+
 	$orgSpecific = [
 		'dokumentasi_clicks' => sumPrefixes($insights['events'], ['doc_']),
 		'agenda_updates' => $insights['events']['agenda_admin_update'] ?? 0,
@@ -392,6 +427,11 @@ if ($view === 'ui') {
 			kvFill('kv-tech', [
 				['insights.json writable', data.technical?.insights_file?.writable ? 'Ya' : 'Tidak'],
 				['insights.json size', fmtSize(data.technical?.insights_file?.size_bytes) + ' / ' + (data.technical?.insights_file?.size_limit_mb ?? '-') + ' MB'],
+				['.uploads exists', data.technical?.uploads?.exists ? 'Ada' : 'Tidak'],
+				['.uploads files', (data.technical?.uploads?.file_count ?? '-')],
+				['.uploads size', fmtSize(data.technical?.uploads?.size_bytes)],
+				['data.json exists', data.technical?.data_json?.exists ? 'Ada' : 'Tidak'],
+				['data.json size', fmtSize(data.technical?.data_json?.size_bytes)],
 				['robots.txt', data.technical?.robots_txt ? 'Ada' : 'Tidak'],
 				['sitemap.xml', data.technical?.sitemap_xml ? 'Ada' : 'Tidak'],
 				['HTTPS', data.technical?.https ? 'Aktif' : 'Belum'],

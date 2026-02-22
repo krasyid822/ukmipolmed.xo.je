@@ -146,12 +146,242 @@ function apply_embeds($html, $embeds, $enabled)
 	return $output;
 }
 
-$posts = array_map(function ($post) {
+$baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
+$scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
+$baseUrl = $scheme . '://' . $baseHost;
+
+function save_data_uri_image($img, $baseUrl)
+{
+	if (stripos($img, 'data:') !== 0) return null;
+	if (!preg_match('#^data:(image/(?:png|jpe?g|gif|webp))(;charset=[^;,]+)?;base64,(.*)$#i', $img, $m)) return null;
+	$mime = strtolower($m[1]);
+	$b64 = $m[3] ?? '';
+	$data = base64_decode($b64, true);
+	if ($data === false) return null;
+	$maxSize = 2 * 1024 * 1024;
+	if (strlen($data) > $maxSize) return null;
+	$ext = $mime === 'image/jpeg' ? 'jpg' : (strpos($mime, 'png') !== false ? 'png' : (strpos($mime, 'gif') !== false ? 'gif' : 'webp'));
+	$hash = sha1($data);
+	$uploadDir = __DIR__ . '/.uploads';
+	if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+	$fileName = $hash . '.' . $ext;
+	$filePath = $uploadDir . '/' . $fileName;
+
+	// If file exists and already large enough, return immediately
+	if (file_exists($filePath)) {
+		if (function_exists('getimagesize')) {
+			$info = @getimagesize($filePath);
+			if ($info && isset($info[0]) && $info[0] >= 400) {
+				return $baseUrl . '/.uploads/' . $fileName;
+			}
+		}
+		// otherwise we'll attempt to reprocess/overwrite it below
+	}
+
+	$written = false;
+	if (function_exists('imagecreatefromstring')) {
+		$im = @imagecreatefromstring($data);
+	} else {
+		$im = false;
+	}
+
+		// If GD created an image resource, attempt resize/save using GD
+		if ($im !== false) {
+			$w = imagesx($im);
+			$h = imagesy($im);
+			if ($w < 400) {
+				$nw = 400;
+				$nh = (int) round($h * ($nw / $w));
+				$dst = imagecreatetruecolor($nw, $nh);
+				if (in_array($ext, ['png', 'webp'])) {
+					imagealphablending($dst, false);
+					imagesavealpha($dst, true);
+					$transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+					imagefilledrectangle($dst, 0, 0, $nw, $nh, $transparent);
+				} elseif ($ext === 'gif') {
+					$trans_index = imagecolortransparent($im);
+					if ($trans_index >= 0) {
+						$trans_col = imagecolorsforindex($im, $trans_index);
+						$ti = imagecolorallocate($dst, $trans_col['red'], $trans_col['green'], $trans_col['blue']);
+						imagefill($dst, 0, 0, $ti);
+						imagecolortransparent($dst, $ti);
+					}
+				}
+				imagecopyresampled($dst, $im, 0, 0, 0, 0, $nw, $nh, $w, $h);
+				imagedestroy($im);
+				$im = $dst;
+			}
+
+			// If webp not supported, we'll save as PNG instead
+			$saveExt = $ext;
+			if ($saveExt === 'webp' && !function_exists('imagewebp')) {
+				$saveExt = 'png';
+				$filePath = $uploadDir . '/' . $hash . '.png';
+				$fileName = $hash . '.png';
+			}
+
+			if ($im !== false) {
+				switch ($saveExt) {
+					case 'jpg': @imagejpeg($im, $filePath, 90); $written = file_exists($filePath); break;
+					case 'png': @imagepng($im, $filePath); $written = file_exists($filePath); break;
+					case 'gif': @imagegif($im, $filePath); $written = file_exists($filePath); break;
+					case 'webp': @imagewebp($im, $filePath, 80); $written = file_exists($filePath); break;
+				}
+				imagedestroy($im);
+			}
+		}
+
+		// Fallback: write raw data if GD processing failed
+		if (!$written) {
+			@file_put_contents($filePath, $data);
+		}
+
+
+	if (file_exists($filePath)) {
+		return $baseUrl . '/.uploads/' . $fileName;
+	}
+	return null;
+
+}
+
+/**
+ * Ensure an existing image file is at least $minWidth wide by upscaling with GD.
+ * Returns true if the file exists after processing (and was written), false otherwise.
+ */
+function ensure_image_min_width($filePath, $minWidth = 400)
+{
+	if (!file_exists($filePath)) return false;
+	if (!function_exists('getimagesize')) return false;
+	$info = @getimagesize($filePath);
+	if (!$info || !isset($info[0])) return false;
+	$w = $info[0];
+	$h = $info[1] ?? 0;
+	if ($w >= $minWidth) return true;
+	if (!function_exists('imagecreatefromstring')) return false;
+
+	$data = @file_get_contents($filePath);
+	if ($data === false) return false;
+	$im = @imagecreatefromstring($data);
+	if ($im === false) return false;
+
+	$nw = $minWidth;
+	$nh = $h > 0 ? (int) round($h * ($nw / $w)) : $nw;
+	$dst = imagecreatetruecolor($nw, $nh);
+
+	$ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+	if (in_array($ext, ['png', 'webp'])) {
+		imagealphablending($dst, false);
+		imagesavealpha($dst, true);
+		$transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+		imagefilledrectangle($dst, 0, 0, $nw, $nh, $transparent);
+	} elseif ($ext === 'gif') {
+		$trans_index = imagecolortransparent($im);
+		if ($trans_index >= 0) {
+			$trans_col = imagecolorsforindex($im, $trans_index);
+			$ti = imagecolorallocate($dst, $trans_col['red'], $trans_col['green'], $trans_col['blue']);
+			imagefill($dst, 0, 0, $ti);
+			imagecolortransparent($dst, $ti);
+		}
+	}
+
+	imagecopyresampled($dst, $im, 0, 0, 0, 0, $nw, $nh, $w, $h);
+	imagedestroy($im);
+
+	$written = false;
+	switch ($ext) {
+		case 'jpg': case 'jpeg': @imagejpeg($dst, $filePath, 90); $written = file_exists($filePath); break;
+		case 'png': @imagepng($dst, $filePath); $written = file_exists($filePath); break;
+		case 'gif': @imagegif($dst, $filePath); $written = file_exists($filePath); break;
+		case 'webp':
+			if (function_exists('imagewebp')) {
+				@imagewebp($dst, $filePath, 80);
+			} else {
+				@imagepng($dst, $filePath);
+			}
+			$written = file_exists($filePath);
+			break;
+		default:
+			@imagepng($dst, $filePath);
+			$written = file_exists($filePath);
+	}
+	imagedestroy($dst);
+	return $written;
+}
+
+/**
+ * Scan posts for references to files under .uploads and remove unreferenced files
+ * older than $maxAge seconds. This helps free disk for unused uploaded images.
+ */
+function cleanup_uploads(array $posts, $maxAge = 86400)
+{
+	$uploadDir = __DIR__ . '/.uploads';
+	if (!is_dir($uploadDir)) return false;
+
+	$used = [];
+	foreach ($posts as $post) {
+		// image field
+		$img = trim((string) ($post['image'] ?? ''));
+		if ($img !== '') {
+			$p = parse_url($img, PHP_URL_PATH);
+			if ($p !== null && stripos($p, '/.uploads/') !== false) {
+				$used[] = basename($p);
+			}
+		}
+		// body_html and embeds may contain .uploads links
+		$html = (string) ($post['body_html'] ?? '');
+		if ($html !== '') {
+			if (preg_match_all('#/\.uploads/([^"\'\s>]+)#i', $html, $m)) {
+				foreach ($m[1] as $b) $used[] = $b;
+			}
+		}
+		if (!empty($post['embeds']) && is_array($post['embeds'])) {
+			foreach ($post['embeds'] as $emb) {
+				if (preg_match_all('#/\.uploads/([^"\'\s>]+)#i', (string) $emb, $m2)) {
+					foreach ($m2[1] as $b) $used[] = $b;
+				}
+			}
+		}
+	}
+
+	$used = array_filter(array_unique($used));
+	$now = time();
+	$deleted = 0;
+	$reclaimed = 0;
+
+	$it = @scandir($uploadDir);
+	if (!is_array($it)) return false;
+	foreach ($it as $entry) {
+		if ($entry === '.' || $entry === '..') continue;
+		$path = $uploadDir . '/' . $entry;
+		if (!is_file($path)) continue;
+		// if used, keep
+		if (in_array($entry, $used, true)) continue;
+		$mtime = filemtime($path) ?: 0;
+		if ($mtime > 0 && ($now - $mtime) < $maxAge) continue; // too new
+		$size = filesize($path) ?: 0;
+		if (@unlink($path)) {
+			$deleted++;
+			$reclaimed += $size;
+		}
+	}
+
+	return ['deleted' => $deleted, 'reclaimed_bytes' => $reclaimed];
+}
+
+$posts = array_map(function ($post) use ($baseUrl) {
 	$title = trim((string) ($post['title'] ?? ''));
 	$slug = trim((string) ($post['slug'] ?? ''));
 	$summary = trim((string) ($post['summary'] ?? ''));
 	$body = (string) ($post['body'] ?? '');
 	$image = trim((string) ($post['image'] ?? ''));
+	if ($image !== '') {
+		if (stripos($image, 'data:') === 0) {
+			$saved = save_data_uri_image($image, $baseUrl);
+			if ($saved) $image = $saved;
+		} elseif ($image[0] === '/') {
+			$image = $baseUrl . $image;
+		}
+	}
 	$embedHtml = (string) ($post['embed_html'] ?? '');
 	$embedEnabled = !empty($post['embed_enabled']);
 	$embedList = [];
@@ -203,14 +433,60 @@ $metaImage = $baseUrl . '/logo-ukmi.png';
 $metaUrl = $baseUrl . '/blog.php' . ($filterSlug !== '' ? ('?slug=' . urlencode($filterSlug)) : '');
 $metaType = 'website';
 
+// If we're showing the list (not a single post), prefer first post image for og:image
+if ($filterSlug === '' && !empty($posts) && is_array($posts[0])) {
+	$firstImg = trim((string) ($posts[0]['image'] ?? ''));
+	if ($firstImg !== '') {
+		if (stripos($firstImg, 'data:') === 0) {
+			$saved = save_data_uri_image($firstImg, $baseUrl);
+			if ($saved) $metaImage = $saved;
+		} else {
+			$sch = parse_url($firstImg, PHP_URL_SCHEME);
+			if ($sch && in_array(strtolower($sch), ['http','https']) && filter_var($firstImg, FILTER_VALIDATE_URL)) {
+				$metaImage = $firstImg;
+			} elseif ($firstImg[0] === '/') {
+				$metaImage = $baseUrl . $firstImg;
+			}
+		}
+	}
+}
+
+// Optional Facebook App ID (can be set in data.json or default.json as "fb_app_id")
+$fbAppId = null;
+if (is_array($config) && !empty($config['fb_app_id'])) {
+	$fbAppId = trim((string) $config['fb_app_id']);
+} elseif (!empty($defaults['fb_app_id'])) {
+	$fbAppId = trim((string) $defaults['fb_app_id']);
+}
+
 if ($filterSlug !== '' && count($posts) === 1) {
     $postMeta = $posts[0];
-    $metaTitle = trim((string) ($postMeta['title'] ?? 'Blog UKMI Polmed'));
-    $metaDesc = trim((string) ($postMeta['summary'] ?? $metaDesc));
-    if (!empty($postMeta['image'])) {
-        $metaImage = $postMeta['image'];
-    }
-    $metaType = 'article';
+	$metaTitle = trim((string) ($postMeta['title'] ?? 'Blog UKMI Polmed'));
+	$metaDesc = trim((string) ($postMeta['summary'] ?? $metaDesc));
+	if (!empty($postMeta['image']) && is_string($postMeta['image'])) {
+		$img = trim($postMeta['image']);
+		if (stripos($img, 'data:') === 0) {
+			$saved = save_data_uri_image($img, $baseUrl);
+			if ($saved) {
+				$metaImage = $saved;
+			}
+		} else {
+			$scheme = parse_url($img, PHP_URL_SCHEME);
+			if ($scheme && in_array(strtolower($scheme), ['http', 'https']) && filter_var($img, FILTER_VALIDATE_URL)) {
+				$metaImage = $img;
+			}
+		}
+	}
+	$metaType = 'article';
+}
+
+// Attempt to cleanup unreferenced uploads older than 1 day (best-effort, silent)
+@ignore_user_abort(true);
+try {
+	@set_time_limit(5);
+	@cleanup_uploads($posts, 86400);
+} catch (Exception $_) {
+	// ignore
 }
 ?>
 <!doctype html>
@@ -232,6 +508,9 @@ if ($filterSlug !== '' && count($posts) === 1) {
 	<link rel="canonical" href="<?php echo e($metaUrl); ?>">
 	<meta property="og:locale" content="id_ID">
 	<meta property="og:site_name" content="UKMI Polmed">
+	<?php if (!empty($fbAppId)): ?>
+	<meta property="fb:app_id" content="<?php echo e($fbAppId); ?>">
+	<?php endif; ?>
 	<meta property="og:title" content="<?php echo e($metaTitle); ?>">
 	<meta property="og:description" content="<?php echo e($metaDesc); ?>">
 	<meta property="og:type" content="<?php echo e($metaType); ?>">
@@ -250,7 +529,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 		'@type' => 'Article',
 		'headline' => $posts[0]['title'] ?? 'Blog UKMI Polmed',
 		'description' => $posts[0]['summary'] ?? $metaDesc,
-		'image' => !empty($posts[0]['image']) ? $posts[0]['image'] : ($baseUrl . '/logo-ukmi.png'),
+		'image' => $metaImage,
 		'datePublished' => $posts[0]['created_at'] ?? '',
 		'dateModified' => $posts[0]['updated_at'] ?? $posts[0]['created_at'] ?? '',
 		'author' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'url' => 'https://ukmipolmed.xo.je/'],
@@ -471,7 +750,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 		<h1>Blog UKMI Polmed – Catatan Kegiatan & Tulisan Terbaru</h1>
 		<p class="lead">Baca berita, catatan kegiatan, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan.</p>
 		<?php if (empty($posts)): ?>
-			<p class="lead">Belum ada postingan.</p>
+			<p class="lead">Belum ada postingan. Salah URL. Atau mungkin telah dihapus.</p>
 		<?php elseif ($filterSlug !== '' && count($posts) === 1): ?>
 			<div class="article">
 				<h2><?php echo e($posts[0]['title']); ?></h2>
