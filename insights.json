@@ -1,6 +1,23 @@
 {
-    "total": 0,
-    "events": [],
-    "history": [],
-    "updated_at": "2026-02-21T12:19:22+01:00"
+    "total": 44,
+    "events": {
+        "blog_view_ketua-umum-terpilih-ukmi-polmed": 43,
+        "home_view": 1
+    },
+    "history": {
+        "2026-02-21": {
+            "total": 38,
+            "events": {
+                "blog_view_ketua-umum-terpilih-ukmi-polmed": 38
+            }
+        },
+        "2026-02-22": {
+            "total": 6,
+            "events": {
+                "blog_view_ketua-umum-terpilih-ukmi-polmed": 5,
+                "home_view": 1
+            }
+        }
+    },
+    "updated_at": "2026-02-22T04:25:12+01:00"
 }
