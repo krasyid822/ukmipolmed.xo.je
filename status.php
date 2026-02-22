@@ -169,8 +169,37 @@ function buildSummary(array $insights, string $todayKey, string $storeFile, floa
 		'size_mb' => file_exists($dataJsonPath) ? round(filesize($dataJsonPath) / (1024*1024), 2) : 0,
 	];
 
+	// comments storage usage (limit 5 MB)
+	$commentsInfo = [
+		'used_bytes' => 0,
+		'used_mb' => 0,
+		'limit_bytes' => 5 * 1024 * 1024,
+		'limit_mb' => round((5 * 1024 * 1024) / (1024*1024), 2),
+		'remaining_bytes' => 5 * 1024 * 1024,
+		'remaining_mb' => round((5 * 1024 * 1024) / (1024*1024), 2),
+	];
+	if (is_readable($dataJsonPath)) {
+		$cfg = json_decode((string) @file_get_contents($dataJsonPath), true);
+		if (is_array($cfg) && !empty($cfg['posts']) && is_array($cfg['posts'])) {
+			$all = [];
+			foreach ($cfg['posts'] as $p) {
+				$all[] = $p['comments'] ?? [];
+			}
+			$enc = json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($enc !== false) {
+				$used = strlen($enc);
+				$commentsInfo['used_bytes'] = $used;
+				$commentsInfo['used_mb'] = round($used / (1024*1024), 3);
+				$commentsInfo['remaining_bytes'] = max(0, $commentsInfo['limit_bytes'] - $used);
+				$commentsInfo['remaining_mb'] = round($commentsInfo['remaining_bytes'] / (1024*1024), 3);
+				$commentsInfo['percent_used'] = round(($used / $commentsInfo['limit_bytes']) * 100, 2);
+			}
+		}
+	}
+
 	$technical['uploads'] = $uploadsInfo;
 	$technical['data_json'] = $dataJsonInfo;
+	$technical['comments_storage'] = $commentsInfo;
 
 	$orgSpecific = [
 		'dokumentasi_clicks' => sumPrefixes($insights['events'], ['doc_']),
@@ -432,6 +461,7 @@ if ($view === 'ui') {
 				['.uploads size', fmtSize(data.technical?.uploads?.size_bytes)],
 				['data.json exists', data.technical?.data_json?.exists ? 'Ada' : 'Tidak'],
 				['data.json size', fmtSize(data.technical?.data_json?.size_bytes)],
+				['Komentar terpakai', fmtSize(data.technical?.comments_storage?.used_bytes) + ' / ' + (data.technical?.comments_storage?.limit_mb ?? '-') + ' MB'],
 				['robots.txt', data.technical?.robots_txt ? 'Ada' : 'Tidak'],
 				['sitemap.xml', data.technical?.sitemap_xml ? 'Ada' : 'Tidak'],
 				['HTTPS', data.technical?.https ? 'Aktif' : 'Belum'],

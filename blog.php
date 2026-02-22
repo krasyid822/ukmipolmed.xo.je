@@ -423,6 +423,323 @@ if ($filterSlug !== '') {
     $posts = array_values(array_filter($posts, fn($p) => ($p['slug'] ?? '') === $filterSlug));
 }
 
+// ---- Comments: allow posting comments to data.json (best-effort)
+// Global comments storage limit (5 MB)
+const COMMENTS_MAX_BYTES = 5 * 1024 * 1024;
+
+function get_comments_storage_info(): array
+{
+	$cfgPath = __DIR__ . '/data.json';
+	$used = 0;
+	if (is_readable($cfgPath)) {
+		$data = json_decode((string) @file_get_contents($cfgPath), true);
+		if (is_array($data) && !empty($data['posts']) && is_array($data['posts'])) {
+			$all = [];
+			foreach ($data['posts'] as $p) {
+				$all[] = $p['comments'] ?? [];
+			}
+			$enc = json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($enc !== false) $used = strlen($enc);
+		}
+	}
+	$limit = COMMENTS_MAX_BYTES;
+	return [
+		'used_bytes' => $used,
+		'limit_bytes' => $limit,
+		'used_mb' => round($used / (1024*1024), 3),
+		'remaining_bytes' => max(0, $limit - $used),
+		'remaining_mb' => round(max(0, $limit - $used) / (1024*1024), 3),
+		'percent_used' => $limit > 0 ? round(($used / $limit) * 100, 2) : 0,
+	];
+}
+function save_comment(string $slug, string $name, string $body, ?string $parentId = null, ?string $clientToken = null): array
+{
+	$cfgPath = __DIR__ . '/data.json';
+	$name = trim((string) $name);
+	$body = trim((string) $body);
+	if ($slug === '' || $name === '' || $body === '') {
+		return ['ok' => false, 'error' => 'Nama, komentar, dan slug diperlukan.'];
+	}
+
+	$data = [];
+	if (is_readable($cfgPath)) {
+		$tmp = json_decode((string) @file_get_contents($cfgPath), true);
+		if (is_array($tmp)) $data = $tmp;
+	}
+	if (!is_array($data)) $data = [];
+	if (empty($data['posts']) || !is_array($data['posts'])) $data['posts'] = [];
+
+	$found = false;
+	foreach ($data['posts'] as &$p) {
+		if (isset($p['slug']) && (string) $p['slug'] === $slug) {
+			if (empty($p['comments']) || !is_array($p['comments'])) $p['comments'] = [];
+			// generate id for the new comment
+			$id = uniqid('', true);
+			$new = [
+				'id' => $id,
+				'name' => $name,
+				'body' => $body,
+				'created_at' => date('c'),
+				'replies' => [],
+				'client_token' => $clientToken ?? null,
+			];
+
+			// enforce global comments storage limit
+			$cfgAll = $data; // current full data
+			// compute current comments usage
+			$currentComments = [];
+			if (!empty($cfgAll['posts']) && is_array($cfgAll['posts'])) {
+				foreach ($cfgAll['posts'] as $pp) {
+					$currentComments[] = $pp['comments'] ?? [];
+				}
+			}
+			$curEnc = json_encode($currentComments, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			$curBytes = $curEnc === false ? 0 : strlen($curEnc);
+			$newBytes = strlen(json_encode($new, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+			if ($curBytes + $newBytes > COMMENTS_MAX_BYTES) {
+				return ['ok' => false, 'error' => 'Batas penyimpanan komentar tercapai. Hapus beberapa komentar atau hubungi admin.'];
+			}
+
+			if ($parentId !== null && $parentId !== '') {
+				// try to find parent comment by id and append to its replies
+				$appended = false;
+				foreach ($p['comments'] as &$c) {
+					if (isset($c['id']) && (string) $c['id'] === $parentId) {
+						if (empty($c['replies']) || !is_array($c['replies'])) $c['replies'] = [];
+						$c['replies'][] = $new;
+						$appended = true;
+						break;
+					}
+					// also check one level deep replies
+					if (!empty($c['replies']) && is_array($c['replies'])) {
+						foreach ($c['replies'] as &$r) {
+							if (isset($r['id']) && (string) $r['id'] === $parentId) {
+								if (empty($r['replies']) || !is_array($r['replies'])) $r['replies'] = [];
+								$r['replies'][] = $new;
+								$appended = true;
+								break 2;
+							}
+						}
+						unset($r);
+					}
+				}
+				unset($c);
+				if (!$appended) {
+					return ['ok' => false, 'error' => 'Parent comment tidak ditemukan'];
+				}
+			} else {
+				// top-level comment
+				$p['comments'][] = $new;
+			}
+
+			$found = true;
+			break;
+		}
+	}
+	unset($p);
+	if (!$found) return ['ok' => false, 'error' => 'Postingan tidak ditemukan'];
+
+	$payload = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	if ($payload === false) return ['ok' => false, 'error' => 'Gagal serialisasi data'];
+
+	$fh = @fopen($cfgPath, 'c+');
+	if (!$fh) return ['ok' => false, 'error' => 'Gagal membuka data.json untuk ditulis'];
+	try {
+		if (!flock($fh, LOCK_EX)) return ['ok' => false, 'error' => 'Gagal mengunci file'];
+		ftruncate($fh, 0);
+		fwrite($fh, $payload);
+		fflush($fh);
+		flock($fh, LOCK_UN);
+	} finally {
+		fclose($fh);
+	}
+	return ['ok' => true, 'id' => $id ?? null];
+}
+
+/**
+ * Ensure existing comments have persistent IDs so replies can target them.
+ * Returns true if file was modified.
+ */
+function normalize_comment_ids(string $slug): bool
+{
+	$cfgPath = __DIR__ . '/data.json';
+	if (!is_readable($cfgPath)) return false;
+	$data = json_decode((string) @file_get_contents($cfgPath), true);
+	if (!is_array($data) || empty($data['posts']) || !is_array($data['posts'])) return false;
+
+	$modified = false;
+	foreach ($data['posts'] as &$p) {
+		if (!isset($p['slug']) || (string) $p['slug'] !== $slug) continue;
+		if (empty($p['comments']) || !is_array($p['comments'])) break;
+
+		$walk = function (&$list) use (&$walk, &$modified) {
+			foreach ($list as &$c) {
+				if (empty($c['id'])) {
+					$c['id'] = uniqid('', true);
+					$modified = true;
+				}
+				if (empty($c['replies']) || !is_array($c['replies'])) {
+					$c['replies'] = [];
+				} else {
+					$walk($c['replies']);
+				}
+			}
+			unset($c);
+		};
+
+		$walk($p['comments']);
+		break;
+	}
+	unset($p);
+
+	if ($modified) {
+		$payload = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		if ($payload === false) return false;
+		$fh = @fopen($cfgPath, 'c+');
+		if (!$fh) return false;
+		try {
+			if (!flock($fh, LOCK_EX)) return false;
+			ftruncate($fh, 0);
+			fwrite($fh, $payload);
+			fflush($fh);
+			flock($fh, LOCK_UN);
+		} finally {
+			fclose($fh);
+		}
+	}
+
+	return $modified;
+}
+
+/**
+ * Remove a comment (and its subtree) by id for a given post slug.
+ * Returns ['ok'=>true] on success or ['ok'=>false,'error'=>msg].
+ */
+function delete_comment(string $slug, string $commentId): array
+{
+	$cfgPath = __DIR__ . '/data.json';
+	if (!is_readable($cfgPath)) return ['ok' => false, 'error' => 'data.json tidak dapat dibaca'];
+	$data = json_decode((string) @file_get_contents($cfgPath), true);
+	if (!is_array($data) || empty($data['posts']) || !is_array($data['posts'])) return ['ok' => false, 'error' => 'Data posting tidak ditemukan'];
+
+	$found = false;
+	foreach ($data['posts'] as &$p) {
+		if (!isset($p['slug']) || (string) $p['slug'] !== $slug) continue;
+		if (empty($p['comments']) || !is_array($p['comments'])) break;
+
+		$remove = function (&$list, $id) use (&$remove) {
+			foreach ($list as $idx => &$c) {
+				if (isset($c['id']) && (string) $c['id'] === $id) {
+					array_splice($list, $idx, 1);
+					return true;
+				}
+				if (!empty($c['replies']) && is_array($c['replies'])) {
+					if ($remove($c['replies'], $id)) {
+						return true;
+					}
+				}
+			}
+			unset($c);
+			return false;
+		};
+
+		if ($remove($p['comments'], $commentId)) {
+			$found = true;
+		}
+		break;
+	}
+	unset($p);
+
+	if (!$found) return ['ok' => false, 'error' => 'Komentar tidak ditemukan'];
+
+	$payload = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	if ($payload === false) return ['ok' => false, 'error' => 'Gagal serialisasi data'];
+
+	$fh = @fopen($cfgPath, 'c+');
+	if (!$fh) return ['ok' => false, 'error' => 'Gagal membuka data.json untuk ditulis'];
+	try {
+		if (!flock($fh, LOCK_EX)) return ['ok' => false, 'error' => 'Gagal mengunci file'];
+		ftruncate($fh, 0);
+		fwrite($fh, $payload);
+		fflush($fh);
+		flock($fh, LOCK_UN);
+	} finally {
+		fclose($fh);
+	}
+
+	return ['ok' => true];
+}
+
+// Process comment submission (POST)
+$comment_error = null;
+$comment_success = null;
+
+// Handle delete comment action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_comment') {
+	$dslug = trim((string) ($_POST['comment_post_slug'] ?? ''));
+	$cid = trim((string) ($_POST['comment_id'] ?? ''));
+	if ($dslug !== '' && $cid !== '') {
+			// only allow deletion if this comment id is in user's pending_comments cookie (session-scoped)
+			$allowed = false;
+			if (!empty($_COOKIE['pending_comments'])) {
+				$cur = array_filter(array_map('trim', explode(',', (string) $_COOKIE['pending_comments'])));
+				if (in_array($cid, $cur, true)) $allowed = true;
+			}
+			if (!$allowed) {
+				$comment_error = 'Anda tidak berhak menghapus komentar ini';
+			} else {
+				$del = delete_comment($dslug, $cid);
+		if ($del['ok']) {
+					// remove id from pending_comments cookie
+					if (!empty($_COOKIE['pending_comments'])) {
+						$cur = array_filter(array_map('trim', explode(',', (string) $_COOKIE['pending_comments'])));
+						$cur = array_values(array_filter($cur, fn($x) => $x !== $cid));
+						setcookie('pending_comments', implode(',', $cur), 0, '/');
+					}
+			$loc = $_SERVER['REQUEST_URI'] ?: ('/blog.php?slug=' . urlencode($dslug));
+			header('Location: ' . $loc);
+			exit;
+		} else {
+			$comment_error = $del['error'] ?? 'Gagal menghapus komentar';
+		}
+			}
+	} else {
+		$comment_error = 'Slug atau id komentar tidak lengkap';
+	}
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_post_slug'])) {
+	$cslug = trim((string) ($_POST['comment_post_slug'] ?? ''));
+	$cname = trim((string) ($_POST['comment_name'] ?? ''));
+	$cbody = trim((string) ($_POST['comment_body'] ?? ''));
+	$cparent = trim((string) ($_POST['comment_parent_id'] ?? ''));
+		$client_token = trim((string) ($_POST['client_token'] ?? ''));
+	// Ensure existing comments have IDs so replies can match parents
+	if ($cslug !== '') {
+		@normalize_comment_ids($cslug);
+	}
+		$res = save_comment($cslug, $cname, $cbody, $cparent !== '' ? $cparent : null, $client_token ?? null);
+	if ($res['ok']) {
+		// Redirect to avoid duplicate submits
+			// store newly created comment id in a session cookie so the creator can delete it
+			$newId = $res['id'] ?? '';
+			if ($newId !== '') {
+				$cur = [];
+				if (!empty($_COOKIE['pending_comments'])) {
+					$cur = array_filter(array_map('trim', explode(',', (string) $_COOKIE['pending_comments'])));
+				}
+				if (!in_array($newId, $cur, true)) $cur[] = $newId;
+				setcookie('pending_comments', implode(',', $cur), 0, '/');
+			}
+
+			$loc = $_SERVER['REQUEST_URI'] ?: ('/blog.php?slug=' . urlencode($cslug));
+			header('Location: ' . $loc);
+			exit;
+	} else {
+		$comment_error = $res['error'] ?? 'Gagal menyimpan komentar';
+	}
+}
+
 $baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
 $scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
 $baseUrl = $scheme . '://' . $baseHost;
@@ -612,6 +929,24 @@ try {
 				border: none;
 			}
 
+			/* Comment UI tweaks */
+			.comment-list, .comment-replies { list-style: none; padding: 0; margin: 0 0 14px; }
+			.comment-list li { text-align: left; margin-bottom:10px; }
+			.comment-list .reply-form { margin-top:8px; border-left:2px solid rgba(255,255,255,0.03); padding-left:10px; }
+			.comment-list .reply-form .btn { min-height: auto; padding: 8px 12px; font-size: 13px; border-radius: 8px; }
+			.comment-list .reply-btn { font-size:13px; color:var(--accent); }
+			.delete-comment-form button { display: none; }
+			/* Make delete button look like the reply link when visible */
+			.delete-btn {
+				background: none;
+				border: none;
+				color: var(--accent);
+				font-size: 13px;
+				padding: 0 6px;
+				cursor: pointer;
+			}
+			.delete-btn:hover { text-decoration: underline; }
+
 			.btn.ghost { background: rgba(255, 255, 255, 0.07); }
 			.btn:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(0,0,0,0.35); }
 
@@ -759,6 +1094,91 @@ try {
 					<div style="margin:10px 0 14px;"><img src="<?php echo e($posts[0]['image']); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; border-radius:12px; border:1px solid var(--stroke);"></div>
 				<?php endif; ?>
 				<div class="body"><?php echo apply_embeds($posts[0]['body_html'], $posts[0]['embeds'] ?? [], !empty($posts[0]['embed_enabled'])); ?></div>
+
+			</div>
+
+			<?php
+			// Separate comments UI into its own card below the article
+			$postSlug = $posts[0]['slug'] ?? '';
+			$comments = [];
+			if (is_readable($configPath)) {
+				$cfg = json_decode((string) @file_get_contents($configPath), true);
+				if (is_array($cfg) && !empty($cfg['posts']) && is_array($cfg['posts'])) {
+					foreach ($cfg['posts'] as $pp) {
+						if (isset($pp['slug']) && (string) $pp['slug'] === $postSlug) {
+							if (!empty($pp['comments']) && is_array($pp['comments'])) $comments = $pp['comments'];
+							break;
+						}
+					}
+				}
+			}
+			?>
+			<div class="card" style="margin-top:18px;">
+				<h3>Komentar (<?php echo count($comments); ?>)</h3>
+				<?php if (!empty($comment_error)): ?><div style="color:#f87171;"><?php echo e($comment_error); ?></div><?php endif; ?>
+				<?php if (!empty($comments)): ?>
+					<?php
+					// show remaining comment storage in this card
+					$cs = get_comments_storage_info();
+					?>
+					<div style="margin-bottom:8px;color:var(--muted);font-size:13px;">Sisa penyimpanan komentar: <?php echo htmlspecialchars($cs['remaining_mb'] . ' MB', ENT_QUOTES, 'UTF-8'); ?> (<?php echo htmlspecialchars($cs['percent_used'] . ' % terpakai', ENT_QUOTES, 'UTF-8'); ?>)</div>
+					<?php
+					function render_comment_tree($c, $postSlug) {
+						?>
+						<li id="comment-<?php echo htmlspecialchars($c['id'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="margin-bottom:10px;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);">
+							<strong><?php echo htmlspecialchars($c['name'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
+							<div style="font-size:13px;color:var(--muted);margin-bottom:6px;">
+								<?php echo htmlspecialchars($c['created_at'] ?? '-', ENT_QUOTES, 'UTF-8'); ?>
+								<span style="margin-left:10px;">
+									<a href="#" class="reply-btn" data-parent-id="<?php echo htmlspecialchars($c['id'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="font-size:13px;color:var(--accent);">Balas</a>
+								</span>
+								<span style="margin-left:8px;">
+									<form method="post" class="delete-comment-form" style="display:inline;">
+										<input type="hidden" name="action" value="delete_comment">
+										<input type="hidden" name="comment_post_slug" value="<?php echo htmlspecialchars($postSlug, ENT_QUOTES, 'UTF-8'); ?>">
+										<input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($c['id'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+										<button type="submit" class="delete-btn" onclick="return confirm('Hapus komentar ini?')"><u>Hapus</u></button>
+									</form>
+								</span>
+							</div>
+							<div style="white-space:pre-line;margin-bottom:8px;">
+								<?php echo htmlspecialchars(trim((string) ($c['body'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>
+							</div>
+							<div class="reply-form" data-parent="<?php echo htmlspecialchars($c['id'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="display:none;">
+								<form method="post">
+									<input type="hidden" name="comment_post_slug" value="<?php echo htmlspecialchars($postSlug, ENT_QUOTES, 'UTF-8'); ?>">
+									<input type="hidden" name="comment_parent_id" value="<?php echo htmlspecialchars($c['id'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+									<div style="margin-bottom:6px;"><input type="text" name="comment_name" required placeholder="Nama" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);"></div>
+									<div style="margin-bottom:6px;"><textarea name="comment_body" rows="3" required placeholder="Balasan Anda" style="width:100%;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);"></textarea></div>
+									<div><button type="submit" class="btn primary">Kirim Balasan</button></div>
+								</form>
+							</div>
+							<?php if (!empty($c['replies']) && is_array($c['replies'])): ?>
+								<ul class="comment-replies" style="padding-left:12px;margin-top:10px;">
+									<?php foreach ($c['replies'] as $r): ?>
+										<?php render_comment_tree($r, $postSlug); ?>
+									<?php endforeach; ?>
+								</ul>
+							<?php endif; ?>
+						</li>
+						<?php
+					}
+					?>
+					<ul class="comment-list" style="padding:0;margin:8px 0 14px;">
+						<?php foreach ($comments as $c): ?>
+							<?php render_comment_tree($c, $postSlug); ?>
+						<?php endforeach; ?>
+					</ul>
+				<?php else: ?>
+					<p style="color:var(--muted);">Belum ada komentar. Jadilah yang pertama!</p>
+				<?php endif; ?>
+
+				<form method="post" style="margin-top:12px;">
+					<input type="hidden" name="comment_post_slug" value="<?php echo e($postSlug); ?>">
+					<div style="margin-bottom:8px;"><label>Nama</label><br><input type="text" name="comment_name" required style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);"></div>
+					<div style="margin-bottom:8px;"><label>Komentar</label><br><textarea name="comment_body" rows="4" required style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);"></textarea></div>
+					<div><button type="submit" class="btn primary">Kirim Komentar</button></div>
+				</form>
 			</div>
 		<?php else: ?>
 			<div class="grid">
@@ -789,6 +1209,40 @@ try {
 			trackBlogView();
 			loadBlogViews();
 		});
+
+		// Reply form toggles
+		(function(){
+			document.addEventListener('click', function(e){
+				const btn = e.target.closest && e.target.closest('.reply-btn');
+				if (!btn) return;
+				e.preventDefault();
+				const pid = btn.getAttribute('data-parent-id');
+				if (!pid) return;
+				const form = document.querySelector('.reply-form[data-parent="' + pid + '"]');
+				if (!form) return;
+				form.style.display = form.style.display === 'none' ? 'block' : 'none';
+			});
+		})();
+
+		// Show delete buttons only for pending comment IDs stored in session cookie
+		(function(){
+			function parsePending() {
+				const m = document.cookie.match(/(?:^|; )pending_comments=([^;]+)/);
+				if (!m) return [];
+				try { return decodeURIComponent(m[1]).split(',').map(s => s.trim()).filter(Boolean); } catch (e) { return []; }
+			}
+			const pend = parsePending();
+			if (pend.length === 0) return;
+			document.querySelectorAll('form.delete-comment-form').forEach(f => {
+				const idInput = f.querySelector('input[name="comment_id"]');
+				if (!idInput) return;
+				const id = (idInput.value || '').trim();
+				if (id && pend.indexOf(id) !== -1) {
+					const btn = f.querySelector('button');
+					if (btn) btn.style.display = 'inline-flex';
+				}
+			});
+		})();
 
 		function sendInsight(name) {
 			if (!name) return;
