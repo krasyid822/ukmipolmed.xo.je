@@ -42,3 +42,4 @@ perbarui kebijakan: boleh hapus walau belum 10MB
  ..masukkan kode embed disini..
 </div>
 ```
+admin diizinkan membersihkan komentar

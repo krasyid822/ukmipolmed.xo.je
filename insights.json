@@ -1,8 +1,9 @@
 {
-    "total": 44,
+    "total": 91,
     "events": {
-        "blog_view_ketua-umum-terpilih-ukmi-polmed": 43,
-        "home_view": 1
+        "blog_view_ketua-umum-terpilih-ukmi-polmed": 85,
+        "home_view": 1,
+        "blog_view_coming-soon-oprec-ukmi-2026": 5
     },
     "history": {
         "2026-02-21": {
@@ -12,12 +13,13 @@
             }
         },
         "2026-02-22": {
-            "total": 6,
+            "total": 53,
             "events": {
-                "blog_view_ketua-umum-terpilih-ukmi-polmed": 5,
-                "home_view": 1
+                "blog_view_ketua-umum-terpilih-ukmi-polmed": 47,
+                "home_view": 1,
+                "blog_view_coming-soon-oprec-ukmi-2026": 5
             }
         }
     },
-    "updated_at": "2026-02-22T04:25:12+01:00"
+    "updated_at": "2026-02-22T07:17:03+01:00"
 }
