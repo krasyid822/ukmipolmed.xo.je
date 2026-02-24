@@ -159,7 +159,7 @@ if (empty($docs)) {
 	$docs = $docDefaults;
 }
 
-$maxPosts = 15; // Batasi jumlah postingan blog
+$maxPosts = 100; // Batasi jumlah postingan blog (naik dari 15 ke 100)
 $postDefaults = is_array($defaults['posts']) ? $defaults['posts'] : [];
 $posts = [];
 if (!empty($config['posts']) && is_array($config['posts'])) {
@@ -201,6 +201,32 @@ if (empty($posts)) {
 	$posts = $postDefaults;
 }
 $posts = array_slice($posts, 0, $maxPosts);
+
+// Migrasi: gabungkan `posts_archive` ke `posts` sebagai entri dengan flag `archived`.
+$postsArchive = is_array($config['posts_archive'] ?? null) ? $config['posts_archive'] : [];
+if (!empty($postsArchive)) {
+	// pastikan posts adalah array reindexed
+	$posts = array_values($posts);
+	foreach ($postsArchive as $ap) {
+		if (!is_array($ap)) continue;
+		$ap['archived'] = true;
+		if (empty($ap['slug'])) {
+			$ap['slug'] = makeSlug($ap['title'] ?? '');
+		}
+		$exists = false;
+		foreach ($posts as $p) {
+			if (!empty($p['slug']) && $p['slug'] === ($ap['slug'] ?? '')) { $exists = true; break; }
+		}
+		if (!$exists) $posts[] = $ap;
+	}
+	// simpan hasil migrasi ke config dan hapus key lama
+	$config['posts'] = $posts;
+	unset($config['posts_archive']);
+	$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+	if ($encoded !== false) {
+		@file_put_contents($configPath, $encoded);
+	}
+}
 
 $blogEditingIdx = -1;
 $blogDraft = [
@@ -783,6 +809,43 @@ if ($loggedIn && isset($_POST['delete_blog_idx'])) {
 	}
 }
 
+// Arsipkan postingan (tandai archived = true)
+if ($loggedIn && isset($_POST['archive_blog_idx'])) {
+	$aIdx = (int) $_POST['archive_blog_idx'];
+	if (isset($posts[$aIdx])) {
+		$posts[$aIdx]['archived'] = true;
+		$posts[$aIdx]['archived_at'] = date('c');
+		$config['posts'] = $posts;
+		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+			$error = 'Gagal mengarsipkan postingan.';
+		} else {
+			$message = 'Postingan diarsipkan.';
+			appendLog($config, $configPath, 'blog-archived', $maxLogs, $archiveLimitDays);
+			bumpInsightEvent('blog_admin_update', $insightPath, $insightMaxBytes);
+		}
+	}
+}
+
+// Pulihkan postingan dari arsip (hapus flag archived)
+if ($loggedIn && isset($_POST['restore_post_idx'])) {
+	$rIdx = (int) $_POST['restore_post_idx'];
+	if (isset($posts[$rIdx]) && !empty($posts[$rIdx]['archived'])) {
+		unset($posts[$rIdx]['archived']);
+		unset($posts[$rIdx]['archived_at']);
+		$posts = array_values($posts);
+		$config['posts'] = $posts;
+		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+		if ($encoded === false || file_put_contents($configPath, $encoded) === false) {
+			$error = 'Gagal memulihkan postingan dari arsip.';
+		} else {
+			$message = 'Postingan dipulihkan dari arsip.';
+			appendLog($config, $configPath, 'blog-restored', $maxLogs, $archiveLimitDays);
+			bumpInsightEvent('blog_admin_update', $insightPath, $insightMaxBytes);
+		}
+	}
+}
+
 // Simpan blog baru atau edit
 if ($loggedIn && isset($_POST['blog_save'])) {
 	$title = trim((string) ($_POST['blog_title'] ?? ''));
@@ -804,9 +867,10 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 	$created = ($idx >= 0 && isset($posts[$idx])) ? ($posts[$idx]['created_at'] ?? $now) : $now;
 	$slug = makeSlug($slugInput !== '' ? $slugInput : $title);
 
-	$exceedsLimit = ($idx < 0 && count($posts) >= $maxPosts);
+	$totalCountDuringSave = count($posts);
+	$exceedsLimit = ($idx < 0 && $totalCountDuringSave >= $maxPosts);
 	if ($exceedsLimit) {
-		$error = 'Maksimal ' . $maxPosts . ' postingan. Hapus salah satu sebelum menambah baru.';
+		$error = 'Penyimpanan postingan penuh (maks ' . $maxPosts . '). Hapus posting lama sebelum menambah baru.';
 		$blogDraft = [
 			'title' => $title,
 			'slug' => $slugInput,
@@ -872,6 +936,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 			} else {
 				array_unshift($posts, $newPost);
 				$posts = array_slice($posts, 0, $maxPosts);
+
 				$blogEditingIdx = 0;
 			}
 
@@ -1635,8 +1700,8 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 				</div>
 				<div class="section" style="margin-top: 10px;">
 					<h2 style="margin:0 0 8px; font-size:16px;">Blog</h2>
-					<?php $postCount = count($posts); $blogLimitReached = ($postCount >= $maxPosts && $blogEditingIdx === -1); ?>
-					<p class="muted-text" style="margin:0 0 10px; <?php echo $blogLimitReached ? 'color:#f87171;' : ''; ?>">Maksimal <?php echo $maxPosts; ?> postingan. Saat ini: <?php echo $postCount; ?><?php echo $blogLimitReached ? ' · Hapus satu postingan dulu sebelum menambah baru.' : ''; ?></p>
+					<?php $totalCount = count($posts); $activeCount = count(array_filter($posts, function($p){ return empty($p['archived']); })); $blogLimitReached = ($totalCount >= $maxPosts && $blogEditingIdx === -1); ?>
+					<p class="muted-text" style="margin:0 0 10px; <?php echo $blogLimitReached ? 'color:#f87171;' : ''; ?>">Maksimal <?php echo $maxPosts; ?> postingan tersimpan. Saat ini tersimpan: <?php echo $totalCount; ?> (aktif: <?php echo $activeCount; ?>)<?php echo $blogLimitReached ? ' · Hapus posting lama sebelum menambah baru.' : ''; ?></p>
 					<form method="post" class="stack-sm" id="blog-form" data-autosave-key="blog">
 						<input type="hidden" name="blog_edit_idx" id="blog_edit_idx" value="<?php echo (int) $blogEditingIdx; ?>">
 						<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
@@ -1710,6 +1775,7 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 						<?php else: ?>
 							<ul class="logs" style="margin-top:6px; max-height:260px; overflow:auto;">
 								<?php foreach ($posts as $pIdx => $post): ?>
+									<?php if (!empty($post['archived'])) continue; ?>
 									<li style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
 										<div>
 											<strong><?php echo htmlspecialchars($post['title'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
@@ -1724,6 +1790,18 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 												<input type="hidden" name="blog_edit_idx" value="<?php echo $pIdx; ?>">
 												<button type="submit" style="min-width:80px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Edit</button>
 											</form>
+											<form method="post" style="margin:0;">
+												<?php if (!empty($post['archived'])): ?>
+													<form method="post" style="margin:0;">
+														<input type="hidden" name="restore_post_idx" value="<?php echo $pIdx; ?>">
+														<button type="submit" style="min-width:90px; background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: #0b1727; box-shadow: 0 10px 30px rgba(14,165,233,0.35); border: none;">Pulihkan</button>
+													</form>
+												<?php else: ?>
+													<form method="post" style="margin:0;">
+														<input type="hidden" name="archive_blog_idx" value="<?php echo $pIdx; ?>">
+														<button type="submit" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Arsipkan</button>
+													</form>
+												<?php endif; ?>
 											<form method="post" style="margin:0;" onsubmit="return confirm('Hapus postingan ini?');">
 												<input type="hidden" name="delete_blog_idx" value="<?php echo $pIdx; ?>">
 												<button type="submit" style="min-width:90px; background: linear-gradient(135deg, #f87171, #ef4444); color: #0b1727; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35); border: none;">Hapus</button>
@@ -1734,7 +1812,39 @@ if ($loggedIn && isset($_POST['blog_save'])) {
 							</ul>
 						<?php endif; ?>
 					</div>
-				</div>
+
+						<div class="admin-box" style="margin-top:10px;">
+							<h3 style="margin:0 0 8px; font-size:15px;">Arsip postingan</h3>
+							<?php
+							$archivedEntries = [];
+							foreach ($posts as $pi => $pp) {
+								if (!empty($pp['archived'])) {
+									$archivedEntries[] = ['idx' => $pi, 'post' => $pp];
+								}
+							}
+							?>
+							<?php if (empty($archivedEntries)): ?>
+								<p class="muted-text" style="margin:0;">Belum ada arsip postingan.</p>
+							<?php else: ?>
+								<ul class="logs" style="margin-top:6px; max-height:220px; overflow:auto;">
+									<?php foreach ($archivedEntries as $entry): $idx = $entry['idx']; $item = $entry['post']; ?>
+										<li style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+											<div>
+												<strong><?php echo htmlspecialchars($item['title'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></strong>
+												<?php if (!empty($item['slug'])): ?><br><span style="color: var(--muted); font-size:12px;">Slug: <?php echo htmlspecialchars($item['slug'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+												<?php if (!empty($item['archived_at'])): ?><br><span style="font-size:12px; color: var(--muted);">Diarsipkan: <?php echo htmlspecialchars($item['archived_at'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+											</div>
+											<form method="post" style="margin:0;">
+												<input type="hidden" name="restore_post_idx" value="<?php echo $idx; ?>">
+												<button type="submit" style="min-width:110px; background: linear-gradient(135deg, #38bdf8, #ef4444); color: #0b1727; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Pulihkan</button>
+											</form>
+										</li>
+									<?php endforeach; ?>
+								</ul>
+								<p class="muted-text" style="margin:6px 0 0;">Menampilkan <?php echo count($archivedEntries); ?> arsip. Arsip ditandai pada daftar posting.</p>
+							<?php endif; ?>
+						</div>
+			</div>
 		<?php else: ?>
 			<h1>Login Admin</h1>
 			<p>Masukkan user dan key untuk mengakses halaman admin.</p>

@@ -50,3 +50,5 @@ Berkas di folder .uploads TIDAK langsung dihapus. Fungsi cleanup_uploads() hanya
 Insight/metrics (insights.json) dan counter view tidak dibersihkan otomatis — tetap ada kecuali dihapus eksplisit.
 Jika posting dipindah ke arsip (bukan benar‑benar dihapus), komentarnya tetap ada di data.json/arsip.
 Bila diinginkan: bisa ditambahkan penghapusan langsung untuk file .uploads yang direferensikan oleh post, pembersihan insight terkait, atau opsi soft‑delete/arsipkan. Mau ditambahkan salah satu?
+
+tambahkan mesin pencari di blog.php, 
