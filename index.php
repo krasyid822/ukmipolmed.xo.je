@@ -136,15 +136,15 @@ function e($value)
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <link rel="alternate" hreflang="id" href="https://ukmipolmed.xo.je/">
     <link rel="alternate" hreflang="x-default" href="https://ukmipolmed.xo.je/">
-    <title>UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?> | Daftar, Agenda & Dokumentasi Kegiatan</title>
-    <meta name="description" content="Gabung UKMI Polmed <?php echo e($divisionYearLabel); ?>: open recruitment mentoring, tilawah, syiar media, keputrian & ekonomi. Daftar sekarang, cek agenda terbaru, dan lihat dokumentasi kegiatan UKM Islami Politeknik Negeri Medan.">
+    <title>UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?></title>
+    <meta name="description" content="Gabung UKMI Polmed <?php echo e($divisionYearLabel); ?> — mentoring, tilawah, media, keputrian & ekonomi. Daftar, cek agenda, dan lihat dokumentasi.">
     <meta name="keywords" content="UKMI Polmed, open recruitment UKMI Polmed <?php echo e($divisionYearLabel); ?>, organisasi Islam Polmed, mentoring kampus Polmed, UKM Islami Politeknik Negeri Medan, pendaftaran UKMI, kegiatan dakwah kampus Medan">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <link rel="canonical" href="https://ukmipolmed.xo.je/">
     <meta property="og:locale" content="id_ID">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?> | Daftar Sekarang">
-    <meta property="og:description" content="<?php echo e($divisionCount); ?> divisi menanti kamu: mentoring, tilawah, syiar media, keputrian & ekonomi. Cek agenda, lihat dokumentasi, dan langsung daftar UKMI Polmed.">
+    <meta property="og:title" content="UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?>">
+    <meta property="og:description" content="<?php echo e($divisionCount); ?> divisi: mentoring, tilawah, media, keputrian & ekonomi. Daftar, cek agenda, dan lihat dokumentasi.">
     <meta property="og:url" content="https://ukmipolmed.xo.je/">
     <meta property="og:image" content="https://ukmipolmed.xo.je/logo-ukmi.png">
     <meta property="og:image:width" content="512">
@@ -158,8 +158,8 @@ function e($value)
     <link rel="shortcut icon" href="logo-ukmi.png">
     <meta name="theme-color" content="#0f172a">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?> | Daftar Sekarang">
-    <meta name="twitter:description" content="<?php echo e($divisionCount); ?> divisi terbuka untuk semua jurusan. Daftar UKMI Polmed <?php echo e($divisionYearLabel); ?>, cek agenda & dokumentasi kegiatan.">
+    <meta name="twitter:title" content="UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?>">
+    <meta name="twitter:description" content="Gabung UKMI Polmed <?php echo e($divisionYearLabel); ?> — mentoring, tilawah, media, keputrian & ekonomi. Daftar dan cek agenda serta dokumentasi.">
     <meta name="twitter:image" content="https://ukmipolmed.xo.je/logo-ukmi.png">
     <meta name="twitter:image:alt" content="Logo UKMI Politeknik Negeri Medan">
     <?php
@@ -752,7 +752,7 @@ function e($value)
                     <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/" data-insight="cta_dokumentasi">Lihat dokumentasi kegiatan</a>
                     <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/what-they-said/" target="_blank" rel="noopener" data-insight="cta_testimoni">Testimoni</a>
                 </div>
-                <small style="color: var(--muted);">Form utama mengarah ke Google Forms mentoring UKMI. Link cadangan tersedia di halaman testimoni.</small>
+                <!-- <small style="color: var(--muted);">Form utama mengarah ke Google Forms mentoring UKMI. Link cadangan tersedia di halaman testimoni.</small> -->
             </div>
         </section>
 
@@ -796,6 +796,7 @@ function e($value)
                 <div class="socials">
                     <a href="https://polmed.ac.id" target="_blank" rel="noopener">Politeknik Negeri Medan</a>
                     <a href="https://ldii.or.id" target="_blank" rel="noopener">LDII</a>
+                    <a href="https://masjidbaitulilmi.polmed.ac.id/" target="_blank" rel="noopener">Masjid Baitul Ilmi</a>
                     <a href="https://kemenag.go.id" target="_blank" rel="noopener">Kemenag RI</a>
                     <a href="https://nu.or.id" target="_blank" rel="noopener">NU Online</a>
                 </div>

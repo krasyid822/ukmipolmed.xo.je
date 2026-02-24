@@ -22,6 +22,13 @@ if (is_array($config) && !empty($config['posts']) && is_array($config['posts']))
 	$posts = $defaults['posts'];
 }
 
+// Hanya gunakan postingan aktif (tanpa flag archived)
+$activePosts = [];
+foreach ($posts as $p) {
+    if (empty($p['archived'])) $activePosts[] = $p;
+}
+$posts = array_values($activePosts);
+
 function e($value)
 {
 	return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -75,24 +82,35 @@ function convert_lists($text)
 function render_markdown($text)
 {
 	$text = str_replace(["\r\n", "\r"], "\n", (string) $text);
+	// Remove invisible / zero-width / BOM characters that break regex anchors
+	$text = preg_replace('/[\x{200B}\x{FEFF}\x{200C}\x{200D}\x{00A0}]/u', '', $text);
 	$text = trim($text);
 	if ($text === '') return '';
 
-	$escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
 	$codeBlocks = [];
 
-	$escaped = preg_replace_callback('/```(.*?)```/s', function ($m) use (&$codeBlocks) {
+	// Extract fenced code blocks from the raw text first so other replacements won't touch them.
+	$text = preg_replace_callback('/```\s*([a-zA-Z0-9_+-]*)\s*\n(.*?)```/s', function ($m) use (&$codeBlocks) {
+		$lang = trim($m[1] ?? '');
+		$code = $m[2] ?? '';
+		$codeEsc = htmlspecialchars($code, ENT_QUOTES, 'UTF-8');
+		$cls = $lang !== '' ? ' class="language-' . htmlspecialchars($lang, ENT_QUOTES, 'UTF-8') . '"' : '';
 		$idx = count($codeBlocks);
-		$codeBlocks[$idx] = '<pre><code>' . $m[1] . '</code></pre>';
+		$codeBlocks[$idx] = '<pre><code' . $cls . '>' . $codeEsc . '</code></pre>';
 		return "%%CODEBLOCK{$idx}%%";
-	}, $escaped);
+	}, $text);
 
+	// Escape the remaining text
+	$escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+
+	// Inline code (single backticks)
 	$escaped = preg_replace_callback('/`([^`]+)`/', function ($m) use (&$codeBlocks) {
 		$idx = count($codeBlocks);
-		$codeBlocks[$idx] = '<code>' . $m[1] . '</code>';
+		$codeBlocks[$idx] = '<code>' . htmlspecialchars($m[1], ENT_QUOTES, 'UTF-8') . '</code>';
 		return "%%CODEBLOCK{$idx}%%";
 	}, $escaped);
 
+	// Headings
 	$escaped = preg_replace('/^###### (.+)$/m', '<h6>$1</h6>', $escaped);
 	$escaped = preg_replace('/^##### (.+)$/m', '<h5>$1</h5>', $escaped);
 	$escaped = preg_replace('/^#### (.+)$/m', '<h4>$1</h4>', $escaped);
@@ -100,16 +118,20 @@ function render_markdown($text)
 	$escaped = preg_replace('/^## (.+)$/m', '<h2>$1</h2>', $escaped);
 	$escaped = preg_replace('/^# (.+)$/m', '<h1>$1</h1>', $escaped);
 
-	$escaped = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $escaped);
-	$escaped = preg_replace('/\*(.+?)\*/s', '<em>$1</em>', $escaped);
+	// Bold and emphasis (non-greedy)
+	$escaped = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $escaped);
+	$escaped = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $escaped);
 
+	// Links: allow http/https only
 	$escaped = preg_replace_callback('/\[(.+?)\]\((https?:[^)]+)\)/', function ($m) {
 		$url = htmlspecialchars($m[2], ENT_QUOTES, 'UTF-8');
 		return '<a href="' . $url . '" target="_blank" rel="noopener">' . $m[1] . '</a>';
 	}, $escaped);
 
+	// Convert lists (works with escaped text since markers are unchanged)
 	$escaped = convert_lists($escaped);
 
+	// Split into blocks and wrap paragraphs (preserve blocks that already start with tags)
 	$blocks = preg_split('/\n{2,}/', trim($escaped));
 	$blocks = array_map(function ($block) {
 		if (preg_match('/^\s*<(ul|ol|pre|h[1-6])/i', $block)) {
@@ -120,6 +142,7 @@ function render_markdown($text)
 
 	$html = implode("\n", $blocks);
 
+	// Put back code blocks and inline code placeholders
 	foreach ($codeBlocks as $idx => $codeHtml) {
 		$html = str_replace("%%CODEBLOCK{$idx}%%", $codeHtml, $html);
 	}
@@ -412,16 +435,31 @@ $posts = array_map(function ($post) use ($baseUrl) {
 	];
 }, $posts);
 
-$posts = array_slice($posts, 0, 10);
+// Keep a master list of processed posts so we can search across all posts
+$allPosts = $posts;
+
+// Query and slug from request
+$filterSlug = isset($_GET['slug']) ? trim((string) $_GET['slug']) : '';
+$query = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
+
+// Select posts to show:
+if ($filterSlug !== '') {
+	// Viewing a single post by slug (search ignored)
+	$posts = array_values(array_filter($allPosts, fn($p) => ($p['slug'] ?? '') === $filterSlug));
+} elseif ($query !== '') {
+	// Search across title, summary and raw body
+	$posts = array_values(array_filter($allPosts, function ($p) use ($query) {
+		$hay = (string) ($p['title'] ?? '') . ' ' . (string) ($p['summary'] ?? '') . ' ' . (string) ($p['body'] ?? '');
+		return stripos($hay, $query) !== false;
+	}));
+} else {
+	// Default: show most recent 10 (preserve original behaviour)
+	$posts = array_slice($allPosts, 0, 10);
+}
 
 usort($posts, function ($a, $b) {
 	return strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
 });
-
-$filterSlug = isset($_GET['slug']) ? trim((string) $_GET['slug']) : '';
-if ($filterSlug !== '') {
-    $posts = array_values(array_filter($posts, fn($p) => ($p['slug'] ?? '') === $filterSlug));
-}
 
 // ---- Comments: allow posting comments to data.json (best-effort)
 // Global comments storage limit (5 MB)
@@ -897,6 +935,22 @@ try {
 		}
 
 		h1 { margin: 0 0 8px; font-size: 28px; }
+		h1 a { color: inherit; text-decoration: none; }
+		h1 a:hover { text-decoration: underline; }
+
+		/* Search form: make button visually match the search input */
+		.search-form input[type="search"], .search-form .btn.ghost {
+			padding: 8px 12px;
+			border-radius: 8px;
+			border: 1px solid rgba(255,255,255,0.06);
+			background: transparent;
+			color: var(--text);
+			font-size: 14px;
+			height: 40px;
+			min-height: 40px;
+		}
+
+		.search-form .btn.ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 		p.lead { margin: 0 0 20px; color: var(--muted); }
 
 			.grid {
@@ -1082,10 +1136,23 @@ try {
 	</div>
 		<?php include __DIR__ . '/header.php'; ?>
 	<div class="container">
-		<h1>Blog UKMI Polmed – Catatan Kegiatan & Tulisan Terbaru</h1>
+		<h1><a href="blog.php">Blog UKMI Polmed</a></h1>
 		<p class="lead">Baca berita, catatan kegiatan, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan.</p>
+		<?php if ($filterSlug === ''): ?>
+			<form method="get" action="blog.php" class="search-form" style="margin:12px 0 18px;display:flex;gap:8px;align-items:center;">
+				<input type="search" name="q" value="<?php echo e($query ?? ''); ?>" placeholder="Cari judul, ringkasan, atau isi..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);">
+				<button type="submit" class="btn ghost">Cari</button>
+				<?php if (!empty($query)): ?>
+					<a href="blog.php" class="btn">Reset</a>
+				<?php endif; ?>
+			</form>
+		<?php endif; ?>
 		<?php if (empty($posts)): ?>
-			<p class="lead">Belum ada postingan. Salah URL. Atau mungkin telah dihapus.</p>
+			<?php if (!empty($query)): ?>
+				<p class="lead">Tidak ditemukan hasil untuk "<?php echo e($query); ?>".</p>
+			<?php else: ?>
+				<p class="lead">Belum ada postingan. Salah URL. Atau mungkin telah dihapus.</p>
+			<?php endif; ?>
 		<?php elseif ($filterSlug !== '' && count($posts) === 1): ?>
 			<div class="article">
 				<h2><?php echo e($posts[0]['title']); ?></h2>
