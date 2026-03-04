@@ -52,3 +52,8 @@ Jika posting dipindah ke arsip (bukan benar‑benar dihapus), komentarnya tetap 
 Bila diinginkan: bisa ditambahkan penghapusan langsung untuk file .uploads yang direferensikan oleh post, pembersihan insight terkait, atau opsi soft‑delete/arsipkan. Mau ditambahkan salah satu?
 
 tambahkan mesin pencari di blog.php, 
+
+ambil kemampuan slug dari blog.php untuk link di sidebar, jangan gunakan lagi data json. tapi dengan penanda komentar di <body>
+
+<!-- POST_START -->
+<!-- POST_END --> keduanya penanda untuk pemisah

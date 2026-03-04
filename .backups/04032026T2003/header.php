@@ -93,19 +93,9 @@ header.header {
 				<span class="pulse-dot"></span>
 				<span>UKMI Polmed</span>
 			</div>
-			<button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-actions">☰ Menu</button>
-			<script>
-			(() => {
-				const btn = document.querySelector('.menu-toggle');
-				if (!btn) return;
-				const update = () => btn.textContent = btn.getAttribute('aria-expanded') === 'true' ? '✖ Tutup' : '☰ Menu';
-				update();
-				new MutationObserver(update).observe(btn, { attributes: true, attributeFilter: ['aria-expanded'] });
-			})();
-			</script>
+			<button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-actions">Menu</button>
 		</div>
 		<div class="nav-actions" id="nav-actions">
-			<a class="btn ghost" href="index.php">Home</a>
 			<a class="btn ghost" href="index.php#program">Program</a>
 			<a class="btn ghost" href="index.php#divisi">Divisi</a>
 			<a class="btn ghost" href="index.php#dokumentasi">Dokumentasi</a>

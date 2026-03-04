@@ -464,8 +464,6 @@ usort($posts, function ($a, $b) {
 // ---- Comments: allow posting comments to data.json (best-effort)
 // Global comments storage limit (5 MB)
 const COMMENTS_MAX_BYTES = 5 * 1024 * 1024;
-// Keep delete permission cookie alive for 30 days (persists across browser restarts)
-const PENDING_COMMENTS_TTL = 30 * 24 * 60 * 60;
 
 function get_comments_storage_info(): array
 {
@@ -719,7 +717,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 	$dslug = trim((string) ($_POST['comment_post_slug'] ?? ''));
 	$cid = trim((string) ($_POST['comment_id'] ?? ''));
 	if ($dslug !== '' && $cid !== '') {
-			// only allow deletion if this comment id is in user's pending_comments cookie (persistent)
+			// only allow deletion if this comment id is in user's pending_comments cookie (session-scoped)
 			$allowed = false;
 			if (!empty($_COOKIE['pending_comments'])) {
 				$cur = array_filter(array_map('trim', explode(',', (string) $_COOKIE['pending_comments'])));
@@ -734,11 +732,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 					if (!empty($_COOKIE['pending_comments'])) {
 						$cur = array_filter(array_map('trim', explode(',', (string) $_COOKIE['pending_comments'])));
 						$cur = array_values(array_filter($cur, fn($x) => $x !== $cid));
-						if (empty($cur)) {
-							setcookie('pending_comments', '', time() - 3600, '/');
-						} else {
-							setcookie('pending_comments', implode(',', $cur), time() + PENDING_COMMENTS_TTL, '/');
-						}
+						setcookie('pending_comments', implode(',', $cur), 0, '/');
 					}
 			$loc = $_SERVER['REQUEST_URI'] ?: ('/blog.php?slug=' . urlencode($dslug));
 			header('Location: ' . $loc);
@@ -765,7 +759,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_post_slug']))
 		$res = save_comment($cslug, $cname, $cbody, $cparent !== '' ? $cparent : null, $client_token ?? null);
 	if ($res['ok']) {
 		// Redirect to avoid duplicate submits
-				// store newly created comment id in a persistent cookie so the creator can delete it
+			// store newly created comment id in a session cookie so the creator can delete it
 			$newId = $res['id'] ?? '';
 			if ($newId !== '') {
 				$cur = [];
@@ -773,7 +767,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_post_slug']))
 					$cur = array_filter(array_map('trim', explode(',', (string) $_COOKIE['pending_comments'])));
 				}
 				if (!in_array($newId, $cur, true)) $cur[] = $newId;
-					setcookie('pending_comments', implode(',', $cur), time() + PENDING_COMMENTS_TTL, '/');
+				setcookie('pending_comments', implode(',', $cur), 0, '/');
 			}
 
 			$loc = $_SERVER['REQUEST_URI'] ?: ('/blog.php?slug=' . urlencode($cslug));
@@ -1297,7 +1291,7 @@ try {
 			});
 		})();
 
-		// Show delete buttons only for pending comment IDs stored in persistent cookie
+		// Show delete buttons only for pending comment IDs stored in session cookie
 		(function(){
 			function parsePending() {
 				const m = document.cookie.match(/(?:^|; )pending_comments=([^;]+)/);
