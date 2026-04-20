@@ -6,16 +6,35 @@ if (($adminComponentMode ?? '') === 'handle') {
 		$captions = (array) ($_POST['hero_card_caption'] ?? []);
 		$contents = (array) ($_POST['hero_card_content'] ?? []);
 		$alts = (array) ($_POST['hero_card_alt'] ?? []);
+		$lockedFlags = (array) ($_POST['hero_card_locked'] ?? []);
 		$newHeroCards = [];
+		$protectedDefaultCard = [
+			'type' => 'default',
+			'title' => 'Kartu bawaan beranda',
+			'caption' => 'Kartu ini menampilkan ringkasan utama UKMI dan tidak bisa dihapus.',
+			'content' => '__default__',
+			'alt' => '',
+			'locked' => true,
+		];
+		$hasDefaultCard = false;
 		$heroLimit = 8;
-		foreach ($contents as $i => $contentVal) {
+		$rowCount = max(count($types), count($titles), count($captions), count($contents), count($alts), count($lockedFlags));
+		for ($i = 0; $i < $rowCount; $i++) {
 			$type = strtolower(trim((string) ($types[$i] ?? 'image')));
-			if (!in_array($type, ['image', 'embed'], true)) {
+			if (!in_array($type, ['image', 'embed', 'default'], true)) {
 				$type = 'image';
+			}
+			$isLocked = (($lockedFlags[$i] ?? '0') === '1');
+			if ($type === 'default' || $isLocked) {
+				if ($hasDefaultCard) continue;
+				$newHeroCards[] = $protectedDefaultCard;
+				$hasDefaultCard = true;
+				if (count($newHeroCards) >= $heroLimit) break;
+				continue;
 			}
 			$title = trim((string) ($titles[$i] ?? ''));
 			$caption = trim((string) ($captions[$i] ?? ''));
-			$content = trim((string) $contentVal);
+			$content = trim((string) ($contents[$i] ?? ''));
 			$alt = trim((string) ($alts[$i] ?? ''));
 			if ($title === '' && $caption === '' && $content === '') continue;
 			if ($content === '') continue;
@@ -25,8 +44,15 @@ if (($adminComponentMode ?? '') === 'handle') {
 				'caption' => $caption,
 				'content' => $content,
 				'alt' => $alt,
+				'locked' => false,
 			];
 			if (count($newHeroCards) >= $heroLimit) break;
+		}
+		if (!$hasDefaultCard) {
+			array_unshift($newHeroCards, $protectedDefaultCard);
+			if (count($newHeroCards) > $heroLimit) {
+				$newHeroCards = array_slice($newHeroCards, 0, $heroLimit);
+			}
 		}
 
 		$config['hero_cards'] = $newHeroCards;
@@ -44,28 +70,44 @@ if (($adminComponentMode ?? '') === 'handle') {
 ?>
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:16px;">Header card presentation</h2>
-	<p class="muted-text" style="margin:0 0 10px;">Kartu ini tampil di section hero beranda. Bisa digeser swipe ke kanan/kiri atau dipindah lewat tombol panah.</p>
+	<p class="muted-text" style="margin:0 0 10px;">Kartu ini tampil di section hero beranda. Bisa digeser swipe ke kanan/kiri atau dipindah lewat tombol panah. Gunakan tombol Naik/Turun untuk menentukan urutan tampil (kartu paling atas akan tampil lebih dulu).</p>
 	<form method="post" class="stack-sm" id="hero-cards-form">
 		<div id="hero-card-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px;">
 			<?php foreach ($heroCards as $heroIdx => $heroCard): ?>
-			<div class="hero-card-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+			<?php $isLockedCard = !empty($heroCard['locked']) || (($heroCard['type'] ?? '') === 'default'); ?>
+			<div class="hero-card-item" data-locked="<?php echo $isLockedCard ? '1' : '0'; ?>" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+				<input type="hidden" name="hero_card_locked[]" value="<?php echo $isLockedCard ? '1' : '0'; ?>">
 				<label class="hero-card-index" style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Kartu <?php echo $heroIdx + 1; ?></label>
-				<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Tipe</label>
-				<select name="hero_card_type[]" style="width:40%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
-					<option value="image" <?php echo (($heroCard['type'] ?? 'image') === 'image') ? 'selected' : ''; ?>>Image</option>
-					<option value="embed" <?php echo (($heroCard['type'] ?? 'image') === 'embed') ? 'selected' : ''; ?>>HTML Embed</option>
-				</select>
-				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Judul</label>
-				<input type="text" name="hero_card_title[]" value="<?php echo htmlspecialchars($heroCard['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="Judul kartu">
-				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Caption</label>
-				<textarea name="hero_card_caption[]" style="width:100%; min-height:72px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical;" placeholder="Keterangan singkat"><?php echo htmlspecialchars($heroCard['caption'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
-				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Content</label>
-				<input type="file" class="hero-image-file" accept="image/*" style="margin-top:6px;">
-				<textarea name="hero_card_content[]" style="width:100%; min-height:120px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical; font-family: 'SFMono-Regular', Consolas, monospace;" placeholder="URL gambar atau HTML embed"><?php echo htmlspecialchars($heroCard['content'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
-				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Alt text</label>
-				<input type="text" name="hero_card_alt[]" value="<?php echo htmlspecialchars($heroCard['alt'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="Alt gambar jika tipe image">
-				<div style="text-align:right; margin-top:6px;">
-					<button type="button" class="remove-hero-card" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+				<?php if ($isLockedCard): ?>
+					<input type="hidden" name="hero_card_type[]" value="default">
+					<input type="hidden" name="hero_card_title[]" value="<?php echo htmlspecialchars($heroCard['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+					<input type="hidden" name="hero_card_caption[]" value="<?php echo htmlspecialchars($heroCard['caption'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+					<input type="hidden" name="hero_card_content[]" value="__default__">
+					<input type="hidden" name="hero_card_alt[]" value="">
+					<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Tipe</label>
+					<div style="padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.25); background: rgba(15,23,42,0.28); color: var(--text); font-size:13px;">Kartu bawaan (terkunci)</div>
+					<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Keterangan</label>
+					<p class="muted-text" style="margin:0;">Kartu ini menampilkan ringkasan utama UKMI di beranda. Posisi bisa diatur, tetapi kartunya tidak bisa dihapus.</p>
+				<?php else: ?>
+					<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Tipe</label>
+					<select name="hero_card_type[]" style="width:40%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+						<option value="image" <?php echo (($heroCard['type'] ?? 'image') === 'image') ? 'selected' : ''; ?>>Image</option>
+						<option value="embed" <?php echo (($heroCard['type'] ?? 'image') === 'embed') ? 'selected' : ''; ?>>HTML Embed</option>
+					</select>
+					<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Judul</label>
+					<input type="text" name="hero_card_title[]" value="<?php echo htmlspecialchars($heroCard['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="Judul kartu">
+					<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Caption</label>
+					<textarea name="hero_card_caption[]" style="width:100%; min-height:72px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical;" placeholder="Keterangan singkat"><?php echo htmlspecialchars($heroCard['caption'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+					<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Content</label>
+					<input type="file" class="hero-image-file" accept="image/*" style="margin-top:6px;">
+					<textarea name="hero_card_content[]" style="width:100%; min-height:120px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical; font-family: 'SFMono-Regular', Consolas, monospace;" placeholder="URL gambar atau HTML embed"><?php echo htmlspecialchars($heroCard['content'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+					<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Alt text</label>
+					<input type="text" name="hero_card_alt[]" value="<?php echo htmlspecialchars($heroCard['alt'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="Alt gambar jika tipe image">
+				<?php endif; ?>
+				<div style="display:flex; gap:6px; justify-content:flex-end; margin-top:6px;">
+					<button type="button" class="move-hero-card-up" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Naik</button>
+					<button type="button" class="move-hero-card-down" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Turun</button>
+					<button type="button" class="remove-hero-card" <?php echo $isLockedCard ? 'disabled' : ''; ?> style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px; opacity: <?php echo $isLockedCard ? '0.6' : '1'; ?>;"><?php echo $isLockedCard ? 'Terkunci' : 'Hapus'; ?></button>
 				</div>
 			</div>
 			<?php endforeach; ?>
@@ -137,7 +179,8 @@ if (($adminComponentMode ?? '') === 'handle') {
 
 	function heroCardTemplate(type = 'image', title = '', caption = '', content = '', alt = '') {
 		return `
-			<div class="hero-card-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+			<div class="hero-card-item" data-locked="0" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
+				<input type="hidden" name="hero_card_locked[]" value="0">
 				<label class="hero-card-index" style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Kartu</label>
 				<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Tipe</label>
 				<select name="hero_card_type[]" style="width:30%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
@@ -153,15 +196,37 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<textarea name="hero_card_content[]" style="width:100%; min-height:120px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical; font-family: 'SFMono-Regular', Consolas, monospace;" placeholder="URL gambar atau HTML embed">${escapeHtml(content)}</textarea>
 				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Alt text</label>
 				<input type="text" name="hero_card_alt[]" value="${escapeHtml(alt)}" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="Alt gambar jika tipe image">
-				<div style="text-align:right; margin-top:6px;">
+				<div style="display:flex; gap:6px; justify-content:flex-end; margin-top:6px;">
+					<button type="button" class="move-hero-card-up" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Naik</button>
+					<button type="button" class="move-hero-card-down" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Turun</button>
 					<button type="button" class="remove-hero-card" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
 				</div>
 			</div>`;
 	}
-	function renumberHeroCards() {
-		Array.from(heroCardList.querySelectorAll('.hero-card-index')).forEach((label, idx) => {
-			label.textContent = `Kartu ${idx + 1}`;
+	function updateHeroMoveButtons() {
+		const items = Array.from(heroCardList.querySelectorAll('.hero-card-item'));
+		items.forEach((item, idx) => {
+			const up = item.querySelector('.move-hero-card-up');
+			const down = item.querySelector('.move-hero-card-down');
+			if (up) up.disabled = idx === 0;
+			if (down) down.disabled = idx === (items.length - 1);
+			const remove = item.querySelector('.remove-hero-card');
+			if (remove && item.dataset.locked === '1') {
+				remove.disabled = true;
+			}
 		});
+	}
+	function renumberHeroCards() {
+		Array.from(heroCardList.querySelectorAll('.hero-card-item')).forEach((item, idx) => {
+			const label = item.querySelector('.hero-card-index');
+			if (!label) return;
+			if (item.dataset.locked === '1') {
+				label.textContent = `Kartu bawaan (urut ${idx + 1})`;
+			} else {
+				label.textContent = `Kartu ${idx + 1}`;
+			}
+		});
+		updateHeroMoveButtons();
 	}
 	function updateHeroCardButtons() {
 		if (!addHeroCard) return;
@@ -209,9 +274,34 @@ if (($adminComponentMode ?? '') === 'handle') {
 	function attachHeroCardRemoveHandlers() {
 		heroCardList.querySelectorAll('.remove-hero-card').forEach((btn) => {
 			btn.onclick = () => {
-				btn.closest('.hero-card-item')?.remove();
+				const item = btn.closest('.hero-card-item');
+				if (!item || item.dataset.locked === '1') return;
+				item.remove();
 				renumberHeroCards();
 				updateHeroCardButtons();
+				attachHeroCardMoveHandlers();
+			};
+		});
+	}
+	function attachHeroCardMoveHandlers() {
+		heroCardList.querySelectorAll('.move-hero-card-up').forEach((btn) => {
+			btn.onclick = () => {
+				const item = btn.closest('.hero-card-item');
+				if (!item) return;
+				const prev = item.previousElementSibling;
+				if (!prev) return;
+				heroCardList.insertBefore(item, prev);
+				renumberHeroCards();
+			};
+		});
+		heroCardList.querySelectorAll('.move-hero-card-down').forEach((btn) => {
+			btn.onclick = () => {
+				const item = btn.closest('.hero-card-item');
+				if (!item) return;
+				const next = item.nextElementSibling;
+				if (!next) return;
+				heroCardList.insertBefore(next, item);
+				renumberHeroCards();
 			};
 		});
 	}
@@ -222,12 +312,14 @@ if (($adminComponentMode ?? '') === 'handle') {
 		heroCardList.appendChild(wrapper.firstElementChild);
 		renumberHeroCards();
 		attachHeroCardRemoveHandlers();
+		attachHeroCardMoveHandlers();
 		attachHeroImageFileHandlers();
 		attachHeroTypeChangeHandlers();
 		updateHeroCardButtons();
 	});
 
 	attachHeroCardRemoveHandlers();
+	attachHeroCardMoveHandlers();
 	renumberHeroCards();
 	attachHeroImageFileHandlers();
 	attachHeroTypeChangeHandlers();
