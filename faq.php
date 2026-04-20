@@ -242,12 +242,18 @@ if (empty($faqItems)) {
     }
 }
 
+$canonicalHost = preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je'));
+$canonicalBase = 'https://' . $canonicalHost;
+$indexUrl = $canonicalBase . '/index.php';
+$faqUrl = $canonicalBase . '/faq.php';
+$faqIdUrl = $faqUrl . '#faq';
+
 $faqSchema = [
     '@context' => 'https://schema.org',
     '@type' => 'FAQPage',
     'name' => 'FAQ UKMI Polmed',
     'description' => 'Kumpulan pertanyaan dan jawaban resmi seputar UKMI Polmed, mulai dari AD/ART, STKO, GBHK, hingga informasi organisasi yang sering ditanyakan.',
-    'url' => 'https://ukmipolmed.xo.je/faq.php',
+    'url' => $faqUrl,
     'inLanguage' => 'id-ID',
     'mainEntity' => [],
 ];
@@ -273,13 +279,13 @@ $breadcrumbSchema = [
             '@type' => 'ListItem',
             'position' => 1,
             'name' => 'Beranda',
-            'item' => 'https://ukmipolmed.xo.je/index.php',
+            'item' => $indexUrl,
         ],
         [
             '@type' => 'ListItem',
             'position' => 2,
             'name' => 'FAQ UKMI Polmed',
-            'item' => 'https://ukmipolmed.xo.je/faq.php',
+            'item' => $faqUrl,
         ],
     ],
 ];
@@ -288,17 +294,17 @@ $webPageSchema = [
     '@context' => 'https://schema.org',
     '@type' => 'WebPage',
     'name' => 'FAQ UKMI Polmed',
-    'url' => 'https://ukmipolmed.xo.je/faq.php',
+    'url' => $faqUrl,
     'description' => 'Kumpulan pertanyaan dan jawaban resmi seputar UKMI Polmed, AD/ART, STKO, GBHK, dan struktur organisasi.',
     'inLanguage' => 'id-ID',
     'isPartOf' => [
         '@type' => 'WebSite',
         'name' => 'UKMI Polmed',
-        'url' => 'https://ukmipolmed.xo.je/index.php',
+        'url' => $indexUrl,
     ],
     'mainEntity' => [
         '@type' => 'FAQPage',
-        '@id' => 'https://ukmipolmed.xo.je/faq.php#faq',
+        '@id' => $faqIdUrl,
     ],
 ];
 
@@ -314,12 +320,12 @@ $pageDescription = 'Cari jawaban resmi seputar UKMI Polmed, termasuk AD/ART, STK
     <meta name="description" content="<?php echo e($pageDescription); ?>">
     <meta name="keywords" content="FAQ UKMI Polmed, AD/ART UKMI Polmed, STKO UKMI Polmed, GBHK UKMI Polmed, organisasi UKMI, pertanyaan UKMI Polmed">
     <meta name="robots" content="index,follow">
-    <link rel="canonical" href="https://ukmipolmed.xo.je/faq.php">
+    <link rel="canonical" href="<?php echo e($faqUrl); ?>">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="UKMI Polmed">
     <meta property="og:title" content="<?php echo e($pageTitle); ?>">
     <meta property="og:description" content="<?php echo e($pageDescription); ?>">
-    <meta property="og:url" content="https://ukmipolmed.xo.je/faq.php">
+    <meta property="og:url" content="<?php echo e($faqUrl); ?>">
     <meta property="og:locale" content="id_ID">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<?php echo e($pageTitle); ?>">

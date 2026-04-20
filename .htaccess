@@ -6,10 +6,6 @@ RewriteCond %{HTTPS} off
 RewriteCond %{HTTP:CF-Visitor} !{"scheme":"https"}
 RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# ── Canonical: redirect www to non-www ──
-RewriteCond %{HTTP_HOST} ^www\.ukmipolmed\.xo\.je$ [NC]
-RewriteRule ^(.*)$ https://ukmipolmed.xo.je/$1 [L,R=301]
-
 # ── Security Headers ──
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"

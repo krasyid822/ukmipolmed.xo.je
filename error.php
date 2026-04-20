@@ -4,6 +4,11 @@ $errorText = $code === '' ? 'Ngak tau kenapa nih :(' : htmlspecialchars($code, E
 $errorTitle = 'Terjadi Kesalahan';
 $errorDesc = 'Halaman yang kamu cari tidak tersedia atau terjadi kesalahan. Kembali ke beranda UKMI Polmed untuk info open recruitment, agenda, dan dokumentasi kegiatan.';
 
+$canonicalHost = preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je'));
+$canonicalBase = 'https://' . $canonicalHost;
+$canonicalUrl = $canonicalBase . '/';
+$logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
+
 function e($value) {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
@@ -16,7 +21,7 @@ function e($value) {
 	<title><?php echo e($errorTitle); ?> – UKMI Polmed</title>
 	<meta name="description" content="<?php echo e($errorDesc); ?>">
 	<meta name="robots" content="noindex, follow">
-	<link rel="canonical" href="https://ukmipolmed.xo.je/">
+	<link rel="canonical" href="<?php echo e($canonicalUrl); ?>">
 	<link rel="icon" type="image/png" sizes="192x192" href="logo-ukmi.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="logo-ukmi.png">
 	<link rel="apple-touch-icon" sizes="180x180" href="logo-ukmi.png">
@@ -25,8 +30,8 @@ function e($value) {
 	<meta property="og:type" content="website">
 	<meta property="og:title" content="<?php echo e($errorTitle); ?> – UKMI Polmed">
 	<meta property="og:description" content="<?php echo e($errorDesc); ?>">
-	<meta property="og:url" content="https://ukmipolmed.xo.je/">
-	<meta property="og:image" content="https://ukmipolmed.xo.je/logo-ukmi.png">
+	<meta property="og:url" content="<?php echo e($canonicalUrl); ?>">
+	<meta property="og:image" content="<?php echo e($logoAbsoluteUrl); ?>">
 	<meta property="og:site_name" content="UKMI Polmed">
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
