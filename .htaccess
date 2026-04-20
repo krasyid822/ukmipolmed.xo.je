@@ -1,8 +1,10 @@
 RewriteEngine On
 
 # ── Force HTTPS ──
-RewriteCond %{HTTPS} !=on
-RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:CF-Visitor} !{"scheme":"https"}
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # ── Canonical: redirect www to non-www ──
 RewriteCond %{HTTP_HOST} ^www\.ukmipolmed\.xo\.je$ [NC]
