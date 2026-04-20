@@ -90,18 +90,6 @@ function buildSummary(array $insights, string $todayKey, string $storeFile, floa
 	arsort($top);
 	$top = array_slice($top, 0, 10, true);
 
-	$historyDays = array_keys($insights['history']);
-	sort($historyDays);
-	$recentHistory = [];
-	foreach (array_slice($historyDays, -14) as $day) {
-		$dayData = $insights['history'][$day] ?? ['total' => 0, 'events' => []];
-		$recentHistory[] = [
-			'date' => $day,
-			'total' => (int) ($dayData['total'] ?? 0),
-			'events' => is_array($dayData['events'] ?? null) ? $dayData['events'] : [],
-		];
-	}
-
 	$blogViewsBySlug = [];
 	foreach ($insights['events'] as $name => $count) {
 		if (strpos($name, 'blog_view_') === 0) {
@@ -240,7 +228,6 @@ function buildSummary(array $insights, string $todayKey, string $storeFile, floa
 		'conversion' => $conversion,
 		'technical' => $technical,
 		'org_specific' => $orgSpecific,
-		'recent_history' => $recentHistory,
 		'history_available_days' => array_keys($insights['history']),
 	];
 }
@@ -315,6 +302,16 @@ if ($view === 'ui') {
 					linear-gradient(140deg, #050814, #0c1224 55%, #090f1f 100%);
 				color: var(--text);
 			}
+			header {
+				padding: 24px 20px;
+				border-bottom: 1px solid var(--stroke);
+				position: sticky;
+				top: 0;
+				backdrop-filter: blur(14px);
+				background: rgba(5, 8, 20, 0.75);
+				z-index: 2;
+			}
+			h1 { margin: 0; font-size: clamp(24px,4vw,32px); letter-spacing: 0.2px; }
 			main { max-width: 1180px; margin: 0 auto; padding: 24px 20px 40px; }
 			.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); }
 			.panel {
@@ -330,35 +327,51 @@ if ($view === 'ui') {
 			.badge { padding: 4px 8px; border-radius: 10px; background: rgba(255,255,255,0.08); border: 1px solid var(--stroke); font-size: 12px; }
 			.pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius: 999px; background: rgba(108,247,197,0.12); color: var(--accent); border:1px solid rgba(108,247,197,0.18); font-weight:700; }
 			.cards-2 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); }
-			.chart-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); }
-			.chart-box {
-				padding: 16px;
-				border-radius: 16px;
-				background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04));
-				border: 1px solid var(--stroke);
-				box-shadow: var(--shadow);
-			}
-			.chart-box h3 { margin: 0 0 10px; font-size: 16px; }
-			.chart-wrap {
-				position: relative;
-				width: 100%;
-				height: 280px;
-				border-radius: 14px;
-				background: rgba(255,255,255,0.03);
-				overflow: hidden;
-			}
-			.chart-wrap canvas { width: 100%; height: 100%; display: block; }
-			.chart-note { margin-top: 10px; color: var(--muted); font-size: 12px; }
 			.table { width: 100%; border-collapse: collapse; }
 			.table th, .table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.07); }
 			.table th { color: var(--muted); font-weight: 600; }
 			small { color: var(--muted); }
+			.hero-metrics { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); margin-top: 14px; }
+			.metric {
+				padding: 14px;
+				border-radius: 14px;
+				background: linear-gradient(145deg, rgba(108,247,197,0.16), rgba(124,201,255,0.1));
+				border: 1px solid rgba(255,255,255,0.16);
+				box-shadow: var(--shadow);
+			}
+			.metric strong { display:block; font-size:22px; }
+			.metric span { color: var(--muted); font-size: 13px; }
 			@media (max-width: 640px) {
+				header { padding: 16px 14px; }
 				main { padding: 18px 14px 32px; }
+				.hero-metrics { grid-template-columns: repeat(2, minmax(140px, 1fr)); gap: 10px; }
+				.metric { padding: 12px; }
+				.metric strong { font-size: 19px; }
 			}
 		</style>
 	</head>
 	<body>
+		<header>
+			<h1>BI Dashboard · UKMI Polmed</h1>
+			<div class="hero-metrics">
+				<div class="metric">
+					<strong id="m-total">-</strong>
+					<span>Total event lifetime</span>
+				</div>
+				<div class="metric">
+					<strong id="m-today">-</strong>
+					<span>Event hari ini</span>
+				</div>
+				<div class="metric">
+					<strong id="m-cta">-</strong>
+					<span>CTR: klik CTA</span>
+				</div>
+				<div class="metric">
+					<strong id="m-runtime">-</strong>
+					<span>Runtime status</span>
+				</div>
+			</div>
+		</header>
 		<main>
 			<div class="cards-2">
 				<div class="panel">
@@ -383,13 +396,6 @@ if ($view === 'ui') {
 			<div class="panel" style="margin-top:14px;">
 				<h3><span class="pill">Org</span> Insight UKMI</h3>
 				<div class="kv" id="kv-org"></div>
-			</div>
-			<div class="chart-grid" style="margin-top:14px;">
-				<div class="chart-box">
-					<h3><span class="pill">Trend</span> Total Harian 14 Hari</h3>
-					<div class="chart-wrap"><canvas id="chart-trend"></canvas></div>
-					<div class="chart-note">Grafik garis menunjukkan volume event per hari dari history yang tersimpan.</div>
-				</div>
 			</div>
 			<div class="panel" style="margin-top:14px;">
 				<h3>Top Events</h3>
@@ -417,104 +423,19 @@ if ($view === 'ui') {
 			if (!tb) return;
 			tb.innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
 		};
-		const fitCanvas = (canvas) => {
-			const rect = canvas.getBoundingClientRect();
-			const dpr = window.devicePixelRatio || 1;
-			const width = Math.max(320, Math.round(rect.width));
-			const height = Math.max(220, Math.round(rect.height));
-			canvas.width = Math.round(width * dpr);
-			canvas.height = Math.round(height * dpr);
-			const ctx = canvas.getContext('2d');
-			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-			return { ctx, width, height };
-		};
-		const setText = (id, value) => {
-			const el = document.getElementById(id);
-			if (el) el.textContent = value;
-		};
-		const drawTrendChart = (canvas, points) => {
-			if (!canvas) return;
-			const { ctx, width, height } = fitCanvas(canvas);
-			ctx.clearRect(0, 0, width, height);
-			const pad = { top: 18, right: 18, bottom: 34, left: 44 };
-			const chartW = width - pad.left - pad.right;
-			const chartH = height - pad.top - pad.bottom;
-			const values = points.map((p) => Number(p.total) || 0);
-			const max = Math.max(1, ...values);
-			ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-			ctx.lineWidth = 1;
-			ctx.font = '12px Manrope, sans-serif';
-			ctx.fillStyle = 'rgba(196,206,222,0.8)';
-			ctx.textAlign = 'right';
-			ctx.textBaseline = 'middle';
-			for (let i = 0; i <= 4; i++) {
-				const y = pad.top + (chartH / 4) * i;
-				ctx.beginPath();
-				ctx.moveTo(pad.left, y);
-				ctx.lineTo(width - pad.right, y);
-				ctx.stroke();
-				ctx.fillText(Math.round(max - (max / 4) * i).toString(), pad.left - 10, y);
-			}
-			if (!points.length) {
-				ctx.fillStyle = 'rgba(196,206,222,0.9)';
-				ctx.textAlign = 'center';
-				ctx.textBaseline = 'middle';
-				ctx.fillText('Belum ada history', width / 2, height / 2);
+		const loadData = async () => {
+			let data = null;
+			try {
+				const res = await fetch('status.php?view=json');
+				data = await res.json();
+			} catch (e) {
+				console.error('Load failed', e);
 				return;
 			}
-			const xStep = points.length > 1 ? chartW / (points.length - 1) : chartW;
-			const coords = points.map((point, index) => {
-				const x = pad.left + xStep * index;
-				const y = pad.top + chartH - ((Number(point.total) || 0) / max) * chartH;
-				return { x, y, label: String(point.date || ''), value: Number(point.total) || 0 };
-			});
-			const path = new Path2D();
-			coords.forEach((point, index) => {
-				if (index === 0) path.moveTo(point.x, point.y);
-				else path.lineTo(point.x, point.y);
-			});
-			ctx.strokeStyle = 'rgba(108,247,197,0.95)';
-			ctx.lineWidth = 3;
-			ctx.lineJoin = 'round';
-			ctx.lineCap = 'round';
-			ctx.stroke(path);
-			const fillPath = new Path2D(path);
-			fillPath.lineTo(coords[coords.length - 1].x, height - pad.bottom);
-			fillPath.lineTo(coords[0].x, height - pad.bottom);
-			fillPath.closePath();
-			const gradient = ctx.createLinearGradient(0, pad.top, 0, height - pad.bottom);
-			gradient.addColorStop(0, 'rgba(108,247,197,0.35)');
-			gradient.addColorStop(1, 'rgba(108,247,197,0.02)');
-			ctx.fillStyle = gradient;
-			ctx.fill(fillPath);
-			coords.forEach((point) => {
-				ctx.beginPath();
-				ctx.arc(point.x, point.y, 4.5, 0, Math.PI * 2);
-				ctx.fillStyle = '#050814';
-				ctx.fill();
-				ctx.lineWidth = 2;
-				ctx.strokeStyle = 'rgba(108,247,197,0.95)';
-				ctx.stroke();
-			});
-			ctx.fillStyle = 'rgba(196,206,222,0.9)';
-			ctx.font = '11px Manrope, sans-serif';
-			ctx.textAlign = 'center';
-			ctx.textBaseline = 'top';
-			coords.forEach((point) => {
-				ctx.save();
-				ctx.translate(point.x, height - pad.bottom + 8);
-				ctx.rotate(-0.45);
-				ctx.fillText(point.label.slice(5), 0, 0);
-				ctx.restore();
-			});
-		};
-		let lastDashboardData = null;
-		const renderDashboard = (data) => {
-			lastDashboardData = data;
-			setText('m-total', fmt(data.traffic?.lifetime_total));
-			setText('m-today', fmt(data.traffic?.today_total));
-			setText('m-cta', fmt(data.engagement?.cta_clicks));
-			setText('m-runtime', (data.technical?.runtime_ms || '-') + ' ms');
+			document.getElementById('m-total').textContent = fmt(data.traffic?.lifetime_total);
+			document.getElementById('m-today').textContent = fmt(data.traffic?.today_total);
+			document.getElementById('m-cta').textContent = fmt(data.engagement?.cta_clicks);
+			document.getElementById('m-runtime').textContent = (data.technical?.runtime_ms || '-') + ' ms';
 
 			kvFill('kv-traffic', [
 				['Lifetime events', fmt(data.traffic?.lifetime_total)],
@@ -544,7 +465,7 @@ if ($view === 'ui') {
 				['robots.txt', data.technical?.robots_txt ? 'Ada' : 'Tidak'],
 				['sitemap.xml', data.technical?.sitemap_xml ? 'Ada' : 'Tidak'],
 				['HTTPS', data.technical?.https ? 'Aktif' : 'Belum'],
-				['Waktu respon server', (data.technical?.runtime_ms || '-') + ' ms'],
+				['Runtime', (data.technical?.runtime_ms || '-') + ' ms'],
 			]);
 			kvFill('kv-org', [
 				['Klik dokumentasi', fmt(data.org_specific?.dokumentasi_clicks)],
@@ -554,27 +475,10 @@ if ($view === 'ui') {
 				['Kunjungan halaman utama', fmt(data.org_specific?.home_views)],
 			]);
 
-			const topRows = Object.entries(data.traffic?.top_events || {}).map(([k,v]) => [k, Number(v) || 0]);
-			fillTable('tbl-top', topRows.map(([k, v]) => [k, fmt(v)]));
-			drawTrendChart(document.getElementById('chart-trend'), data.recent_history || []);
-		};
-		const loadData = async () => {
-			let data = null;
-			try {
-				const res = await fetch('status.php?view=json');
-				data = await res.json();
-			} catch (e) {
-				console.error('Load failed', e);
-				return;
-			}
-			renderDashboard(data);
+			const rows = Object.entries(data.traffic?.top_events || {}).map(([k,v]) => [k, fmt(v)]);
+			fillTable('tbl-top', rows);
 		};
 		loadData();
-		window.addEventListener('resize', () => {
-			if (lastDashboardData) {
-				renderDashboard(lastDashboardData);
-			}
-		});
 		setInterval(loadData, 8000);
 		</script>
 	</body>

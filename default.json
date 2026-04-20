@@ -28,6 +28,225 @@
     {"tag": "PPI 2024", "title": "Dokumentasi PPI 2024", "description": "Index foto/video PPI 2024 lengkap dengan navigasi slide & grid view.", "url": "https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/"}
   ],
   "posts": [],
+  "faqs": [
+    {
+      "question": "Apa itu GBHK UKMI POLMED 2026/2027?",
+      "answer": "GBHK adalah Garis-Garis Besar Haluan Kerja UKMI POLMED yang menjadi kerangka kerja pengembangan organisasi, arahan kerja, dan perencanaan strategis dalam bentuk program kerja terpadu.",
+      "slug": "pengertian-gbhk-ukmi-polmed",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Apa tujuan dan fungsi GBHK?",
+      "answer": "Tujuan GBHK: memberi kerangka awal perencanaan strategis dakwah kampus dan pedoman kerja tertulis.\nFungsinya: pedoman pelaksanaan program, alat evaluasi, dan pola pengembangan organisasi.",
+      "slug": "tujuan-dan-fungsi-gbhk",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Apa strategi pengembangan organisasi menurut GBHK?",
+      "answer": "Strateginya meliputi: menegaskan tujuan-fungsi UKMI, mengoptimalkan kaderisasi berkelanjutan, mengelola organisasi sesuai SPMN LDK, memaksimalkan sarana prasarana, dan membangun jaringan dengan civitas serta pihak eksternal yang sejalan.",
+      "slug": "strategi-pengembangan-organisasi-gbhk",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Apa fokus Divisi Kaderisasi dalam GBHK?",
+      "answer": "Fokusnya adalah rekrutmen, pembinaan, pengembangan, dan evaluasi kader; penguatan internal pengurus; menjaga kualitas-kuantitas pengkaderan; serta penyusunan dan evaluasi database kelompok liqo.",
+      "slug": "fokus-divisi-kaderisasi-gbhk",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Apa tujuan utama Divisi MAI?",
+      "answer": "Divisi MAI bertujuan mengoordinir berjalannya mentoring agama Islam untuk seluruh mahasiswa muslim Polmed, termasuk pendataan kelompok, evaluasi keaktifan mentor/mentee, dan pelaporan ke Divisi Kaderisasi",
+      "slug": "tujuan-divisi-mai-gbhk",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Siapa yang memegang database mentoring tahap BPH/Liqo?",
+      "answer": "Database mentoring yang sudah tahap BPH/Liqo dipegang oleh Divisi Kaderisasi, bukan Divisi MAI.",
+      "slug": "database-bph-liqo-divisi-kaderisasi",
+      "written_at": "2026-04-20T08:15:00+07:00",
+      "updated_at": "2026-04-20T08:15:00+07:00"
+    },
+    {
+      "question": "Apa peran Divisi PTQ dalam GBHK?",
+      "answer": "Divisi PTQ berperan membumikan Al-Quran di kampus melalui pembinaan tilawah, tahfidz, tafsir, fahm, syarh, khath, serta penyelenggaraan kegiatan seperti MTQ dan latihan bertingkat.",
+      "slug": "peran-divisi-ptq-gbhk",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Apa mandat Divisi Syiar Media?",
+      "answer": "Divisi Syiar Media bertugas mengelola media komunikasi internal-eksternal UKMI, menyebarkan konten dakwah dan edukasi, mendukung publikasi kegiatan, serta memperkuat jaringan dakwah kampus.",
+      "slug": "mandat-divisi-syiar-media-gbhk",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Apa fokus Divisi Keputrian dan Divisi Ekonomi?",
+      "answer": "Divisi Keputrian berfokus pada konsolidasi muslimah, dakwah fardiyah, kajian khusus, dan penguatan jaringan muslimah.\nDivisi Ekonomi berfokus pada sumber dana halal berkelanjutan, sponsorship kegiatan, dan koordinasi penyusunan RAB tahunan.",
+      "slug": "fokus-divisi-keputrian-dan-ekonomi",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Bagaimana pola evaluasi kerja kepengurusan menurut GBHK?",
+      "answer": "Evaluasi mencakup evaluasi panitia kegiatan, evaluasi bulanan (jangka pendek), evaluasi satu periode (jangka panjang), serta evaluasi khusus bila diperlukan.\nHasil evaluasi menjadi acuan kebijakan perbaikan kinerja.",
+      "slug": "pola-evaluasi-kerja-kepengurusan-gbhk",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Apa indikator keberhasilan kepengurusan dalam GBHK?",
+      "answer": "Indikatornya antara lain: komunikasi internal yang baik, partisipasi aktif civitas akademika dengan capaian minimal 70% peserta target per kegiatan, kaderisasi berkualitas, terlaksananya minimal 70% program kerja, serta efektivitas pendanaan.",
+      "slug": "indikator-keberhasilan-kepengurusan-gbhk",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:00:00+07:00"
+    },
+    {
+      "question": "Apa itu STKO UKMI POLMED periode 2026/2027?",
+      "answer": "STKO adalah Struktur Tata Kerja Organisasi UKMI POLMED periode 2026/2027 yang menjelaskan susunan peran, relasi komando, dan koordinasi antar unsur organisasi.",
+      "slug": "pengertian-stko-ukmi-polmed",
+      "written_at": "2026-04-20T07:50:00+07:00",
+      "updated_at": "2026-04-20T08:12:00+07:00"
+    },
+    {
+      "question": "Apa arti garis pada diagram STKO?",
+      "answer": "Garis penuh menunjukkan garis komando.\nGaris putus-putus menunjukkan garis koordinasi.",
+      "slug": "arti-garis-stko",
+      "written_at": "2026-04-20T07:50:00+07:00",
+      "updated_at": "2026-04-20T08:12:00+07:00"
+    },
+    {
+      "question": "Apa posisi tertinggi pada STKO UKMI POLMED?",
+      "answer": "Pada bagan STKO, Musyawarah Besar berada pada posisi puncak struktur organisasi.",
+      "slug": "posisi-tertinggi-stko",
+      "written_at": "2026-04-20T07:50:00+07:00",
+      "updated_at": "2026-04-20T08:12:00+07:00"
+    },
+    {
+      "question": "Siapa pusat kepemimpinan operasional pada STKO?",
+      "answer": "Ketua Umum menjadi pusat kepemimpinan operasional yang mengoordinasikan unsur pengurus inti dan divisi di bawahnya.",
+      "slug": "ketua-umum-sebagai-pusat-operasional",
+      "written_at": "2026-04-20T07:50:00+07:00",
+      "updated_at": "2026-04-20T08:12:00+07:00"
+    },
+    {
+      "question": "Siapa saja unsur pengurus inti pada STKO?",
+      "answer": "Unsur pengurus inti pada bagan STKO mencakup Ketua Umum, Sekretaris Umum, dan Bendahara Umum.",
+      "slug": "unsur-pengurus-inti-stko",
+      "written_at": "2026-04-20T07:50:00+07:00",
+      "updated_at": "2026-04-20T08:12:00+07:00"
+    },
+    {
+      "question": "Divisi apa saja yang tercantum di STKO 2026/2027?",
+      "answer": "Divisi yang tercantum adalah Divisi Kaderisasi, Divisi MAI, Divisi PTQ, Divisi Syiar Media, Divisi Keputrian, dan Divisi Ekonomi.",
+      "slug": "daftar-divisi-stko-2026-2027",
+      "written_at": "2026-04-20T07:50:00+07:00",
+      "updated_at": "2026-04-20T08:12:00+07:00"
+    },
+    {
+      "question": "Apa masalah inkonsistensi utama antara AD/ART dan STKO?",
+      "answer": "Dokumen AD/ART menyebut Dewan Musyawarah sebagai unsur struktur, tetapi pada bagan STKO posisi Dewan Musyawarah tidak tergambar.\nSaran tindak lanjut: tambahkan Dewan Musyawarah di STKO atau revisi AD/ART jika perannya dilebur.",
+      "slug": "inkonsistensi-dewan-musyawarah-adart-stko",
+      "written_at": "2026-04-20T08:05:00+07:00",
+      "updated_at": "2026-04-20T08:05:00+07:00"
+    },
+    {
+      "question": "Bagaimana menindaklanjuti isu garis koordinasi antar divisi di STKO?",
+      "answer": "Relasi garis koordinasi putus-putus antar divisi pada STKO perlu dijelaskan di teks GBHK masing-masing divisi agar fungsi koordinasi, wewenang, dan batas peran tertulis dengan jelas.",
+      "slug": "tindak-lanjut-garis-koordinasi-stko-gbhk",
+      "written_at": "2026-04-20T08:05:00+07:00",
+      "updated_at": "2026-04-20T08:05:00+07:00"
+    },
+    {
+      "question": "Apa itu Anggaran Dasar UKMI POLMED?",
+      "answer": "Anggaran Dasar adalah elemen mutlak organisasi yang menjadi rujukan dan bersifat mengikat bagi setiap anggota UKMI POLMED.",
+      "slug": "pengertian-anggaran-dasar-ukmi",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Kapan UKMI POLMED didirikan?",
+      "answer": "UKMI POLMED didirikan pada 23 November 1999 di Medan.",
+      "slug": "tanggal-pendirian-ukmi-polmed",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Apa asas dan sumber rujukan UKMI POLMED?",
+      "answer": "Asas organisasi adalah syariat Islam.\nSumber rujukan organisasi adalah Al-Quran dan Hadits Shahih.",
+      "slug": "asas-dan-rujukan-ukmi",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Di mana sekretariat UKMI POLMED?",
+      "answer": "Sekretariat UKMI POLMED berada di Masjid Politeknik Negeri Medan.",
+      "slug": "sekretariat-ukmi-polmed",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Apa saja sifat utama UKMI POLMED?",
+      "answer": "UKMI POLMED memiliki sifat persaudaraan, moralis, cendekia, independen, mandiri, musyawarah mufakat, dan khilafah.\nNilai-nilai ini menjadi pedoman dalam aktivitas organisasi.",
+      "slug": "sifat-ukmi-polmed",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Apa status UKMI POLMED di kampus?",
+      "answer": "Status UKMI POLMED adalah Lembaga Dakwah Kampus (LDK) dan menjadi satu-satunya LDK yang menaungi mahasiswa muslim Politeknik Negeri Medan.",
+      "slug": "status-ukmi-polmed",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Apa visi UKMI POLMED periode 2026/2027?",
+      "answer": "Visinya adalah terwujudnya UKMI POLMED sebagai Lembaga Dakwah Kampus yang mandiri demi terciptanya Politeknik Negeri Medan sebagai kampus madani dan tarbiyah.",
+      "slug": "visi-ukmi-polmed-2026-2027",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Apa garis besar misi UKMI POLMED?",
+      "answer": "Misinya mencakup mentarbiyah mahasiswa muslim, memperkuat ukhuwah islamiyah, mengkader mahasiswa, aktif menyebarkan manfaat dan mencegah kemungkaran, serta mewujudkan usaha mandiri organisasi.",
+      "slug": "misi-ukmi-polmed",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Bagaimana struktur organisasi UKMI POLMED menurut AD/ART?",
+      "answer": "Struktur organisasi mencakup Penanggung Jawab, Penasehat, Pembina, Dewan Musyawarah, dan Kepengurusan UKMI POLMED.",
+      "slug": "struktur-organisasi-ukmi-polmed-adart",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Apa sumber dana UKMI POLMED menurut AD/ART?",
+      "answer": "Sumber dana meliputi infaq mahasiswa muslim Polmed, usaha-usaha halal yang dikelola UKMI, dan sumbangan halal yang tidak mengikat.",
+      "slug": "sumber-dana-ukmi-polmed-adart",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Apa jenis keanggotaan UKMI POLMED menurut ART?",
+      "answer": "Jenis keanggotaan terdiri dari anggota pasif, anggota aktif, kader, dan demisioner.",
+      "slug": "jenis-keanggotaan-ukmi-polmed",
+      "written_at": "2026-04-20T07:40:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    },
+    {
+      "question": "Sumber dokumen apa yang dipakai untuk FAQ ini?",
+      "answer": "FAQ ini disusun dari dokumen 'ADART 2026 2027.docx', 'GBHK UKMI 2026 2027.docx', catatan 'Unconsistency Problems.txt', serta referensi bagan STKO.",
+      "slug": "sumber-dokumen-faq-gbhk-unconsistency",
+      "written_at": "2026-04-20T08:00:00+07:00",
+      "updated_at": "2026-04-20T08:10:00+07:00"
+    }
+  ],
   "session_version": 1,
   "insights": {
     "max_bytes": 10485760

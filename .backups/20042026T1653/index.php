@@ -172,21 +172,21 @@ function e($value)
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <link rel="alternate" hreflang="id" href="https://ukmipolmed.xo.je/">
     <link rel="alternate" hreflang="x-default" href="https://ukmipolmed.xo.je/">
-    <title>Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan – Open Recruitment <?php echo e($divisionYearLabel); ?></title>
-    <meta name="description" content="Gabung Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan <?php echo e($divisionYearLabel); ?> — mentoring, tilawah, media, keputrian & ekonomi. Daftar, cek agenda, dan lihat dokumentasi.">
-    <meta name="keywords" content="Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan, UKMI Politeknik Negeri Medan, open recruitment Unit Kegiatan Mahasiswa Islam POLMED <?php echo e($divisionYearLabel); ?>, organisasi Islam Politeknik Negeri Medan, mentoring kampus Politeknik Negeri Medan, pendaftaran Unit Kegiatan Mahasiswa Islam, kegiatan dakwah kampus Medan">
+    <title>UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?></title>
+    <meta name="description" content="Gabung UKMI Polmed <?php echo e($divisionYearLabel); ?> — mentoring, tilawah, media, keputrian & ekonomi. Daftar, cek agenda, dan lihat dokumentasi.">
+    <meta name="keywords" content="UKMI Polmed, open recruitment UKMI Polmed <?php echo e($divisionYearLabel); ?>, organisasi Islam Polmed, mentoring kampus Polmed, UKM Islami Politeknik Negeri Medan, pendaftaran UKMI, kegiatan dakwah kampus Medan">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <link rel="canonical" href="https://ukmipolmed.xo.je/">
     <meta property="og:locale" content="id_ID">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan – Open Recruitment <?php echo e($divisionYearLabel); ?>">
+    <meta property="og:title" content="UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?>">
     <meta property="og:description" content="<?php echo e($divisionCount); ?> divisi: mentoring, tilawah, media, keputrian & ekonomi. Daftar, cek agenda, dan lihat dokumentasi.">
     <meta property="og:url" content="https://ukmipolmed.xo.je/">
     <meta property="og:image" content="https://ukmipolmed.xo.je/logo-ukmi.png">
     <meta property="og:image:width" content="512">
     <meta property="og:image:height" content="512">
     <meta property="og:image:alt" content="Logo UKMI Politeknik Negeri Medan">
-    <meta property="og:site_name" content="Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan">
+    <meta property="og:site_name" content="UKMI Polmed">
     <link rel="icon" type="image/png" sizes="192x192" href="logo-ukmi.png">
     <link rel="icon" type="image/png" sizes="32x32" href="logo-ukmi.png">
     <link rel="icon" type="image/png" sizes="16x16" href="logo-ukmi.png">
@@ -194,8 +194,8 @@ function e($value)
     <link rel="shortcut icon" href="logo-ukmi.png">
     <meta name="theme-color" content="#0f172a">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan – Open Recruitment <?php echo e($divisionYearLabel); ?>">
-    <meta name="twitter:description" content="Gabung Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan <?php echo e($divisionYearLabel); ?> — mentoring, tilawah, media, keputrian & ekonomi. Daftar dan cek agenda serta dokumentasi.">
+    <meta name="twitter:title" content="UKMI Polmed – Open Recruitment <?php echo e($divisionYearLabel); ?>">
+    <meta name="twitter:description" content="Gabung UKMI Polmed <?php echo e($divisionYearLabel); ?> — mentoring, tilawah, media, keputrian & ekonomi. Daftar dan cek agenda serta dokumentasi.">
     <meta name="twitter:image" content="https://ukmipolmed.xo.je/logo-ukmi.png">
     <meta name="twitter:image:alt" content="Logo UKMI Politeknik Negeri Medan">
     <?php
@@ -205,7 +205,7 @@ function e($value)
         'mainEntity' => [
             [
                 '@type' => 'Question',
-                'name' => 'Bagaimana cara daftar Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan?',
+                'name' => 'Bagaimana cara daftar UKMI Polmed?',
                 'acceptedAnswer' => [
                     '@type' => 'Answer',
                     'text' => 'Klik tombol Daftar sekarang atau isi form pendaftaran di bagian Jalur cepat daftar.',
@@ -213,7 +213,7 @@ function e($value)
             ],
             [
                 '@type' => 'Question',
-                'name' => 'Apa yang akan saya dapatkan di Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan?',
+                'name' => 'Apa yang akan saya dapatkan di UKMI Polmed?',
                 'acceptedAnswer' => [
                     '@type' => 'Answer',
                     'text' => 'Mentoring iman-ilmu, jaringan lintas angkatan, serta pengalaman event, media, dan kewirausahaan.',
@@ -224,7 +224,7 @@ function e($value)
                 'name' => 'Apakah terbuka untuk semua jurusan?',
                 'acceptedAnswer' => [
                     '@type' => 'Answer',
-                    'text' => 'Ya, Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan terbuka untuk semua jurusan dan angkatan baru.',
+                    'text' => 'Ya, UKMI Polmed terbuka untuk semua jurusan dan angkatan baru.',
                 ],
             ],
         ],
@@ -236,12 +236,12 @@ function e($value)
     $websiteSchema = [
         '@context' => 'https://schema.org',
         '@type' => 'WebSite',
-        'name' => 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
+        'name' => 'UKMI Polmed',
         'url' => 'https://ukmipolmed.xo.je/',
-        'description' => 'Website resmi Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan – organisasi kerohanian Islam mahasiswa.',
+        'description' => 'Website resmi UKMI Politeknik Negeri Medan – organisasi kerohanian Islam mahasiswa.',
         'publisher' => [
             '@type' => 'Organization',
-            'name' => 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
+            'name' => 'UKMI Polmed',
             'logo' => [
                 '@type' => 'ImageObject',
                 'url' => 'https://ukmipolmed.xo.je/logo-ukmi.png',
@@ -265,16 +265,16 @@ function e($value)
         $eventSchemaItems[] = [
             '@context' => 'https://schema.org',
             '@type' => 'Event',
-            'name' => $agendaItem['title'] ?? 'Agenda Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
+            'name' => $agendaItem['title'] ?? 'Agenda UKMI Polmed',
             'description' => $agendaItem['detail'] ?? '',
             'organizer' => [
                 '@type' => 'Organization',
-                'name' => 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
+                'name' => 'UKMI Polmed',
                 'url' => 'https://ukmipolmed.xo.je/',
             ],
             'performer' => [
                 '@type' => 'Organization',
-                'name' => 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
+                'name' => 'UKMI Polmed',
                 'url' => 'https://ukmipolmed.xo.je/',
             ],
             'image' => 'https://ukmipolmed.xo.je/logo-ukmi.png',
@@ -1085,8 +1085,8 @@ function e($value)
         const orgSchema = {
             '@context': 'https://schema.org',
             '@type': 'Organization',
-            name: 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
-            alternateName: 'UKMI Politeknik Negeri Medan',
+            name: 'UKMI Polmed',
+            alternateName: 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
             url: 'https://ukmipolmed.xo.je/',
             logo: 'https://ukmipolmed.xo.je/logo-ukmi.png',
             sameAs: [
