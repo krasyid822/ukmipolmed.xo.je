@@ -1,10 +1,8 @@
 RewriteEngine On
 
 # ── Force HTTPS ──
-RewriteCond %{HTTP:X-Forwarded-Proto} !https
-RewriteCond %{HTTPS} off
-RewriteCond %{HTTP:CF-Visitor} !{"scheme":"https"}
-RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+RewriteCond %{HTTPS} !=on
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
 # ── Canonical: redirect www to non-www ──
 RewriteCond %{HTTP_HOST} ^www\.ukmipolmed\.xo\.je$ [NC]
@@ -37,7 +35,7 @@ RewriteRule ^(.*)$ https://ukmipolmed.xo.je/$1 [L,R=301]
 </IfModule>
 
 # ── Custom 404 ──
-ErrorDocument 404 /error.php
+ErrorDocument 404 https://ukmipolmed.xo.je/error.php?code=Apekah%20tak%20de%20siape%20siape%20(404)
 
 # Block write/modify verbs to any JSON (hardens against PUT/POST/etc.)
 <FilesMatch "\.json$">
@@ -77,3 +75,9 @@ ErrorDocument 404 /error.php
         </LimitExcept>
     </FilesMatch>
 </IfModule>
+ErrorDocument 400 https://ukmipolmed.xo.je/error.php?code=Salah%20minta%20nih%20(400)
+ErrorDocument 401 https://ukmipolmed.xo.je/error.php?code=Kita%20ga%20punya%20izin%20bre%20(401)
+ErrorDocument 403 https://ukmipolmed.xo.je/error.php?code=Waduh%20ga%20boleh%20masuk%20(403)
+ErrorDocument 500 https://ukmipolmed.xo.je/error.php?code=Tidak.%20Rumah%20gweh%20(500)
+ErrorDocument 503 https://ukmipolmed.xo.je/error.php?code=Loh%2C%20tadi%20rumah%20saya%20disini%20(503)
+php_value date.timezone Asia/Jakarta
