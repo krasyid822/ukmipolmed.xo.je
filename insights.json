@@ -1,14 +1,15 @@
 {
-    "total": 362,
+    "total": 466,
     "events": {
-        "blog_view_ketua-umum-terpilih-ukmi-polmed": 99,
-        "home_view": 164,
+        "blog_view_ketua-umum-terpilih-ukmi-polmed": 101,
+        "home_view": 262,
         "blog_view_coming-soon-oprec-ukmi-2026": 6,
-        "blog_view_wujudkan-mahasiswa-berdampak-ukmi-polmed-resmi-buka-open-recruitment-2026-2027": 35,
+        "blog_view_wujudkan-mahasiswa-berdampak-ukmi-polmed-resmi-buka-open-recruitment-2026-2027": 38,
         "blog_view_senin-jam-11-saatnya-charge-iman-di-kajian-jelang-zuhur": 8,
         "blog_admin_update": 47,
         "cta_arsip_hero": 2,
-        "doc_2": 1
+        "doc_2": 1,
+        "nav_daftar": 1
     },
     "history": {
         "2026-02-21": {
@@ -60,14 +61,15 @@
             }
         },
         "2026-04-20": {
-            "total": 108,
+            "total": 212,
             "events": {
-                "home_view": 97,
+                "home_view": 195,
                 "blog_view_senin-jam-11-saatnya-charge-iman-di-kajian-jelang-zuhur": 5,
-                "blog_view_wujudkan-mahasiswa-berdampak-ukmi-polmed-resmi-buka-open-recruitment-2026-2027": 3,
-                "blog_view_ketua-umum-terpilih-ukmi-polmed": 3
+                "blog_view_wujudkan-mahasiswa-berdampak-ukmi-polmed-resmi-buka-open-recruitment-2026-2027": 6,
+                "blog_view_ketua-umum-terpilih-ukmi-polmed": 5,
+                "nav_daftar": 1
             }
         }
     },
-    "updated_at": "2026-04-20T11:31:05+02:00"
+    "updated_at": "2026-04-20T16:05:46+02:00"
 }

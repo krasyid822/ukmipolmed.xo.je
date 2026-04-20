@@ -195,11 +195,26 @@ function normalizeAdminFaqTimestamp($value)
 }
 
 $heroCards = [];
+$protectedDefaultHeroCard = [
+	'type' => 'default',
+	'title' => 'Kartu bawaan beranda',
+	'caption' => 'Kartu ini menampilkan ringkasan utama UKMI dan tidak bisa dihapus.',
+	'content' => '__default__',
+	'alt' => '',
+	'locked' => true,
+];
+$hasDefaultHeroCard = false;
 foreach ($config['hero_cards'] as $item) {
 	if (!is_array($item)) continue;
 	$type = strtolower(trim((string) ($item['type'] ?? 'image')));
-	if (!in_array($type, ['image', 'embed'], true)) {
+	if (!in_array($type, ['image', 'embed', 'default'], true)) {
 		$type = 'image';
+	}
+	if ($type === 'default') {
+		if ($hasDefaultHeroCard) continue;
+		$heroCards[] = $protectedDefaultHeroCard;
+		$hasDefaultHeroCard = true;
+		continue;
 	}
 	$title = trim((string) ($item['title'] ?? ''));
 	$caption = trim((string) ($item['caption'] ?? ''));
@@ -213,10 +228,34 @@ foreach ($config['hero_cards'] as $item) {
 		'caption' => $caption,
 		'content' => $content,
 		'alt' => $alt,
+		'locked' => false,
 	];
 }
-if (empty($heroCards)) {
-	$heroCards = $defaults['hero_cards'];
+if (!$hasDefaultHeroCard) {
+	array_unshift($heroCards, $protectedDefaultHeroCard);
+}
+if (count($heroCards) === 1) {
+	foreach ($defaults['hero_cards'] as $item) {
+		if (!is_array($item)) continue;
+		$type = strtolower(trim((string) ($item['type'] ?? 'image')));
+		if (!in_array($type, ['image', 'embed'], true)) {
+			$type = 'image';
+		}
+		$title = trim((string) ($item['title'] ?? ''));
+		$caption = trim((string) ($item['caption'] ?? ''));
+		$content = trim((string) ($item['content'] ?? ''));
+		$alt = trim((string) ($item['alt'] ?? ''));
+		if ($title === '' && $caption === '' && $content === '') continue;
+		if ($content === '') continue;
+		$heroCards[] = [
+			'type' => $type,
+			'title' => $title,
+			'caption' => $caption,
+			'content' => $content,
+			'alt' => $alt,
+			'locked' => false,
+		];
+	}
 }
 
 $maxPosts = 100;
