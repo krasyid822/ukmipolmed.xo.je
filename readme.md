@@ -1,3 +1,5 @@
+![](assets/demo/ukmi-polmed.gif)
+
 index robot htaccess
 
 The BI metric “Agenda views” is computed by summing any insight events whose name starts with agenda_ in the engagement and org sections, e.g. agenda_view, agenda_rotate (status.php:95-135).
