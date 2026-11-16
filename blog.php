@@ -430,6 +430,8 @@ $posts = array_map(function ($post) use ($baseUrl) {
 		'body_html' => $bodyHtml,
 		'image' => $image,
 		'image_data' => $imageData,
+		'focal_x' => isset($post['focal_x']) ? max(0, min(100, (float) $post['focal_x'])) : 50,
+		'focal_y' => isset($post['focal_y']) ? max(0, min(100, (float) $post['focal_y'])) : 50,
 		'embeds' => $embedList,
 		'embed_enabled' => $embedEnabled,
 		'created_at' => $created,
@@ -1174,7 +1176,7 @@ try {
 					<div class="meta">Dipublikasikan: <?php echo e($posts[0]['created_at'] ?: '-'); ?><?php if (!empty($posts[0]['updated_at'])): ?> · Diubah: <?php echo e($posts[0]['updated_at']); ?><?php endif; ?> · Views: <span id="blog-views-inline">-</span></div>
 				<?php $articleImage = !empty($posts[0]['image_data']) ? $posts[0]['image_data'] : ($posts[0]['image'] ?? ''); ?>
 				<?php if ($articleImage !== ''): ?>
-					<div style="margin:10px 0 14px;"><img src="<?php echo e($articleImage); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; border-radius:12px; border:1px solid var(--stroke);"></div>
+					<div style="margin:10px 0 14px;"><img src="<?php echo e($articleImage); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; object-position: <?php echo (int) ($posts[0]['focal_x'] ?? 50); ?>% <?php echo (int) ($posts[0]['focal_y'] ?? 50); ?>%; border-radius:12px; border:1px solid var(--stroke);"></div>
 				<?php endif; ?>
 				<div class="body"><?php echo apply_embeds($posts[0]['body_html'], $posts[0]['embeds'] ?? [], !empty($posts[0]['embed_enabled'])); ?></div>
 
@@ -1295,7 +1297,7 @@ try {
 					<a class="card" href="/blog/<?php echo urlencode($post['slug'] ?? ''); ?>" style="text-decoration:none; color:inherit; display:block;">
 						<?php if (!empty($post['image'])): ?>
 							<div style="margin:-6px -6px 10px; overflow:hidden; border-radius:10px; border:1px solid var(--stroke);">
-								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" style="width:100%; height:180px; object-fit:cover; display:block;">
+								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" style="width:100%; height:180px; object-fit:cover; display:block; object-position: <?php echo (int) ($post['focal_x'] ?? 50); ?>% <?php echo (int) ($post['focal_y'] ?? 50); ?>%;">
 							</div>
 						<?php endif; ?>
 						<h3><?php echo e($post['title']); ?></h3>
@@ -1310,7 +1312,7 @@ try {
 					<a class="card" href="/blog/<?php echo urlencode($post['slug'] ?? ''); ?>" style="text-decoration:none; color:inherit; display:block;">
 						<?php if (!empty($post['image'])): ?>
 							<div style="margin:-6px -6px 10px; overflow:hidden; border-radius:10px; border:1px solid var(--stroke);">
-								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" style="width:100%; height:180px; object-fit:cover; display:block;">
+								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" style="width:100%; height:180px; object-fit:cover; display:block; object-position: <?php echo (int) ($post['focal_x'] ?? 50); ?>% <?php echo (int) ($post['focal_y'] ?? 50); ?>%;">
 							</div>
 						<?php endif; ?>
 						<h3><?php echo e($post['title']); ?></h3>

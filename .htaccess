@@ -24,6 +24,12 @@ RewriteRule ^ /blog/%1? [R=301,L]
 # Sitemap lama (statis) -> sitemap dinamis
 RewriteRule ^sitemap\.xml$ /sitemap.php [R=301,L]
 
+# Admin pretty URL
+RewriteRule ^admin/?$ admin.php [L,QSA]
+RewriteCond %{THE_REQUEST} \s/+admin\.php[\s?] [NC]
+RewriteCond %{REQUEST_METHOD} =GET
+RewriteRule ^ /admin [R=301,L]
+
 # ── Security Headers ──
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"

@@ -10,12 +10,14 @@ if (($adminComponentMode ?? '') === 'handle') {
 				'summary' => $posts[$reqIdx]['summary'] ?? '',
 				'body' => $posts[$reqIdx]['body'] ?? '',
 				'image' => $posts[$reqIdx]['image'] ?? '',
+				'focal_x' => $posts[$reqIdx]['focal_x'] ?? 50,
+				'focal_y' => $posts[$reqIdx]['focal_y'] ?? 50,
 				'embeds' => !empty($posts[$reqIdx]['embeds']) && is_array($posts[$reqIdx]['embeds']) ? $posts[$reqIdx]['embeds'] : [],
 				'embed_enabled' => !empty($posts[$reqIdx]['embed_enabled']),
 			];
 		} elseif ($reqIdx === -1) {
 			$blogEditingIdx = -1;
-			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'embeds' => [], 'embed_enabled' => false];
+			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'focal_x' => 50, 'focal_y' => 50, 'embeds' => [], 'embed_enabled' => false];
 		}
 	}
 
@@ -116,6 +118,8 @@ if (($adminComponentMode ?? '') === 'handle') {
 			if ($emb !== '') $embedList[] = $emb;
 		}
 		$image = trim((string) ($_POST['blog_image'] ?? ''));
+		$focalX = isset($_POST['blog_focal_x']) ? max(0, min(100, (float) $_POST['blog_focal_x'])) : 50;
+		$focalY = isset($_POST['blog_focal_y']) ? max(0, min(100, (float) $_POST['blog_focal_y'])) : 50;
 		$idx = isset($_POST['blog_edit_idx']) ? (int) $_POST['blog_edit_idx'] : -1;
 		$now = date('c');
 		$created = ($idx >= 0 && isset($posts[$idx])) ? ($posts[$idx]['created_at'] ?? $now) : $now;
@@ -161,6 +165,8 @@ if (($adminComponentMode ?? '') === 'handle') {
 					'summary' => $summary,
 					'body' => $body,
 					'image' => $image,
+					'focal_x' => $focalX,
+					'focal_y' => $focalY,
 					'embeds' => $embedList,
 					'embed_enabled' => $embedEnabled,
 					'created_at' => $created,
@@ -217,6 +223,14 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<input type="text" id="blog_image" name="blog_image" value="<?php echo htmlspecialchars($blogDraft['image'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://...jpg atau data:image/jpeg;base64,...">
 				<input type="file" id="blog_image_file" accept="image/*" style="margin-top:6px;">
 				<p class="muted-text" style="margin:4px 0 0;">Pilih file untuk diunggah (auto compress <=1MB) atau tempel URL gambar.</p>
+				<input type="hidden" id="blog_focal_x" name="blog_focal_x" value="<?php echo htmlspecialchars((string) ($blogDraft['focal_x'] ?? 50), ENT_QUOTES, 'UTF-8'); ?>">
+				<input type="hidden" id="blog_focal_y" name="blog_focal_y" value="<?php echo htmlspecialchars((string) ($blogDraft['focal_y'] ?? 50), ENT_QUOTES, 'UTF-8'); ?>">
+				<p class="muted-text" id="blog_focal_note" style="margin:4px 0 0;">Titik fokus sampul: otomatis dari deteksi wajah saat unggah.</p>
+				<div id="blog_focal_pick" style="position:relative; width:100%; max-width:420px; margin-top:8px; display:none; cursor:crosshair; border:1px solid var(--stroke); border-radius:10px; overflow:hidden;">
+					<img id="blog_focal_img" alt="Pratinjau titik fokus sampul" style="display:block; width:100%; height:auto;">
+					<span id="blog_focal_marker" style="position:absolute; width:18px; height:18px; border-radius:50%; border:2px solid #fff; background:rgba(56,189,248,0.75); transform:translate(-50%,-50%); pointer-events:none; box-shadow:0 0 0 2px rgba(0,0,0,0.45);"></span>
+				</div>
+				<p class="muted-text" style="margin:4px 0 0;">Klik pada pratinjau untuk menetapkan titik fokus sampul secara manual (berguna untuk postingan lama).</p>
 			</div>
 			<div class="full">
 				<label for="blog_summary">Ringkas</label>
@@ -341,10 +355,17 @@ if (($adminComponentMode ?? '') === 'handle') {
 		<?php endif; ?>
 	</div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
 (function () {
 	const blogImageFile = document.getElementById('blog_image_file');
 	const blogImageInput = document.getElementById('blog_image');
+	const focalXInput = document.getElementById('blog_focal_x');
+	const focalYInput = document.getElementById('blog_focal_y');
+	const focalNote = document.getElementById('blog_focal_note');
+	const focalPick = document.getElementById('blog_focal_pick');
+	const focalImg = document.getElementById('blog_focal_img');
+	const focalMarker = document.getElementById('blog_focal_marker');
 	const blogForm = document.getElementById('blog-form');
 	const blogResetBtn = document.getElementById('blog_reset');
 	const blogEditIdxInput = document.getElementById('blog_edit_idx');
@@ -378,13 +399,52 @@ if (($adminComponentMode ?? '') === 'handle') {
 		}
 		return dataUrl;
 	}
+	let faceApiReady = null;
+	function ensureFaceApi() {
+		if (!window.faceapi) return Promise.reject(new Error('faceapi'));
+		if (!faceApiReady) {
+			faceApiReady = faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights').then(() => true);
+		}
+		return faceApiReady;
+	}
+	function imageFromDataUrl(dataUrl) {
+		return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('img')); i.src = dataUrl; });
+	}
+	async function autoFocalFromDataUrl(dataUrl) {
+		if (!focalXInput || !focalYInput) return;
+		try {
+			if (focalNote) focalNote.textContent = 'Mendeteksi wajah untuk titik fokus...';
+			await ensureFaceApi();
+			const img = await imageFromDataUrl(dataUrl);
+			const dets = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 }));
+			const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+			if (!dets.length) { focalXInput.value = 50; focalYInput.value = 50; if (focalNote) focalNote.textContent = 'Tidak ada wajah terdeteksi — titik fokus 50%/50%.'; return; }
+			let minX = W, maxX = 0, minY = H, maxY = 0;
+			dets.forEach((d) => { const b = d.box; minX = Math.min(minX, b.x); maxX = Math.max(maxX, b.x + b.width); minY = Math.min(minY, b.y); maxY = Math.max(maxY, b.y + b.height); });
+			const faceCx = (minX + maxX) / 2;
+			const faceH = (maxY - minY) || (H * 0.2);
+			const bodyTop = minY, bodyBottom = Math.min(maxY + faceH * 2.5, H);
+			const fx = Math.max(0, Math.min(100, (faceCx / W) * 100));
+			const fy = Math.max(0, Math.min(100, (((bodyTop + bodyBottom) / 2) / H) * 100));
+			focalXInput.value = Math.round(fx); focalYInput.value = Math.round(fy);
+			if (focalNote) focalNote.textContent = 'Titik fokus sampul: ' + Math.round(fx) + '% / ' + Math.round(fy) + '% (deteksi wajah).';
+		} catch (_) {
+			if (focalXInput && !focalXInput.value) focalXInput.value = 50;
+			if (focalYInput && !focalYInput.value) focalYInput.value = 50;
+			if (focalNote) focalNote.textContent = 'Deteksi wajah tidak tersedia — titik fokus 50%/50%.';
+		}
+	}
 	blogImageFile?.addEventListener('change', async (e) => {
 		const file = e?.target?.files?.[0]; if (!file) return;
 		if (!file.type || !file.type.startsWith('image/')) { alert('File harus berupa gambar.'); e.target.value = ''; return; }
 		try {
 			const dataUrl = await compressImage(file);
-			if (dataUrlBytes(dataUrl) > MAX_IMAGE_BYTES) alert('Gambar masih di atas 1MB setelah kompres. Pilih file yang lebih kecil.');
-			else if (blogImageInput) blogImageInput.value = dataUrl;
+			if (dataUrlBytes(dataUrl) > MAX_IMAGE_BYTES) { alert('Gambar masih di atas 1MB setelah kompres. Pilih file yang lebih kecil.'); }
+			else {
+				if (blogImageInput) blogImageInput.value = dataUrl;
+				await autoFocalFromDataUrl(dataUrl);
+				renderFocalPreview();
+			}
 		} catch (_) { alert('Gagal memproses gambar.'); }
 		e.target.value = '';
 	});
@@ -392,6 +452,10 @@ if (($adminComponentMode ?? '') === 'handle') {
 		if (blogEditIdxInput) blogEditIdxInput.value = -1;
 		blogForm.querySelectorAll('input[type="text"], textarea').forEach((el) => { el.value = ''; });
 		if (blogImageFile) blogImageFile.value = '';
+		if (focalXInput) focalXInput.value = 50;
+		if (focalYInput) focalYInput.value = 50;
+		if (focalNote) focalNote.textContent = 'Titik fokus sampul: otomatis dari deteksi wajah saat unggah.';
+		renderFocalPreview();
 		if (blogEmbedToggle) blogEmbedToggle.checked = false;
 		syncEmbedVisibility();
 		if (blogEmbedList) { blogEmbedList.innerHTML = ''; addEmbedItem(''); }
@@ -421,5 +485,36 @@ if (($adminComponentMode ?? '') === 'handle') {
 	}
 	blogEmbedAdd?.addEventListener('click', () => addEmbedItem(''));
 	attachEmbedRemoveHandlers();
+
+	function positionFocalMarker() {
+		if (!focalMarker) return;
+		const x = parseFloat(focalXInput?.value || '50');
+		const y = parseFloat(focalYInput?.value || '50');
+		focalMarker.style.left = (isNaN(x) ? 50 : x) + '%';
+		focalMarker.style.top = (isNaN(y) ? 50 : y) + '%';
+	}
+	function renderFocalPreview() {
+		if (!focalPick || !focalImg) return;
+		const val = (blogImageInput?.value || '').trim();
+		if (val.startsWith('data:') || /^https?:\/\//i.test(val)) {
+			if (focalImg.getAttribute('src') !== val) focalImg.src = val;
+			focalPick.style.display = 'block';
+		} else {
+			focalPick.style.display = 'none';
+		}
+		positionFocalMarker();
+	}
+	focalPick?.addEventListener('click', (e) => {
+		const rect = focalPick.getBoundingClientRect();
+		if (!rect.width || !rect.height) return;
+		const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+		const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+		if (focalXInput) focalXInput.value = Math.round(x);
+		if (focalYInput) focalYInput.value = Math.round(y);
+		positionFocalMarker();
+		if (focalNote) focalNote.textContent = 'Titik fokus sampul (manual): ' + Math.round(x) + '% / ' + Math.round(y) + '%';
+	});
+	focalImg?.addEventListener('load', positionFocalMarker);
+	renderFocalPreview();
 })();
 </script>

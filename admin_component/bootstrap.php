@@ -275,6 +275,8 @@ foreach ($config['posts'] as $post) {
 		'summary' => trim((string) ($post['summary'] ?? '')),
 		'body' => (string) ($post['body'] ?? ''),
 		'image' => trim((string) ($post['image'] ?? '')),
+		'focal_x' => isset($post['focal_x']) ? max(0, min(100, (float) $post['focal_x'])) : 50,
+		'focal_y' => isset($post['focal_y']) ? max(0, min(100, (float) $post['focal_y'])) : 50,
 		'embed_enabled' => !empty($post['embed_enabled']),
 		'embeds' => $embedList,
 		'created_at' => $post['created_at'] ?? date('c'),
@@ -291,7 +293,7 @@ $posts = array_slice($posts, 0, $maxPosts);
 $postsArchived = is_array($config['posts_archived'] ?? null) ? array_values($config['posts_archived']) : [];
 
 $blogEditingIdx = -1;
-$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'embeds' => [], 'embed_enabled' => false];
+$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'focal_x' => 50, 'focal_y' => 50, 'embeds' => [], 'embed_enabled' => false];
 
 $maxLogs = 30;
 $archiveLimitDays = 60;
