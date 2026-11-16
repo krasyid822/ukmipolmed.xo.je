@@ -1,0 +1,598 @@
+================================================================================
+TEMUAN AUDIT SEO — ukmipolmed.xo.je
+Dokumen: TEMUAN.TXT
+Versi: 2.0 (dirapikan & dilengkapi)
+Tanggal audit: 2026-11-16
+Cakupan: index.php, blog.php, faq.php, error.php, status.php, info.php,
+         loading.php, oauth.php, admin.php, header.php, .htaccess,
+         robots.txt, sitemap.xml, folder .uploads/, .backups/, admin_component/
+
+================================================================================
+>>> PRINSIP UTAMA PROYEK — JANGAN PERNAH DILUPAKAN <<<
+================================================================================
+
+    *** HOLISTIC SEO (SEO HOLISTIK / OPTIMASI PENCARIAN MENYELURUH) ***
+
+Setiap keputusan teknis, konten, dan desain di proyek ukmipolmed.xo.je WAJIB
+diambil dengan prinsip HOLISTIC SEO. Bukan sekadar SEO teknis (schema, url,
+alt text), tetapi menyeluruh yang mencakup 4 pilar:
+
+    1. TECHNICAL SEO  -> schema JSON-LD, canonical, hreflang, url bersih,
+                         sitemap/robots, performa (Core Web Vitals), keamanan.
+    2. CONTENT SEO    -> long tail, content silo, TOFU/MOFU/BOFU, AEO, GEO.
+    3. AUTHORITY SEO  -> E-E-A-T (Experience, Expertise, Authoritativeness,
+                         Trustworthiness), sameAs, konsistensi brand.
+    4. UX / SXO       -> Core Web Vitals, mobile-first, alt text, keterbacaan,
+                         pengalaman pengguna yang baik.
+
+Prinsip turunan yang tidak boleh dilanggar:
+  - Jangan pernah menambah "thin content" atau konten yang membunuh SEO
+    (duplikat, keyword stuffing, konten tanpa nilai) demi mengisi halaman.
+  - Setiap perubahan harus menjaga keseimbangan 4 pilar di atas.
+  - AEO & GEO adalah bagian dari Holistic SEO (optimasi era AI), bukan terpisah.
+
+Status prinsip ini: PERMANEN — tidak boleh dihapus/direset oleh perubahan lain.
+
+================================================================================
+BAGIAN 1 — RINGKASAN EKSEKUTIF
+================================================================================
+
+Website ini adalah situs UKM (Unit Kegiatan Mahasiswa Islam Politeknik Negeri
+Medan) berbasis PHP statis + JSON sebagai penyimpanan data (data.json,
+default.json, insights.json). Secara umum fondasi SEO sudah cukup baik:
+sudah ada HTTPS paksa, robots.txt, sitemap.xml, canonical, hreflang, schema
+JSON-LD di beberapa halaman, Open Graph, dan meta description.
+
+Namun ada beberapa masalah serius yang harus diperbaiki:
+
+  P0 (kritis):
+  - info.php berisi phpinfo() -> membocorkan server & thin content, ada di sitemap.
+  - Folder .backups/ TIDAK diblokir di .htaccess -> seluruh backup source bisa
+    diakses publik.
+  - Gambar unggahan besar (548K & 328K) tanpa optimasi -> memperlambat LCP.
+
+  P1 (penting):
+  - status.php & info.php masih ada di sitemap.xml (thin content).
+  - lastmod sitemap statis (2026-03-04) -> dianggap tidak aktif.
+  - URL *.php tidak di-redirect ke versi bersih (duplicate content).
+  - blog.php memiliki 2 tag <h1> (heading hierarchy).
+
+  P2/P3 (peningkatan):
+  - Lengkapi schema (Event agenda, sameAs, SearchAction).
+  - Optimasi gambar (WebP, srcset, nama file deskriptif).
+  - RSS/Atom feed, heading audit menyeluruh, konsistensi lang.
+
+
+================================================================================
+BAGIAN 2 — METODOLOGI & CAKUPAN
+================================================================================
+
+Audit dilakukan dengan:
+  - Inspeksi manual struktur file & direktori.
+  - Pembacaan robots.txt, sitemap.xml, .htaccess.
+  - Pencarian pola (grep) untuk: schema JSON-LD, Open Graph, Twitter Card,
+    canonical, hreflang, meta robots, viewport, heading (<h1>), atribut gambar
+    (alt/width/height/loading/srcset), ukuran file, dan pengecekan autentikasi.
+
+Status dinilai dengan legenda:
+  [BAIK]      = sudah sesuai praktik terbaik
+  [CUKUP]     = ada tapi perlu penyempurnaan
+  [BURUK]     = bermasalah / merusak SEO
+  [TIDAK ADA] = belum diimplementasikan
+
+
+================================================================================
+BAGIAN 3 — KAMUS KONSEP SEO (ILMU & TRIK)
+================================================================================
+
+--------------------------------------------------------------------------------
+3.1 AEO — Answer Engine Optimization
+--------------------------------------------------------------------------------
+Optimasi agar konten menjadi JAWABAN LANGSUNG di mesin jawaban (Google AI
+Overviews/SGE, ChatGPT Search, Perplexity, Bing Copilot).
+
+Trik praktis:
+  - 40-60 kata pertama paragraf harus langsung menjawab pertanyaan.
+  - Gunakan heading berbentuk pertanyaan natural ("Apa itu UKMI Polmed?").
+  - Pasang schema FAQPage & QAPage.
+  - Tulis ringkasan padat di awal, detail menyusul.
+
+Status web ini: faq.php sudah cocok (FAQPage ada). Perlu tambah schema QAPage
+dan struktur tanya-jawab di konten blog.
+
+--------------------------------------------------------------------------------
+3.2 GEO — Generative Engine Optimization
+--------------------------------------------------------------------------------
+Sepaket dengan AEO, fokus pada: dikutip (citation) oleh model AI.
+  - Brand mention konsisten ("UKMI Polmed").
+  - Sediakan data/angka orisinal (statistik kegiatan, jumlah anggota, tahun).
+  - Struktur HTML semantik & kutipan jelas memud让kan model mengutip sumber.
+
+Perbedaan singkat: AEO = jawaban langsung di SERP; GEO = direferensikan AI.
+
+--------------------------------------------------------------------------------
+3.3 Long Tail Keyword
+--------------------------------------------------------------------------------
+Keyword spesifik, volume kecil, konversi tinggi.
+  Short tail        -> Long tail
+  "UKMI"            -> "UKMI Politeknik Negeri Medan kegiatan 2026"
+  "pendaftaran"     -> "cara daftar UKMI Polmed online 2026"
+  "agenda"          -> "agenda kegiatan mahasiswa Polmed November 2026"
+
+Sumber long tail di web ini: judul post blog spesifik, pertanyaan faq.php,
+nama agenda + tahun. Tips: riset keyword gratis (Google autocomplete, People
+Also Ask, Search Console) sebelum menulis konten.
+
+--------------------------------------------------------------------------------
+3.4 Schema Website (JSON-LD / Structured Data)
+--------------------------------------------------------------------------------
+Struktur data di <head> agar Google paham konteks konten -> memperoleh rich
+snippet. Format: <script type="application/ld+json">.
+
+Jenis schema relevan untuk web ini:
+  - Organization      : identitas UKMI (nama, logo, alamat, sameAs sosmed)
+  - WebSite           : + SearchAction (mesin pencari internal)
+  - WebSite/Breadcrumb: navigasi
+  - FAQPage / QAPage  : faq.php
+  - BlogPosting       : tiap post blog.php
+  - Event             : agenda kegiatan (tanggal, lokasi, penyelenggara)
+  - DiscussionForumPosting : komentar di blog
+
+Status web ini:
+  [BAIK]  index.php: FAQPage, WebSite, Organization, BreadcrumbList
+  [BAIK]  blog.php : BlogPosting + BreadcrumbList
+  [BAIK]  faq.php  : FAQPage, BreadcrumbList, WebSite
+  [KURANG] Belum ada Event, sameAs, SearchAction, DiscussionForumPosting
+
+Tips: validasi dengan Google Rich Results Test & Schema Markup Validator.
+
+--------------------------------------------------------------------------------
+3.5 E-E-A-T
+--------------------------------------------------------------------------------
+Experience, Expertise, Authoritativeness, Trustworthiness — sinyal kualitas
+yang menilai kredibilitas konten (penting untuk topik YMYL).
+
+  - Experience       : foto kegiatan nyata, cerita alumni, dokumentasi.
+  - Expertise        : tulisan oleh pengurus/mentor, cantumkan penulis.
+  - Authoritativeness: diakui kampus, aktif, dirujuk pihak lain.
+  - Trustworthiness  : kontak valid, HTTPS, info jelas, tanggal update.
+
+Status web ini:
+  [BAIK]      HTTPS aktif, halaman info & status tersedia.
+  [PERLU]     Author byline tiap post, halaman Tentang/Sejarah/Visi-Misi,
+              testimoni alumni, tanggal update, halaman kontak resmi.
+
+--------------------------------------------------------------------------------
+3.6 Content Silo
+--------------------------------------------------------------------------------
+Arsitektur konten berbentuk silo (kerucut): topik utama di puncak, subtopik
+mengumpul di bawah, saling terhubung via internal linking.
+
+Contoh struktur untuk web ini:
+
+                 UKMI POLMED (beranda)
+                /          |           \
+         Kegiatan       Organisasi     Informasi
+         /     \        /       \      /      \
+     Agenda   Blog  Pengurus  Sejarah  FAQ    Info
+     /  \      \
+  2025  2026  Tips
+
+Aturan:
+  - Tiap silo hanya saling link di dalam silonya (hindari lompat silo).
+  - Anchor text mengandung keyword.
+  - URL bersih & berstruktur.
+
+Status: [BELUM] struktur silo & internal linking antar silo belum diterapkan.
+
+--------------------------------------------------------------------------------
+3.7 TOFU / MOFU / BOFU (Content Marketing Funnel)
+--------------------------------------------------------------------------------
+Perjalanan pengunjung dari "belum kenal" hingga "siap bergabung".
+
+  Tahap          Fungsi                Contoh konten di web ini
+  TOFU (Top)     Awareness             Artikel blog "Mengenal UKMI Polmed"
+  MOFU (Middle)  Consideration         FAQ, profil pengurus, galeri, testimoni
+  BOFU (Bottom)  Decision/Konversi     Form pendaftaran, link daftar, kontak
+
+TOFU tarik trafik -> MOFU bangun minat -> BOFU konversi jadi anggota baru.
+
+Status: [BELUM] pemetaan funnel belum dibuat; form pendaftaran sudah ada
+(registrationDefaults -> Google Form) sebagai aset BOFU.
+
+--------------------------------------------------------------------------------
+3.8 Alt Text & Anchor Text
+--------------------------------------------------------------------------------
+ALT TEXT (teks alternatif gambar): untuk screen reader + Google Image Search.
+  [BURUK] <img src="logo-ukmi.png" alt="image1.jpg">
+  [BAIK]  <img src="logo-ukmi.png" alt="Logo UKMI Politeknik Negeri Medan">
+
+ANCHOR TEXT (teks tautan):
+  [BURUK] <a href="blog.php">klik di sini</a>
+  [BAIK]  <a href="blog.php">baca panduan pendaftaran UKMI Polmed</a>
+
+Aturan anchor text: deskriptif, mengandung keyword natural, bervariasi.
+
+Status web ini:
+  [BAIK]  Logo & gambar utama sudah punya alt deskriptif (index.php, blog.php).
+  [PERLU] Pastikan SEMUA gambar (termasuk .uploads) punya alt bermakna.
+
+--------------------------------------------------------------------------------
+3.9 Konsep Tambahan (Referensi)
+--------------------------------------------------------------------------------
+- Core Web Vitals: LCP (<2.5s), CLS (<0.1), INP (<200ms) — sinyal Page
+  Experience. Diperbaiki via optimasi gambar, dimensi eksplisit, JS ringan.
+- Mobile-First Indexing: Google mengindeks versi MOBILE. Viewport, font, touch
+  target (>=48px), dan konten harus setara di mobile.
+- Canonical Tag: <link rel="canonical"> menentukan URL utama, cegah duplikat.
+- Hreflang: menandai versi bahasa/wilayah (id, x-default) untuk i18n.
+- Crawl Budget & Index Coverage: jaga situs ramping; hindari thin content,
+  duplikat, dan URL sampah agar crawl budget tidak terbuang.
+- Internal Linking & Link Equity: distribusi "nilai" link; anchor deskriptif.
+- Search Intent: all]<｜｜begin▁of▁sentence｜｜>## all align konten dengan maksud
+  pencarian (informational, navigational, transactional).
+- Keyword Cannibalization: hindari banyak halaman menarget keyword sama.
+- Snippet & Meta: title 50-60 char, description 150-160 char, unik per halaman.
+- Image SEO: WebP/AVIF, srcset responsif, loading="lazy" untuk bawah fold,
+  width/height eksplisit, nama file deskriptif,compression.
+- Structured Data Testing: Rich Results Test, Schema Validator.
+- Log File Analysis & Crawl Stats: pahami perilaku Googlebot.
+- SERP Features: featured snippet, People Also Ask, video/FAQ rich result.
+- YMYL (Your Money Your Life): standar E-E-A-T lebih ketat utk topik sensitif.
+
+
+================================================================================
+BAGIAN 4 — TEMUAN DETAIL PER KATEGORI
+================================================================================
+
+--------------------------------------------------------------------------------
+4.1 KEAMANAN & AKSES (berdampak pada SEO)
+--------------------------------------------------------------------------------
+[BAIK]  HTTPS dipaksa via .htaccess (RewriteRule ... R=301).
+[BAIK]  Security headers: X-Content-Type-Options, X-Frame-Options,
+        Referrer-Policy, Permissions-Policy.
+[BAIK]  data.json & insights.json diblokir total dari web; default.json
+        read-only; semua .json ditolak untuk write.
+[BAIK]  admin.php memakai session + session_version + logging (admin_component/
+        sesi.php) — bukan tanpa autentikasi.
+[BURUK] info.php = <?php phpinfo(); ?> (info.php:1). Membocorkan path server,
+        versi PHP, modul, environment. TANPA meta robots -> bisa diindeks.
+        Dan masih tercantum di sitemap.xml. => HAPUS atau noindex + batasi akses.
+[BURUK] Folder .backups/ (9 folder backup bertimestamp) TIDAK diblokir di
+        .htaccess -> seluruh source lama dapat diunduh publik.
+        Solusi .htaccess:
+            RedirectMatch 404 /\.backups/
+            # atau
+            <Directory ".backups"> Require all denied </Directory> (jika server
+            mengizinkan) — alternatif: pindahkan keluar dari document root.
+[TIDAK ADA] Blokir akses langsung ke admin_component/*.php jika tidak perlu
+        diakses langsung (include-only). Pertimbangkan deny kecuali via admin.php.
+
+
+--------------------------------------------------------------------------------
+4.2 INDEXASI, CANONICAL & DUPLIKAT
+--------------------------------------------------------------------------------
+[BAIK]    index.php, blog.php, faq.php punya <link rel="canonical">.
+[BAIK]    hreflang id + x-default ada di index.php, blog.php, faq.php.
+[BAIK]    meta robots index,follow di index/faq; blog pakai
+          max-snippet:-1, max-image-preview:large (bagus utk AEO).
+[BAIK]    error.php sudah noindex,follow (benar).
+[BURUK]    URL *.php tidak di-redirect ke versi bersih:
+          /index.php vs / , /blog.php vs /blog , /faq.php vs /faq -> Google
+          bisa mengindeks dua versi (duplicate). Solusi .htaccess:
+              RewriteCond %{THE_REQUEST} \s/+index\.php[\s?] [NC]
+              RewriteRule ^index\.php$ / [R=301,L]
+          (terapkan pola sama utk blog.php & faq.php bila ingin URL bersih)
+[CUKUP]    Parameter query (UTM, fbclid) tidak dinormalisasi -> potensi
+          duplikat. Pertimbangkan aturan strip parameter di .htaccess.
+[CUKUP]    status.php: hanya <title> (status.php:293), TANPA meta description
+          & TANPA meta robots -> thin content yang bisa diindeks.
+          Rekomendasi: tambah meta robots noindex,follow ATAU keluarkan dari
+          sitemap. Juga loading.php (lang="en", halaman loading) sebaiknya
+          noindex agar tidak terindeks.
+[BURUK]    loading.php memakai <html lang="en"> padahal situs berbahasa
+          Indonesia (loading.php:2) -> inkonsistensi bahasa; dan bisa terindeks.
+
+
+--------------------------------------------------------------------------------
+4.3 KONTEN & STRUKTUR (Thin Content, Heading)
+--------------------------------------------------------------------------------
+[BURUK]  info.php: thin content parah (phpinfo) — lihat 4.1.
+[BURUK]  blog.php memiliki 2 <h1>: satu dari template (blog.php:1145) dan satu
+          dari konversi markdown "# " -> <h1> (blog.php:119). Bila sebuah post
+          memakai "# Judul", hasilnya 2 H1. Perbaiki: konversi judul post jadi
+          <h2>, sisakan 1 H1 (judul blog) ATAU jadikan judul post sebagai H1
+          dan hilangkan H1 template.
+[BAIK]   index.php, faq.php, error.php masing-masing 1 <h1>.
+[BURUK]  status.php: 0 <h1> -> tidak ada heading utama.
+[CUKUP]  Perlu audit menyeluruh: H1 tunggal per halaman, H2-H6 berurutan tanpa
+          lompatan (H1 -> H3 tanpa H2 = buruk).
+
+
+--------------------------------------------------------------------------------
+4.4 STRUCTURED DATA (JSON-LD)
+--------------------------------------------------------------------------------
+[BAIK]  index.php: FAQPage, WebSite, Organization, BreadcrumbList.
+[BAIK]  blog.php : BlogPosting (author & publisher Organization + logo),
+          BreadcrumbList.
+[BAIK]  faq.php  : FAQPage, BreadcrumbList, WebSite.
+[KURANG] Belum ada Event schema untuk agenda kegiatan (tanggal, lokasi,
+          penyelenggara, tiket/pendaftaran) -> kehilangan rich result Event.
+[KURANG] Belum ada sameAs (link IG, Facebook, YouTube, dll) di Organization ->
+          lemah untuk knowledge graph.
+[KURANG] Belum ada SearchAction di WebSite (mesin pencari internal blog.php
+          bisa didaftarkan) & DiscussionForumPosting untuk komentar blog.
+
+
+--------------------------------------------------------------------------------
+4.5 META, OPEN GRAPH & TWITTER CARD
+--------------------------------------------------------------------------------
+[BAIK]  index.php punya og:image + og:image:width(512) + og:image:height(512)
+        + og:image:alt (index.php:243-246). Bagus.
+[BAIK]  blog.php, faq.php, error.php punya OG + Twitter card.
+[CUKUP]  Lengkapi twitter:site & twitter:creator (akun resmi UKMI) di semua
+          halaman.
+[CUKUP]  Pastikan og:image:width/height & og:image:alt ada juga di faq.php &
+          error.php (belum tentu seragam).
+
+
+--------------------------------------------------------------------------------
+4.6 PERFORMA & CORE WEB VITALS (Page Experience)
+--------------------------------------------------------------------------------
+[KOREKSI] palestine.gif = 31KB (bukan 547KB) -> gambar ini RINGAN, aman.
+[BURUK]  Gambar unggahan di .uploads/ berukuran besar:
+          749976b2...jpg = 548KB
+          d2624f75...jpg = 328KB
+          -> tanpa optimasi/kompresi, memperlambat LCP di halaman blog.
+[BAIK]   index.php: loading="lazy" + decoding="async" pada kartu, serta
+          fetchpriority="high" + width/height pada gif & logo loader (cegah CLS).
+[CUKUP]  Banyak <img> di blog.php belum punya width/height eksplisit ->
+          potensi CLS. Tambahkan dimensi / aspect-ratio.
+[BAIK]   .htaccess: cache statis (Expires) 1 minggu-1 bulan & Gzip/Deflate aktif
+          -> membantu performa & crawl efisiensi.
+[TIDAK ADA] Format modern (WebP/AVIF), srcset responsif, kompresi otomatis.
+
+
+--------------------------------------------------------------------------------
+4.7 IMAGE SEO
+--------------------------------------------------------------------------------
+[BURUK]  Nama file .uploads berupa hash acak (55f35d31..., 749976b2...jpg) ->
+          bukan deskriptif. Idealnya nama deskriptif + keyword.
+[TIDAK ADA] Format WebP/AVIF.
+[TIDAK ADA] srcset (responsive image) & sizes.
+[CUKUP]   Sebagian gambar sudah loading="lazy" (index.php kartu), tapi belum
+          menyeluruh di blog.
+[PERLU]   Pastikan setiap gambar punya alt bermakna (kecuali dekoratif -> alt="").
+
+Tips optimasi gambar:
+  - Kompres & konversi ke WebP (mis. via tools build atau tinypng/cli).
+  - Sediakan beberapa ukuran (srcset) agar mobile tidak mengunduh gambar besar.
+  - Cantumkan width/height (atau CSS aspect-ratio) untuk cegah CLS.
+  - Nama file deskriptif: "kegiatan-ppi-2024.jpg" bukan "749976b2...jpg".
+
+
+--------------------------------------------------------------------------------
+4.8 MOBILE-FIRST & BAHASA
+--------------------------------------------------------------------------------
+[BAIK]  Semua halaman utama punya <meta name="viewport"> yang benar.
+[BAIK]  hreflang id + x-default di index/blog/faq.
+[BAIK]  <html lang="id"> di index, blog, faq, status, error, admin.
+[BURUK]  loading.php memakai lang="en" (harusnya id) — perbaiki.
+[CUKUP]  Verifikasi touch target >=48px & ukuran font keterbacaan di mobile.
+
+
+--------------------------------------------------------------------------------
+4.9 SITEMAP & ROBOTS
+--------------------------------------------------------------------------------
+[KOREKSI] sitemap.xml memuat: /, /blog.php, /faq.php, /info.php, /status.php.
+[BURUK]  info.php & status.php = thin content -> sebaiknya dikeluarkan dari
+         sitemap (atau di-noindex).
+[BURUK]  lastmod statis "2026-03-04" untuk semua URL -> dianggap tidak pernah
+         berubah. Update lastmod dinamis saat konten berubah.
+[CUKUP]  changefreq/priority generik -> tidak fatal, tapi bisa diperhalus.
+[TIDAK ADA] Image sitemap / video sitemap (opsional, membantu image SEO).
+[BAIK]  robots.txt benar (Allow: / + Sitemap + Host). Namun robots.txt tidak
+         bisa memblokir .backups/ (perlu .htaccess) dan tidak memblokir info.php.
+
+
+--------------------------------------------------------------------------------
+4.10 INTERNAL LINKING, SILO & FUNNEL
+--------------------------------------------------------------------------------
+[BAIK]   Homepage -> blog & agenda sudah tertaut.
+[KURANG] Breadcrumb hanya di blog & faq (index sudah ada BreadcrumbList schema).
+[KURANG] Belum ada cross-link antar silo & anchor text yang konsisten berkeyword.
+[BELUM]  Pemetaan TOFU/MOFU/BOFU & content silo belum diterapkan formal.
+
+
+--------------------------------------------------------------------------------
+4.11 RSS / FEED & MANAJEMEN REDIRECT
+--------------------------------------------------------------------------------
+[TIDAK ADA] RSS/Atom feed (bermanfaat utk fast indexing & agregator).
+[BURUK]    Saat post dihapus, URL lama menjadi 404 tanpa redirect. readme.md
+           menyebutkan cleanup uploads & arsip, tapi belum ada 301/410 strategy.
+           Rekomendasi: 301 ke post terkait/homepage, atau 410 utk dihapus permanen.
+[BAIK]    Custom 404 (ErrorDocument 404 /error.php) sudah ada.
+
+
+--------------------------------------------------------------------------------
+4.12 KONSISTENSI BRAND & SOSIAL
+--------------------------------------------------------------------------------
+[BAIK]   Nama "UKMI Polmed" cukup konsisten; logo & sosmed (Facebook dll) ada.
+[KURANG] sameAs di schema Organization belum ada (IG, FB, YouTube, TikTok).
+[KURANG] twitter:site/twitter:creator belum diisi.
+[BELUM]  Google Business Profile / entri organisasi (jika relevan) belum ada.
+
+
+================================================================================
+BAGIAN 5 — MATRIKS STATUS RINGKAS
+================================================================================
+
+Komponen                         Status      Catatan
+-------------------------------- ----------- --------------------------------
+HTTPS / security headers         [BAIK]      .htaccess force HTTPS + headers
+robots.txt                       [BAIK]      benar
+sitemap.xml                      [CUKUP]     lastmod statis; info/status thin
+canonical tag                    [BAIK]      index/blog/faq
+hreflang                         [BAIK]      id + x-default
+meta description                 [CUKUP]     ada di index/blog/faq; status.php TIDAK
+Open Graph / Twitter             [CUKUP]     lengkapi twitter:site/creator
+Schema JSON-LD                   [CUKUP]     kurang Event/sameAs/SearchAction
+Heading hierarchy                [BURUK]     blog.php 2x H1; status.php 0 H1
+Alt text gambar                  [CUKUP]     utama ada; .uploads perlu dicek
+Image optimization               [BURUK]     .uploads 548K/328K; no WebP/srcset
+Core Web Vitals                  [CUKUP]     cache+gzip baik; CLS & LCP perlu
+info.php (phpinfo)               [BURUK]     keamanan + thin content
+.backups/ folder                 [BURUK]     TIDAK diblokir .htaccess
+status.php                       [BURUK]     thin content, no meta robots
+loading.php                      [BURUK]     lang="en", bisa terindeks
+URL canonicalization (*.php)     [BURUK]     /index.php vs / duplikat
+RSS/Atom feed                    [TIDAK ADA] belum ada
+Content silo                     [BELUM]     belum diterapkan
+TOFU/MOFU/BOFU                   [BELUM]     belum dipetakan
+E-E-A-T                          [CUKUP]     perlu byline, about, testimoni
+Language (lang=id)               [CUKUP]     loading.php lang="en" salah
+
+
+================================================================================
+BAGIAN 6 — PRIORITAS PERBAIKAN (ROADMAP)
+================================================================================
+
+[P0] KRITIS — segera:
+  1. Hapus / amankan info.php (phpinfo) + keluarkan dari sitemap.
+  2. Blokir folder .backups/ di .htaccess (atau pindahkan keluar document root).
+  3. Kompres/optimasi gambar besar di .uploads/ (548K & 328K) -> WebP.
+
+[P1] PENTING:
+  4. Perbaiki sitemap.xml: keluarkan info.php & status.php; update lastmod dinamis.
+  5. Redirect URL *.php -> versi bersih (index.php -> /, dst) via .htaccess.
+  6. Perbaiki heading: blog.php cukup 1 H1; status.php tambah 1 H1.
+  7. Tambah meta robots noindex pada status.php & loading.php; betulkan
+     loading.php lang="en" -> "id".
+
+[P2] PENGEMBANGAN:
+  8. Lengkapi schema: Event (agenda), sameAs (sosmed), SearchAction,
+     DiscussionForumPosting (komentar).
+  9. Optimasi gambar menyeluruh: WebP/AVIF, srcset, width/height, nama deskriptif.
+ 10. Lengkapi OG/Twitter: og:image:width/height/alt di faq & error,
+     twitter:site & twitter:creator.
+
+[P3] OPTIMALISASI:
+ 11. Terapkan content silo + internal linking antar silo + anchor deskriptif.
+ 12. Petakan funnel TOFU/MOFU/BOFU & produksi konten sesuai tahap.
+ 13. Buat RSS/Atom feed.
+ 14. Strategi 301/410 untuk post yang dihapus.
+ 15. Lengkapi E-E-A-T: author byline, halaman Tentang/Sejarah, testimoni, kontak.
+
+
+================================================================================
+BAGIAN 7 — CONTOH KODE PERBAIKAN (SIAP PAKAI)
+================================================================================
+
+--- 7.1 .htaccess: blokir .backups/ & redirect index.php ---
+    # Blokir folder backups (paling aman: pindahkan keluar docroot)
+    RedirectMatch 404 /\.backups(/|$)
+
+    # Redirect /index.php -> /
+    RewriteCond %{THE_REQUEST} \s/+index\.php[\s?] [NC]
+    RewriteRule ^index\.php$ / [R=301,L]
+
+--- 7.2 info.php: noindex / batasi akses ---
+    # .htaccess
+    <Files "info.php">
+        Require all denied
+    </Files>
+    # atau hapus file & baris URL info.php di sitemap.xml
+
+--- 7.3 status.php & loading.php: meta robots ---
+    <meta name="robots" content="noindex, follow">
+
+--- 7.4 Schema Event untuk agenda (contoh JSON-LD) ---
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      "name": "Pelantikan Ketum UKMI Polmed 2026-2027",
+      "startDate": "2026-02-25",
+      "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+      "eventStatus": "https://schema.org/EventScheduled",
+      "location": {
+        "@type": "Place",
+        "name": "Namira School",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Medan",
+          "addressRegion": "Sumatera Utara",
+          "addressCountry": "ID"
+        }
+      },
+      "organizer": {
+        "@type": "Organization",
+        "name": "UKMI Polmed",
+        "url": "https://ukmipolmed.xo.je/"
+      }
+    }
+    </script>
+
+--- 7.5 Organization + sameAs + SearchAction ---
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "UKMI Polmed",
+      "url": "https://ukmipolmed.xo.je/",
+      "logo": "https://ukmipolmed.xo.je/logo-ukmi.png",
+      "sameAs": [
+        "https://web.facebook.com/ukmipolmedmedan/",
+        "https://www.instagram.com/ukmipolmed/",
+        "https://www.youtube.com/@ukmipolmed"
+      ]
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "https://ukmipolmed.xo.je/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://ukmipolmed.xo.je/blog.php?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+--- 7.6 Optimasi gambar (contoh srcset + dimensi) ---
+    <img
+      src="/uploads/xxxxkegiatan-ppi-2024-800.webp"
+      srcset="/uploads/xxxxkegiatan-ppi-2024-400.webp 400w,
+              /uploads/xxxxkegiatan-ppi-2024-800.webp 800w,
+              /uploads/xxxxkegiatan-ppi-2024-1200.webp 1200w"
+      sizes="(max-width: 600px) 100vw, 50vw"
+      alt="Dokumentasi kegiatan PPI UKMI Polmed 2024"
+      width="800" height="600" loading="lazy" decoding="async">
+
+
+================================================================================
+BAGIAN 8 — CHECKLIST AKHIR (VERIFIKASI)
+================================================================================
+
+[ ] info.php diamankan/dihapus + dikeluarkan dari sitemap
+[ ] .backups/ diblokir dari akses publik
+[ ] Gambar .uploads besar dikompres/WebP
+[ ] sitemap.xml: info.php & status.php dikeluarkan, lastmod dinamis
+[ ] Redirect *.php -> versi bersih (301)
+[ ] Setiap halaman tepat 1 H1, heading berurutan
+[ ] status.php & loading.php: noindex; loading.php lang="id"
+[ ] Schema dilengkapi: Event, sameAs, SearchAction, DiscussionForumPosting
+[ ] Semua gambar: alt bermakna + width/height + srcset
+[ ] OG & Twitter card lengkap di semua halaman
+[ ] Content silo + internal linking antar silo
+[ ] Funnel TOFU/MOFU/BOFU dipetakan
+[ ] RSS/Atom feed tersedia
+[ ] Strategi 301/410 untuk konten dihapus
+[ ] E-E-A-T: byline, Tentang/Sejarah, testimoni, kontak
+
+================================================================================
+AKHIR DOKUMEN — TEMUAN.TXT (v2.0)
+================================================================================

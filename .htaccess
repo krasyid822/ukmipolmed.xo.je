@@ -33,7 +33,6 @@ RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
 # ── Custom 404 ──
-ErrorDocument 404 /error.php
 
 # Block write/modify verbs to any JSON (hardens against PUT/POST/etc.)
 <FilesMatch "\.json$">
@@ -47,12 +46,18 @@ ErrorDocument 404 /error.php
     Require all denied
 </FilesMatch>
 
-# default.json may be read, but not modified
+# default.json contains admin credentials — deny ALL web access
 <Files "default.json">
-    <LimitExcept GET HEAD OPTIONS>
-        Require all denied
-    </LimitExcept>
+    Require all denied
 </Files>
+
+# info.php exposes phpinfo() — deny all access
+<Files "info.php">
+    Require all denied
+</Files>
+
+# Block access to .backups/ folder (source backups, may contain secrets)
+RedirectMatch 404 /\.backups(/|$)
 
 # Legacy Apache 2.2 fallback
 <IfModule mod_access_compat.c>
@@ -61,10 +66,12 @@ ErrorDocument 404 /error.php
         Deny from all
     </FilesMatch>
     <Files "default.json">
-        <LimitExcept GET HEAD OPTIONS>
-            Order allow,deny
-            Deny from all
-        </LimitExcept>
+        Order allow,deny
+        Deny from all
+    </Files>
+    <Files "info.php">
+        Order allow,deny
+        Deny from all
     </Files>
     <FilesMatch "\.json$">
         <LimitExcept GET HEAD OPTIONS>
@@ -73,3 +80,14 @@ ErrorDocument 404 /error.php
         </LimitExcept>
     </FilesMatch>
 </IfModule>
+
+# BEGIN InfinityFree Managed Code
+# DO NOT EDIT - MANAGED BY THE MEMBERS AREA
+php_value date.timezone Asia/Jakarta
+ErrorDocument 400 https://ukmipolmed.xo.je/error.php?code=Salah%20minta%20nih%20(400)
+ErrorDocument 401 https://ukmipolmed.xo.je/error.php?code=Kita%20ga%20punya%20izin%20bre%20(401)
+ErrorDocument 403 https://ukmipolmed.xo.je/error.php?code=Waduh%20ga%20boleh%20masuk%20(403)
+ErrorDocument 404 https://ukmipolmed.xo.je/error.php?code=Apekah%20tak%20de%20siape%20siape%20(404)
+ErrorDocument 500 https://ukmipolmed.xo.je/error.php?code=Tidak.%20Rumah%20gweh%20(500)
+ErrorDocument 503 https://ukmipolmed.xo.je/error.php?code=Loh%2C%20tadi%20rumah%20saya%20disini%20(503)
+# END InfinityFree Managed Code

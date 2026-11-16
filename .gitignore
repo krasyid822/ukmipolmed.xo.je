@@ -1,0 +1,14 @@
+# Data runtime & rahasia (hidup di FTP, TIDAK di GitHub)
+/data.json
+/default.json
+/insights.json
+
+# Backup & file sensitif
+/.backups/
+/.netrc
+/.env
+*.key
+
+# File sesi & catatan lokal
+/.kilo/
+/.my-idea.txt
