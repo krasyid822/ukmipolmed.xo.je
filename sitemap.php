@@ -1,6 +1,5 @@
 <?php
-// sitemap.php — Sitemap XML dinamis dari data.json (sumber kebenaran).
-// Di-generate per request sehingga selalu segar saat postingan bertambah/berubah.
+ini_set('memory_limit', '256M');
 header('Content-Type: application/xml; charset=utf-8');
 
 $configPath = __DIR__ . '/data.json';
@@ -8,15 +7,21 @@ $defaultPath = __DIR__ . '/default.json';
 
 $posts = [];
 if (is_readable($configPath)) {
-    $config = json_decode((string) @file_get_contents($configPath), true);
-    if (is_array($config) && !empty($config['posts']) && is_array($config['posts'])) {
-        $posts = $config['posts'];
+    $content = @file_get_contents($configPath);
+    if ($content !== false) {
+        $config = json_decode($content, true);
+        if (is_array($config) && !empty($config['posts']) && is_array($config['posts'])) {
+            $posts = $config['posts'];
+        }
     }
 }
 if (empty($posts) && is_readable($defaultPath)) {
-    $tmp = json_decode((string) @file_get_contents($defaultPath), true);
-    if (is_array($tmp) && !empty($tmp['posts']) && is_array($tmp['posts'])) {
-        $posts = $tmp['posts'];
+    $content = @file_get_contents($defaultPath);
+    if ($content !== false) {
+        $tmp = json_decode($content, true);
+        if (is_array($tmp) && !empty($tmp['posts']) && is_array($tmp['posts'])) {
+            $posts = $tmp['posts'];
+        }
     }
 }
 
@@ -33,8 +38,12 @@ function lastmod($post)
     if ($date === '') {
         return date('Y-m-d');
     }
-    $dt = new DateTime($date);
-    return $dt->format('Y-m-d');
+    try {
+        $dt = new DateTime($date);
+        return $dt->format('Y-m-d');
+    } catch (Exception $e) {
+        return date('Y-m-d');
+    }
 }
 
 $today = date('Y-m-d');
@@ -49,7 +58,6 @@ foreach ($posts as $p) {
     if ($slug === '') {
         continue;
     }
-    // Hanya postingan aktif (tanpa archived)
     if (!empty($p['archived'])) {
         continue;
     }
@@ -63,8 +71,6 @@ foreach ($posts as $p) {
 
 $urls[] = ['loc' => $baseUrl . '/faq.php', 'lastmod' => $today, 'changefreq' => 'monthly', 'priority' => '0.5'];
 $urls[] = ['loc' => $baseUrl . '/status.php', 'lastmod' => $today, 'changefreq' => 'daily', 'priority' => '0.3'];
-
-// info.php sengaja DIEKSELSAikan dari sitemap (diblokir .htaccess → Require all denied).
 ?>
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
