@@ -162,7 +162,7 @@ header.header {
 	<div class="nav" id="site-nav">
 		<div class="brand">
 			<div class="brand-main">
-				<img class="logo" src="logo-ukmi.png" alt="Logo UKMI Polmed">
+				<img class="logo" src="/logo-ukmi.png" alt="Logo UKMI Polmed">
 				<span class="pulse-dot"></span>
 				<span class="brand-title">UKMI Polmed</span>
 			</div>
@@ -181,12 +181,12 @@ header.header {
 			</script>
 		</div>
 		<div class="nav-actions" id="nav-actions">
-			<a class="btn ghost" href="index.php">Home</a>
-			<a class="btn ghost" href="index.php#program">Program</a>
-			<a class="btn ghost" href="index.php#divisi">Divisi</a>
-			<a class="btn ghost" href="index.php#dokumentasi">Dokumentasi</a>
-			<a class="btn ghost" href="blog.php">Blog</a>
-			<a class="btn primary" href="index.php#daftar" data-insight="nav_daftar">Daftar sekarang</a>
+			<a class="btn ghost" href="/index.php">Home</a>
+			<a class="btn ghost" href="/index.php#program">Program</a>
+			<a class="btn ghost" href="/index.php#divisi">Divisi</a>
+			<a class="btn ghost" href="/index.php#dokumentasi">Dokumentasi</a>
+			<a class="btn ghost" href="/blog.php">Blog</a>
+			<a class="btn primary" href="/index.php#daftar" data-insight="nav_daftar">Daftar sekarang</a>
 		</div>
 	</div>
 </header>

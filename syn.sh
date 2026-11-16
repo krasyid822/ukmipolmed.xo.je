@@ -56,7 +56,7 @@ cd "$REPO_DIR"
 
 # File/folder repo & dev yang TIDAK ada di server FTP (jangan disentuh)
 EXCLUDES=(
-  ".git/" ".backups/" ".kilo/" ".gitignore" "syn.sh"
+  ".git/" ".backups/" ".kilo/" ".gitignore" "syn.sh" ".uploads/"
   ".my-idea.txt" "AGENTS.md" "TEMUAN.TXT" "LICENSE"
   "tools/" "assets/"
 )
@@ -98,6 +98,9 @@ do_ftp_push() {
   {
     echo "set net:timeout 300"
     echo "set xfer:timeout 300"
+    echo "set ftp:passive-mode on"
+    echo "set net:max-retries 5"
+    echo "set net:reconnect-interval-base 3"
     echo "set xfer:clobber yes"
     echo "open $FTP_HOST"
     echo "mirror $opts \"$REPO_DIR\" \"$FTP_ROOT\""
@@ -121,6 +124,9 @@ do_ftp_pull() {
   {
     echo "set net:timeout 300"
     echo "set xfer:timeout 300"
+    echo "set ftp:passive-mode on"
+    echo "set net:max-retries 5"
+    echo "set net:reconnect-interval-base 3"
     echo "set xfer:clobber yes"
     echo "open $FTP_HOST"
     echo "mirror $opts \"$FTP_ROOT\" \"$REPO_DIR\""

@@ -21,6 +21,9 @@ RewriteRule ^ /blog/arsip? [R=301,L]
 RewriteCond %{THE_REQUEST} \s/+blog\.php\?slug=([^\s&]+) [NC]
 RewriteRule ^ /blog/%1? [R=301,L]
 
+# Sitemap lama (statis) -> sitemap dinamis
+RewriteRule ^sitemap\.xml$ /sitemap.php [R=301,L]
+
 # ── Security Headers ──
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"

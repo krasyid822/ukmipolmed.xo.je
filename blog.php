@@ -169,9 +169,8 @@ function apply_embeds($html, $embeds, $enabled)
 	return $output;
 }
 
-$baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
-$scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
-$baseUrl = $scheme . '://' . $baseHost;
+$baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id';
+$baseUrl = 'https://' . preg_replace('/:\d+$/', '', (string) $baseHost);
 
 function save_data_uri_image($img, $baseUrl)
 {
@@ -396,9 +395,11 @@ $posts = array_map(function ($post) use ($baseUrl) {
 	$slug = trim((string) ($post['slug'] ?? ''));
 	$summary = trim((string) ($post['summary'] ?? ''));
 	$body = (string) ($post['body'] ?? '');
+	$imageData = '';
 	$image = trim((string) ($post['image'] ?? ''));
 	if ($image !== '') {
 		if (stripos($image, 'data:') === 0) {
+			$imageData = $image;
 			$saved = save_data_uri_image($image, $baseUrl);
 			if ($saved) $image = $saved;
 		} elseif ($image[0] === '/') {
@@ -428,6 +429,7 @@ $posts = array_map(function ($post) use ($baseUrl) {
 		'body' => $body,
 		'body_html' => $bodyHtml,
 		'image' => $image,
+		'image_data' => $imageData,
 		'embeds' => $embedList,
 		'embed_enabled' => $embedEnabled,
 		'created_at' => $created,
@@ -785,42 +787,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_post_slug']))
 	}
 }
 
-$baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
-$scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
-$baseUrl = $scheme . '://' . $baseHost;
+$baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id';
+$publicHost = preg_replace('/:\d+$/', '', (string) $baseHost);
+$publicBase = 'https://' . $publicHost;
+$baseUrl = $publicBase;
 
 // Arsip halaman penuh (semua postingan) untuk crawlability
 $canonicalSlug = $filterSlug !== '' && count($posts) === 1 ? $posts[0]['slug'] ?? '' : '';
 
 $metaTitle = 'Blog UKMI Polmed – Catatan Kegiatan & Tulisan Terbaru';
 $metaDesc = 'Baca catatan kegiatan, berita rilis, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan. Update terbaru seputar dakwah kampus, mentoring, dan event.';
-$metaImage = $baseUrl . '/logo-ukmi.png';
+$metaImage = $publicBase . '/logo-ukmi.png';
+$ogImageType = '';
 if ($isArsip) {
-	$metaUrl = $baseUrl . '/blog/arsip';
+	$metaUrl = $publicBase . '/blog/arsip';
 	$metaType = 'website';
 } elseif ($canonicalSlug !== '') {
-	$metaUrl = $baseUrl . '/blog/' . $canonicalSlug;
+	$metaUrl = $publicBase . '/blog/' . $canonicalSlug;
 	$metaType = 'website';
 } else {
-	$metaUrl = $baseUrl . '/blog.php';
+	$metaUrl = $publicBase . '/blog.php';
 	$metaType = 'website';
 }
 
 // If we're showing the list (not a single post), prefer first post image for og:image
 if ($filterSlug === '' && !empty($posts) && is_array($posts[0])) {
 	$firstImg = trim((string) ($posts[0]['image'] ?? ''));
-	if ($firstImg !== '') {
-		if (stripos($firstImg, 'data:') === 0) {
-			$saved = save_data_uri_image($firstImg, $baseUrl);
-			if ($saved) $metaImage = $saved;
-		} else {
-			$sch = parse_url($firstImg, PHP_URL_SCHEME);
-			if ($sch && in_array(strtolower($sch), ['http','https']) && filter_var($firstImg, FILTER_VALIDATE_URL)) {
-				$metaImage = $firstImg;
-			} elseif ($firstImg[0] === '/') {
-				$metaImage = $baseUrl . $firstImg;
-			}
-		}
+	$firstSlug = trim((string) ($posts[0]['slug'] ?? ''));
+	if ($firstImg !== '' && $firstSlug !== '') {
+		$metaImage = $publicBase . '/og-image.php?slug=' . urlencode($firstSlug);
 	}
 }
 
@@ -838,16 +833,15 @@ if ($filterSlug !== '' && count($posts) === 1) {
 	$metaDesc = trim((string) ($postMeta['summary'] ?? $metaDesc));
 	if (!empty($postMeta['image']) && is_string($postMeta['image'])) {
 		$img = trim($postMeta['image']);
-		if (stripos($img, 'data:') === 0) {
-			$saved = save_data_uri_image($img, $baseUrl);
-			if ($saved) {
-				$metaImage = $saved;
-			}
-		} else {
-			$scheme = parse_url($img, PHP_URL_SCHEME);
-			if ($scheme && in_array(strtolower($scheme), ['http', 'https']) && filter_var($img, FILTER_VALIDATE_URL)) {
-				$metaImage = $img;
-			}
+		$imgSlug = trim((string) ($postMeta['slug'] ?? ''));
+		if ($imgSlug !== '') {
+			$metaImage = $publicBase . '/og-image.php?slug=' . urlencode($imgSlug);
+		}
+		if (preg_match('#^data:(image/[a-z0-9.+-]+);base64,#i', $img, $mm)) {
+			$ogImageType = strtolower($mm[1]);
+		} elseif (preg_match('~\.(jpe?g|png|gif|webp)(?:[?#]|$)~i', $img, $me)) {
+			$ext = strtolower($me[1]);
+			$ogImageType = in_array($ext, ['jpg', 'jpeg'], true) ? 'image/jpeg' : 'image/' . $ext;
 		}
 	}
 	$metaType = 'article';
@@ -870,10 +864,10 @@ try {
 	<link rel="alternate" hreflang="id" href="<?php echo e($metaUrl); ?>">
 	<link rel="alternate" hreflang="x-default" href="<?php echo e($metaUrl); ?>">
 	<title><?php echo e($metaTitle); ?></title>
-	<link rel="icon" type="image/png" sizes="192x192" href="logo-ukmi.png">
-	<link rel="icon" type="image/png" sizes="32x32" href="logo-ukmi.png">
-	<link rel="icon" type="image/png" sizes="16x16" href="logo-ukmi.png">
-	<link rel="apple-touch-icon" sizes="180x180" href="logo-ukmi.png">
+	<link rel="icon" type="image/png" sizes="192x192" href="/logo-ukmi.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/logo-ukmi.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/logo-ukmi.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="/logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
 	<meta name="description" content="<?php echo e($metaDesc); ?>">
 	<meta name="keywords" content="blog UKMI Polmed, kegiatan UKMI Polmed, berita dakwah kampus Medan, mentoring Islam Polmed">
@@ -889,6 +883,9 @@ try {
 	<meta property="og:type" content="<?php echo e($metaType); ?>">
 	<meta property="og:url" content="<?php echo e($metaUrl); ?>">
 	<meta property="og:image" content="<?php echo e($metaImage); ?>">
+	<?php if (!empty($ogImageType)): ?>
+	<meta property="og:image:type" content="<?php echo e($ogImageType); ?>">
+	<?php endif; ?>
 	<meta property="og:image:alt" content="<?php echo e($metaTitle); ?>">
 	<meta name="twitter:card" content="summary_large_image">
 	<meta name="twitter:title" content="<?php echo e($metaTitle); ?>">
@@ -1144,8 +1141,8 @@ try {
 <body>
 	<div class="loading-overlay" id="page-loading" aria-live="polite">
 		<div class="loading-stack">
-			<img class="loading-gif" src="palestine.gif" alt="Animasi pemuatan">
-			<img class="loading-logo" src="logo-ukmi.png" alt="Logo UKMI">
+			<img class="loading-gif" src="/palestine.gif" alt="Animasi pemuatan">
+			<img class="loading-logo" src="/logo-ukmi.png" alt="Logo UKMI">
 		</div>
 		<div class="loading-card">
 			<div>Memuat konten, mohon tunggu...</div>
@@ -1154,14 +1151,14 @@ try {
 	</div>
 		<?php include __DIR__ . '/header.php'; ?>
 	<div class="container">
-		<h1><a href="blog.php">Blog UKMI Polmed</a></h1>
+		<h1><a href="/blog.php">Blog UKMI Polmed</a></h1>
 		<p class="lead">Baca berita, catatan kegiatan, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan.</p>
 		<?php if ($filterSlug === ''): ?>
-			<form method="get" action="blog.php" class="search-form" style="margin:12px 0 18px;display:flex;gap:8px;align-items:center;">
+			<form method="get" action="/blog.php" class="search-form" style="margin:12px 0 18px;display:flex;gap:8px;align-items:center;">
 				<input type="search" name="q" value="<?php echo e($query ?? ''); ?>" placeholder="Cari judul, ringkasan, atau isi..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);">
 				<button type="submit" class="btn ghost">Cari</button>
 				<?php if (!empty($query)): ?>
-					<a href="blog.php" class="btn">Reset</a>
+					<a href="/blog.php" class="btn">Reset</a>
 				<?php endif; ?>
 			</form>
 		<?php endif; ?>
@@ -1175,12 +1172,38 @@ try {
 			<div class="article">
 				<h2><?php echo e($posts[0]['title']); ?></h2>
 					<div class="meta">Dipublikasikan: <?php echo e($posts[0]['created_at'] ?: '-'); ?><?php if (!empty($posts[0]['updated_at'])): ?> · Diubah: <?php echo e($posts[0]['updated_at']); ?><?php endif; ?> · Views: <span id="blog-views-inline">-</span></div>
-				<?php if (!empty($posts[0]['image'])): ?>
-					<div style="margin:10px 0 14px;"><img src="<?php echo e($posts[0]['image']); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; border-radius:12px; border:1px solid var(--stroke);"></div>
+				<?php $articleImage = !empty($posts[0]['image_data']) ? $posts[0]['image_data'] : ($posts[0]['image'] ?? ''); ?>
+				<?php if ($articleImage !== ''): ?>
+					<div style="margin:10px 0 14px;"><img src="<?php echo e($articleImage); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; border-radius:12px; border:1px solid var(--stroke);"></div>
 				<?php endif; ?>
 				<div class="body"><?php echo apply_embeds($posts[0]['body_html'], $posts[0]['embeds'] ?? [], !empty($posts[0]['embed_enabled'])); ?></div>
 
 			</div>
+
+			<?php $shareUrl = $metaUrl; $shareText = $metaTitle; ?>
+			<div class="share-bar" style="margin-top:16px;padding:14px 16px;border:1px solid var(--stroke);border-radius:14px;background:rgba(255,255,255,0.03);display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+				<strong style="font-size:14px;color:var(--muted);">Bagikan:</strong>
+				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://wa.me/?text=<?php echo urlencode($shareText . ' ' . $shareUrl); ?>" data-insight="share_wa">WhatsApp</a>
+				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode($shareUrl); ?>" data-insight="share_fb">Facebook</a>
+				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=<?php echo urlencode($shareText); ?>&amp;url=<?php echo urlencode($shareUrl); ?>" data-insight="share_x">X</a>
+				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://t.me/share/url?url=<?php echo urlencode($shareUrl); ?>&amp;text=<?php echo urlencode($shareText); ?>" data-insight="share_tg">Telegram</a>
+				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo urlencode($shareUrl); ?>" data-insight="share_li">LinkedIn</a>
+				<button type="button" class="btn ghost js-copy-share" data-url="<?php echo e($shareUrl); ?>" style="min-height:40px;padding:8px 12px;font-size:14px;" data-insight="share_copy">Salin tautan</button>
+			</div>
+			<script>
+			document.addEventListener('click', function (e) {
+				var b = e.target.closest && e.target.closest('.js-copy-share');
+				if (!b) return;
+				e.preventDefault();
+				var u = b.getAttribute('data-url') || location.href;
+				var done = function () { b.textContent = 'Tersalin!'; };
+				if (navigator.clipboard && navigator.clipboard.writeText) {
+					navigator.clipboard.writeText(u).then(done).catch(function () { window.prompt('Salin tautan:', u); });
+				} else {
+					window.prompt('Salin tautan:', u);
+				}
+			});
+			</script>
 
 			<?php
 			// Separate comments UI into its own card below the article
@@ -1347,7 +1370,7 @@ try {
 
 		function sendInsight(name) {
 			if (!name) return;
-			fetch('status.php?event=' + encodeURIComponent(name), {
+			fetch('/status.php?event=' + encodeURIComponent(name), {
 				method: 'POST',
 				keepalive: true,
 			}).catch(() => {});
@@ -1365,7 +1388,7 @@ try {
 			const inlineEl = document.getElementById('blog-views-inline');
 			if (!inlineEl) return;
 			try {
-				const res = await fetch('status.php?view=json');
+				const res = await fetch('/status.php?view=json');
 				const data = await res.json();
 				const bySlug = data?.org_specific?.blog_views_by_slug || {};
 				const views = blogSlug && bySlug[blogSlug];

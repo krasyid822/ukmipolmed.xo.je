@@ -594,5 +594,66 @@ BAGIAN 8 — CHECKLIST AKHIR (VERIFIKASI)
 [ ] E-E-A-T: byline, Tentang/Sejarah, testimoni, kontak
 
 ================================================================================
+BAGIAN 9 — TEMUAN: TEMBOK PROTEKSI ANTI-BOT INFINITYFREE
+================================================================================
+
+Tanggal dicatat : 2026-11-16
+Konteks        : Fitur social sharing (Open Graph) blog tidak menampilkan
+                 thumbnail di WhatsApp — hanya tampil domain "ukmipolmed.my.id"
+                 tanpa judul/gambar.
+
+--- 9.1 Gejala ---
+Share URL postingan (https://ukmipolmed.my.id/blog/<slug>) ke WhatsApp / X /
+Telegram / LinkedIn menampilkan preview kosong (tanpa og:title, deskripsi,
+maupun thumbnail). Facebook & Google normal.
+
+--- 9.2 Akar masalah ---
+InfinityFree menyuntikkan CHALLENGE JavaScript ("aes.js" + cookie "__test")
+sebelum PHP berjalan. Challenge ini KURANG LEBIH berbasis User-Agent:
+crawler yang TIDAK menjalankan JavaScript menerima halaman challenge HTML
+(bukan konten asli), sehingga tidak ada meta OG dan tidak ada gambar.
+
+--- 9.3 Bukti uji (fetch server dengan berbagai UA) ---
+  LOLOS (konten asli):
+    - Googlebot
+    - Bingbot
+    - Yandex
+    - facebookexternalhit (Facebook/WhatsApp parser versi FB)
+  KENA CHALLENGE (menerima halaman aes.js):
+    - WhatsApp
+    - Twitterbot / X
+    - TelegramBot
+    - LinkedInBot
+    - Applebot (preview iMessage)
+    - Slackbot
+    - Discordbot
+    - Browser biasa via curl / curl-default
+
+Kode OG sendiri SUDAH BENAR (diverifikasi):
+  - HTML postingan memuat og:title, og:description, og:type=article, og:url,
+    og:image = https://ukmipolmed.my.id/og-image.php?slug=<slug>,
+    og:image:type=image/jpeg, twitter:image.
+  - og-image.php mengembalikan HTTP 200, Content-Type image/jpeg,
+    501.788 byte, JPEG valid 1400x1254 (disajikan langsung dari base64,
+    tanpa folder .uploads/).
+
+--- 9.4 Kesimpulan ---
+Ini BUKAN bug kode/.htaccess. Challenge disuntikkan di lapisan server
+(hosting) sebelum PHP berjalan, jadi tidak dapat diperbaiki dari file proyek.
+SEO Google/Bing aman (di-whitelist). Preview sosial (WhatsApp dkk) terblokir
+selama anti-bot InfinityFree aktif.
+
+--- 9.5 Opsi perbaikan (belum dieksekusi; pekerjaan dihentikan di sini) ---
+  1. Matikan proteksi anti-bot di panel InfinityFree (bila tersedia).
+  2. Pindah hosting tanpa JS challenge (GitHub Pages statis / Netlify /
+     Vercel / hosting berbayar).
+  3. Cloudflare di depan + Transform Rule ubah User-Agent ke crawler yang
+     di-whitelist + Cache Rule (hack/spoofing UA, tidak dijamin, perlu akses
+     nameserver domain).
+
+STATUS: DIBLOKIR oleh hosting (anti-bot InfinityFree). Dihentikan atas
+permintaan pada 2026-11-16.
+
+================================================================================
 AKHIR DOKUMEN — TEMUAN.TXT (v2.0)
 ================================================================================
