@@ -63,8 +63,9 @@ EXCLUDES=(
 
 build_mirror_opts() {
   local reverse="$1"
-  printf '%s' "$reverse --verbose"
+  printf '%s' "$reverse"
   if [ "$DELETE" = 1 ]; then printf ' --delete'; fi
+  printf ' --no-perms --only-newer'
   local ex
   for ex in "${EXCLUDES[@]}"; do
     printf ' --exclude-glob "%s"' "$ex"

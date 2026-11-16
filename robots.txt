@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://ukmipolmed.xo.je/sitemap.xml
-Host: ukmipolmed.xo.je
+Sitemap: https://ukmipolmed.my.id/sitemap.php

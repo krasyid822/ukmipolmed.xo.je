@@ -1,10 +1,25 @@
 RewriteEngine On
 
+# ── Domain kanonis: ukmipolmed.my.id ──
+# Redirect semua trafik ukmipolmed.xo.je (dengan www atau tidak) ke https://ukmipolmed.my.id
+RewriteCond %{HTTP_HOST} ^(www\.)?ukmipolmed\.xo\.je$ [NC]
+RewriteRule ^ https://ukmipolmed.my.id%{REQUEST_URI} [L,R=301]
+
 # ── Force HTTPS ──
 RewriteCond %{HTTP:X-Forwarded-Proto} !https
 RewriteCond %{HTTPS} off
 RewriteCond %{HTTP:CF-Visitor} !{"scheme":"https"}
 RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ── Blog pretty URLs ──
+RewriteRule ^blog/arsip/?$ blog.php?arsip=1 [L,QSA]
+RewriteRule ^blog/([^/]+)/?$ blog.php?slug=$1 [L,QSA]
+
+# Redirect legacy query-string blog URLs to pretty URLs
+RewriteCond %{THE_REQUEST} \s/+blog\.php\?arsip=1\b [NC]
+RewriteRule ^ /blog/arsip? [R=301,L]
+RewriteCond %{THE_REQUEST} \s/+blog\.php\?slug=([^\s&]+) [NC]
+RewriteRule ^ /blog/%1? [R=301,L]
 
 # ── Security Headers ──
 <IfModule mod_headers.c>

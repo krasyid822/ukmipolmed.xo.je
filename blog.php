@@ -441,6 +441,7 @@ $allPosts = $posts;
 // Query and slug from request
 $filterSlug = isset($_GET['slug']) ? trim((string) $_GET['slug']) : '';
 $query = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
+$isArsip = !empty($_GET['arsip']);
 
 // Select posts to show:
 if ($filterSlug !== '') {
@@ -454,7 +455,7 @@ if ($filterSlug !== '') {
 	}));
 } else {
 	// Default: show most recent 10 (preserve original behaviour)
-	$posts = array_slice($allPosts, 0, 10);
+	$posts = $isArsip ? $allPosts : array_slice($allPosts, 0, 10);
 }
 
 usort($posts, function ($a, $b) {
@@ -740,7 +741,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 							setcookie('pending_comments', implode(',', $cur), time() + PENDING_COMMENTS_TTL, '/');
 						}
 					}
-			$loc = $_SERVER['REQUEST_URI'] ?: ('/blog.php?slug=' . urlencode($dslug));
+			$loc = $_SERVER['REQUEST_URI'] ?: ('/blog/' . urlencode($dslug));
 			header('Location: ' . $loc);
 			exit;
 		} else {
@@ -776,7 +777,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_post_slug']))
 					setcookie('pending_comments', implode(',', $cur), time() + PENDING_COMMENTS_TTL, '/');
 			}
 
-			$loc = $_SERVER['REQUEST_URI'] ?: ('/blog.php?slug=' . urlencode($cslug));
+			$loc = $_SERVER['REQUEST_URI'] ?: ('/blog/' . urlencode($cslug));
 			header('Location: ' . $loc);
 			exit;
 	} else {
@@ -788,11 +789,22 @@ $baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
 $scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
 $baseUrl = $scheme . '://' . $baseHost;
 
+// Arsip halaman penuh (semua postingan) untuk crawlability
+$canonicalSlug = $filterSlug !== '' && count($posts) === 1 ? $posts[0]['slug'] ?? '' : '';
+
 $metaTitle = 'Blog UKMI Polmed – Catatan Kegiatan & Tulisan Terbaru';
 $metaDesc = 'Baca catatan kegiatan, berita rilis, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan. Update terbaru seputar dakwah kampus, mentoring, dan event.';
 $metaImage = $baseUrl . '/logo-ukmi.png';
-$metaUrl = $baseUrl . '/blog.php' . ($filterSlug !== '' ? ('?slug=' . urlencode($filterSlug)) : '');
-$metaType = 'website';
+if ($isArsip) {
+	$metaUrl = $baseUrl . '/blog/arsip';
+	$metaType = 'website';
+} elseif ($canonicalSlug !== '') {
+	$metaUrl = $baseUrl . '/blog/' . $canonicalSlug;
+	$metaType = 'website';
+} else {
+	$metaUrl = $baseUrl . '/blog.php';
+	$metaType = 'website';
+}
 
 // If we're showing the list (not a single post), prefer first post image for og:image
 if ($filterSlug === '' && !empty($posts) && is_array($posts[0])) {
@@ -893,8 +905,8 @@ try {
 		'image' => $metaImage,
 		'datePublished' => $posts[0]['created_at'] ?? '',
 		'dateModified' => $posts[0]['updated_at'] ?? $posts[0]['created_at'] ?? '',
-		'author' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'url' => 'https://ukmipolmed.xo.je/'],
-		'publisher' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://ukmipolmed.xo.je/logo-ukmi.png']],
+		'author' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'url' => 'https://ukmipolmed.my.id/'],
+		'publisher' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://ukmipolmed.my.id/logo-ukmi.png']],
 		'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $metaUrl],
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?>
 	</script>
@@ -906,7 +918,7 @@ try {
 		'name' => 'Blog UKMI Polmed',
 		'description' => 'Catatan kegiatan, berita rilis, dan tulisan terbaru UKMI Politeknik Negeri Medan.',
 		'url' => $baseUrl . '/blog.php',
-		'publisher' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://ukmipolmed.xo.je/logo-ukmi.png']],
+		'publisher' => ['@type' => 'Organization', 'name' => 'UKMI Polmed', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://ukmipolmed.my.id/logo-ukmi.png']],
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?>
 	</script>
 	<?php endif; ?>
@@ -1253,10 +1265,26 @@ try {
 					<div><button type="submit" class="btn primary">Kirim Komentar</button></div>
 				</form>
 			</div>
+		<?php elseif ($isArsip): ?>
+			<h2 style="margin:24px 0 12px;font-size:20px;color:var(--text);">Arsip Semua Postingan</h2>
+			<div class="grid">
+				<?php foreach ($posts as $post): ?>
+					<a class="card" href="/blog/<?php echo urlencode($post['slug'] ?? ''); ?>" style="text-decoration:none; color:inherit; display:block;">
+						<?php if (!empty($post['image'])): ?>
+							<div style="margin:-6px -6px 10px; overflow:hidden; border-radius:10px; border:1px solid var(--stroke);">
+								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" style="width:100%; height:180px; object-fit:cover; display:block;">
+							</div>
+						<?php endif; ?>
+						<h3><?php echo e($post['title']); ?></h3>
+						<div class="meta">Dipublikasikan: <?php echo e($post['created_at'] ?: '-'); ?></div>
+						<div class="summary"><?php echo e($post['summary']); ?></div>
+					</a>
+				<?php endforeach; ?>
+			</div>
 		<?php else: ?>
 			<div class="grid">
 				<?php foreach ($posts as $post): ?>
-					<a class="card" href="?slug=<?php echo urlencode($post['slug'] ?? ''); ?>" style="text-decoration:none; color:inherit; display:block;">
+					<a class="card" href="/blog/<?php echo urlencode($post['slug'] ?? ''); ?>" style="text-decoration:none; color:inherit; display:block;">
 						<?php if (!empty($post['image'])): ?>
 							<div style="margin:-6px -6px 10px; overflow:hidden; border-radius:10px; border:1px solid var(--stroke);">
 								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" style="width:100%; height:180px; object-fit:cover; display:block;">
