@@ -30,6 +30,10 @@ RewriteCond %{THE_REQUEST} \s/+admin\.php[\s?] [NC]
 RewriteCond %{REQUEST_METHOD} =GET
 RewriteRule ^ /admin [R=301,L]
 
+# Profil penulis
+RewriteRule ^penulis/?$ penulis.php?u=admin [L,QSA]
+RewriteRule ^penulis/([^/]+)/?$ penulis.php?u=$1 [L,QSA]
+
 # ── Security Headers ──
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
@@ -72,6 +76,11 @@ RewriteRule ^ /admin [R=301,L]
 
 # default.json contains admin credentials — deny ALL web access
 <Files "default.json">
+    Require all denied
+</Files>
+
+# authors.json berisi hash password akun penulis — deny akses web
+<Files "authors.json">
     Require all denied
 </Files>
 

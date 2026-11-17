@@ -275,6 +275,7 @@ foreach ($config['posts'] as $post) {
 		'summary' => trim((string) ($post['summary'] ?? '')),
 		'body' => (string) ($post['body'] ?? ''),
 		'image' => trim((string) ($post['image'] ?? '')),
+		'author_id' => trim((string) ($post['author_id'] ?? '')),
 		'focal_x' => isset($post['focal_x']) ? max(0, min(100, (float) $post['focal_x'])) : 50,
 		'focal_y' => isset($post['focal_y']) ? max(0, min(100, (float) $post['focal_y'])) : 50,
 		'ig_embed_fix' => !empty($post['ig_embed_fix']),
@@ -419,6 +420,8 @@ if (isset($_GET['logout'])) {
 	exit;
 }
 
+require_once __DIR__ . '/../authors_helper.php';
+
 if (isset($_POST['user'], $_POST['key'])) {
 	$user = (string) $_POST['user'];
 	$key = (string) $_POST['key'];
@@ -426,7 +429,19 @@ if (isset($_POST['user'], $_POST['key'])) {
 		appendLog($config, $configPath, 'login-success', $maxLogs, $archiveLimitDays);
 		$_SESSION['admin_logged_in'] = true;
 		$_SESSION['session_version'] = $sessionVersion;
+		$_SESSION['role'] = 'admin';
+		unset($_SESSION['author_id']);
 		header('Location: admin.php');
+		exit;
+	}
+	$writer = authors_find_by_username($user);
+	if ($writer && !empty($writer['password_hash']) && password_verify($key, (string) $writer['password_hash'])) {
+		appendLog($config, $configPath, 'login-success', $maxLogs, $archiveLimitDays);
+		$_SESSION['admin_logged_in'] = true;
+		$_SESSION['session_version'] = $sessionVersion;
+		$_SESSION['role'] = 'writer';
+		$_SESSION['author_id'] = $writer['id'] ?? '';
+		header('Location: penulis-panel.php');
 		exit;
 	}
 	appendLog($config, $configPath, 'login-fail', $maxLogs, $archiveLimitDays);
@@ -434,6 +449,13 @@ if (isset($_POST['user'], $_POST['key'])) {
 }
 
 $loggedIn = !empty($_SESSION['admin_logged_in']) && (($_SESSION['session_version'] ?? 0) === $sessionVersion);
+$currentRole = $loggedIn ? ($_SESSION['role'] ?? 'admin') : '';
+$currentAuthorId = $loggedIn && $currentRole === 'writer' ? ($_SESSION['author_id'] ?? '') : '';
+
+if ($loggedIn && $currentRole === 'writer') {
+	header('Location: penulis-panel.php');
+	exit;
+}
 
 $divisionUnlocked = false;
 if (!empty($_SESSION['division_unlocked'])) {

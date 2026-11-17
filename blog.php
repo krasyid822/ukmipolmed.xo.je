@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/authors_helper.php';
 $configPath = __DIR__ . '/data.json';
 $defaultPath = __DIR__ . '/default.json';
 
@@ -181,7 +182,11 @@ function render_gdrive($folder, $view)
 }
 
 $baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id';
-$baseUrl = 'https://' . preg_replace('/:\d+$/', '', (string) $baseHost);
+if (PHP_SAPI === 'cli-server') {
+	$baseUrl = 'http://' . $baseHost;
+} else {
+	$baseUrl = 'https://' . preg_replace('/:\d+$/', '', (string) $baseHost);
+}
 
 function save_data_uri_image($img, $baseUrl)
 {
@@ -441,6 +446,7 @@ $posts = array_map(function ($post) use ($baseUrl) {
 		'body_html' => $bodyHtml,
 		'image' => $image,
 		'image_data' => $imageData,
+		'author_id' => trim((string) ($post['author_id'] ?? '')),
 		'focal_x' => isset($post['focal_x']) ? max(0, min(100, (float) $post['focal_x'])) : 50,
 		'focal_y' => isset($post['focal_y']) ? max(0, min(100, (float) $post['focal_y'])) : 50,
 		'ig_embed_fix' => !empty($post['ig_embed_fix']),
@@ -804,9 +810,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['comment_post_slug']))
 }
 
 $baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id';
-$publicHost = preg_replace('/:\d+$/', '', (string) $baseHost);
-$publicBase = 'https://' . $publicHost;
-$baseUrl = $publicBase;
+if (PHP_SAPI === 'cli-server') {
+	$publicBase = 'http://' . $baseHost;
+	$baseUrl = $publicBase;
+} else {
+	$publicHost = preg_replace('/:\d+$/', '', (string) $baseHost);
+	$publicBase = 'https://' . $publicHost;
+	$baseUrl = $publicBase;
+}
 
 // Arsip halaman penuh (semua postingan) untuk crawlability
 $canonicalSlug = $filterSlug !== '' && count($posts) === 1 ? $posts[0]['slug'] ?? '' : '';
@@ -1194,6 +1205,13 @@ try {
 			<div class="article">
 				<h2><?php echo e($posts[0]['title']); ?></h2>
 					<div class="meta">Dipublikasikan: <?php echo e($posts[0]['created_at'] ?: '-'); ?><?php if (!empty($posts[0]['updated_at'])): ?> · Diubah: <?php echo e($posts[0]['updated_at']); ?><?php endif; ?> · Views: <span id="blog-views-inline">-</span></div>
+				<?php $__author = author_display($posts[0]['author_id'] ?? '', (string) ($config['yel_yel'] ?? '')); ?>
+				<div class="byline" style="display:flex;align-items:center;gap:10px;margin:6px 0 12px;">
+					<a href="<?php echo e($__author['url']); ?>" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;">
+						<img src="<?php echo e($__author['avatar']); ?>" alt="Avatar <?php echo e($__author['pen_name']); ?>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--stroke);">
+						<span style="font-size:14px;color:var(--muted);">oleh <strong style="color:var(--text);"><?php echo e($__author['pen_name']); ?></strong></span>
+					</a>
+				</div>
 				<?php $articleImage = !empty($posts[0]['image_data']) ? $posts[0]['image_data'] : ($posts[0]['image'] ?? ''); ?>
 				<?php if ($articleImage !== ''): ?>
 					<div style="margin:10px 0 14px;"><img src="<?php echo e($articleImage); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; object-position: <?php echo (int) ($posts[0]['focal_x'] ?? 50); ?>% <?php echo (int) ($posts[0]['focal_y'] ?? 50); ?>%; border-radius:12px; border:1px solid var(--stroke);"></div>

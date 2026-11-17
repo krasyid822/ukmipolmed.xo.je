@@ -627,6 +627,7 @@ crawler yang TIDAK menjalankan JavaScript menerima halaman challenge HTML
     - Applebot (preview iMessage)
     - Slackbot
     - Discordbot
+    - Bravebot / Brave Search (crawler)  [diuji 2026-11-17]
     - Browser biasa via curl / curl-default
 
 Kode OG sendiri SUDAH BENAR (diverifikasi):

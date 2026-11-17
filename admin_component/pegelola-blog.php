@@ -10,6 +10,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 				'summary' => $posts[$reqIdx]['summary'] ?? '',
 				'body' => $posts[$reqIdx]['body'] ?? '',
 				'image' => $posts[$reqIdx]['image'] ?? '',
+				'author_id' => $posts[$reqIdx]['author_id'] ?? '',
 				'focal_x' => $posts[$reqIdx]['focal_x'] ?? 50,
 				'focal_y' => $posts[$reqIdx]['focal_y'] ?? 50,
 				'ig_embed_fix' => !empty($posts[$reqIdx]['ig_embed_fix']),
@@ -20,7 +21,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			];
 		} elseif ($reqIdx === -1) {
 			$blogEditingIdx = -1;
-			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'focal_x' => 50, 'focal_y' => 50, 'ig_embed_fix' => false, 'gdrive_folder' => '', 'gdrive_view' => 'grid', 'embeds' => [], 'embed_enabled' => false];
+			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'focal_x' => 50, 'focal_y' => 50, 'ig_embed_fix' => false, 'gdrive_folder' => '', 'gdrive_view' => 'grid', 'author_id' => '', 'embeds' => [], 'embed_enabled' => false];
 		}
 	}
 
@@ -121,6 +122,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			if ($emb !== '') $embedList[] = $emb;
 		}
 		$image = trim((string) ($_POST['blog_image'] ?? ''));
+		$authorId = trim((string) ($_POST['blog_author_id'] ?? ''));
 		$focalX = isset($_POST['blog_focal_x']) ? max(0, min(100, (float) $_POST['blog_focal_x'])) : 50;
 		$focalY = isset($_POST['blog_focal_y']) ? max(0, min(100, (float) $_POST['blog_focal_y'])) : 50;
 		$igFix = isset($_POST['blog_ig_embed_fix']) && $_POST['blog_ig_embed_fix'] === '1';
@@ -171,6 +173,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 					'summary' => $summary,
 					'body' => $body,
 					'image' => $image,
+					'author_id' => $authorId,
 					'focal_x' => $focalX,
 					'focal_y' => $focalY,
 					'ig_embed_fix' => $igFix,
@@ -240,6 +243,15 @@ if (($adminComponentMode ?? '') === 'handle') {
 					<span id="blog_focal_marker" style="position:absolute; width:18px; height:18px; border-radius:50%; border:2px solid #fff; background:rgba(56,189,248,0.75); transform:translate(-50%,-50%); pointer-events:none; box-shadow:0 0 0 2px rgba(0,0,0,0.45);"></span>
 				</div>
 				<p class="muted-text" style="margin:4px 0 0;">Klik pada pratinjau untuk menetapkan titik fokus sampul secara manual (berguna untuk postingan lama).</p>
+			</div>
+			<div>
+				<label for="blog_author_id">Penulis</label>
+				<select id="blog_author_id" name="blog_author_id">
+					<option value="">Admin UKMI Polmed</option>
+					<?php foreach ((authors_load()['authors'] ?? []) as $au): ?>
+						<option value="<?php echo htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" <?php echo (($blogDraft['author_id'] ?? '') === ($au['id'] ?? '')) ? 'selected' : ''; ?>><?php echo htmlspecialchars((string) (($au['pen_name'] ?? '') !== '' ? $au['pen_name'] : ($au['username'] ?? '')), ENT_QUOTES, 'UTF-8'); ?></option>
+					<?php endforeach; ?>
+				</select>
 			</div>
 			<div class="full">
 				<label for="blog_summary">Ringkas</label>

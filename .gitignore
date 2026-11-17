@@ -2,6 +2,7 @@
 /data.json
 /default.json
 /insights.json
+/authors.json
 
 # Backup & file sensitif
 /.backups/
