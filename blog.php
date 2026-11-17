@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/authors_helper.php';
+require_once __DIR__ . '/assessments_helper.php';
 $configPath = __DIR__ . '/data.json';
 $defaultPath = __DIR__ . '/default.json';
 
@@ -1250,6 +1251,16 @@ try {
 				}
 			});
 			</script>
+
+			<?php $__assess = assessments_for_post($posts[0]['slug'] ?? ''); ?>
+			<?php if (!empty($__assess)): ?>
+				<div style="margin-top:14px;padding:14px 16px;border:1px solid var(--stroke);border-radius:14px;background:rgba(255,255,255,0.03);">
+					<strong>Asesmen:</strong>
+					<?php foreach ($__assess as $as): ?>
+						<a class="btn ghost" style="margin-left:8px;" href="/asesmen?id=<?php echo urlencode((string) ($as['id'] ?? '')); ?>"><?php echo e((string) ($as['title'] ?? 'Asesmen')); ?> (<?php echo e((string) ($as['type'] ?? '')); ?>)</a>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
 
 			<?php
 			// Separate comments UI into its own card below the article

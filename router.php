@@ -27,6 +27,10 @@ if (preg_match('#^/menulis/?$#', $uri)) {
     require __DIR__ . '/penulis-panel.php';
     return true;
 }
+if (preg_match('#^/asesmen/?$#', $uri)) {
+    require __DIR__ . '/asesmen.php';
+    return true;
+}
 if (preg_match('#^/penulis/?$#', $uri)) {
     $_GET['u'] = 'admin';
     require __DIR__ . '/penulis.php';

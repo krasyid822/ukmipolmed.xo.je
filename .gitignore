@@ -3,6 +3,10 @@
 /default.json
 /insights.json
 /authors.json
+/assessments.json
+/s3_config.php
+/.syn_manifest
+/slimrepo.sh
 
 # Backup & file sensitif
 /.backups/

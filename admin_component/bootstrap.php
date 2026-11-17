@@ -421,6 +421,7 @@ if (isset($_GET['logout'])) {
 }
 
 require_once __DIR__ . '/../authors_helper.php';
+require_once __DIR__ . '/../s3_helper.php';
 
 if (isset($_POST['user'], $_POST['key'])) {
 	$user = (string) $_POST['user'];

@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once __DIR__ . '/authors_helper.php';
+require_once __DIR__ . '/assessments_helper.php';
+require_once __DIR__ . '/s3_helper.php';
 
 $configPath = __DIR__ . '/data.json';
 $config = [];
@@ -68,7 +70,9 @@ $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $data['authors'][$meIdx]['pen_name'] = trim((string) ($_POST['pen_name'] ?? ''));
     $data['authors'][$meIdx]['bio'] = trim((string) ($_POST['bio'] ?? ''));
-    $data['authors'][$meIdx]['avatar'] = trim((string) ($_POST['avatar'] ?? ''));
+    $av = trim((string) ($_POST['avatar'] ?? ''));
+    if (stripos($av, 'data:') === 0 && function_exists('s3_put_data_uri')) { $u = s3_put_data_uri($av); if ($u) $av = $u; }
+    $data['authors'][$meIdx]['avatar'] = $av;
     $rawSoc = (string) ($_POST['socials'] ?? '');
     $socArr = [];
     foreach (preg_split('/\r?\n/', $rawSoc) as $line) {
@@ -95,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
     $summary = trim((string) ($_POST['summary'] ?? ''));
     $body = (string) ($_POST['body'] ?? '');
     $image = trim((string) ($_POST['image'] ?? ''));
+    if (stripos($image, 'data:') === 0 && function_exists('s3_put_data_uri')) { $u = s3_put_data_uri($image); if ($u) $image = $u; }
     if ($title === '') {
         $err = 'Judul wajib diisi.';
     } else {
@@ -162,6 +167,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_post'])) {
     $err = 'Gagal menghapus postingan.';
 }
 
+// Buat asesmen (pretest/posttest)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment'])) {
+    $aTitle = trim((string) ($_POST['a_title'] ?? ''));
+    $aType = (($_POST['a_type'] ?? 'pretest') === 'posttest') ? 'posttest' : 'pretest';
+    $aGrading = (($_POST['a_grading'] ?? 'auto') === 'manual') ? 'manual' : 'auto';
+    $aPost = trim((string) ($_POST['a_post'] ?? ''));
+    $rawQ = (string) ($_POST['a_questions'] ?? '');
+    $questions = [];
+    foreach (preg_split('/\r?\n/', $rawQ) as $line) {
+        $line = trim($line);
+        if ($line === '') continue;
+        $parts = array_map('trim', explode('|', $line));
+        if (count($parts) < 3) continue;
+        $correct = (int) array_pop($parts);
+        $q = array_shift($parts);
+        $options = array_values(array_filter($parts, fn($x) => $x !== ''));
+        $ci = $correct - 1;
+        if ($q === '' || count($options) < 2 || $ci < 0 || $ci >= count($options)) continue;
+        $questions[] = ['q' => $q, 'options' => $options, 'correct' => $ci];
+    }
+    $ownsPost = false;
+    foreach ($myPosts as $pp) { if ((string) ($pp['slug'] ?? '') === $aPost) { $ownsPost = true; break; } }
+    if ($aTitle === '' || empty($questions)) {
+        $err = 'Judul & minimal 1 soal valid wajib diisi.';
+    } elseif ($aPost !== '' && !$ownsPost) {
+        $err = 'Postingan tidak valid / bukan milik Anda.';
+    } else {
+        $d = assessments_load();
+        $d['assessments'][] = [
+            'id' => bin2hex(random_bytes(6)),
+            'post_slug' => $aPost,
+            'author_id' => $aid,
+            'title' => $aTitle,
+            'type' => $aType,
+            'grading' => $aGrading,
+            'questions' => $questions,
+            'responses' => [],
+            'created_at' => date('c'),
+        ];
+        if (assessments_save($d)) $msg = 'Asesmen dibuat.'; else $err = 'Gagal menyimpan asesmen.';
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assessment'])) {
+    $delAid = trim((string) $_POST['delete_assessment']);
+    $as = assessment_find($delAid);
+    if ($as && (string) ($as['author_id'] ?? '') === $aid) {
+        $d = assessments_load();
+        $d['assessments'] = array_values(array_filter($d['assessments'], fn($x) => (string) ($x['id'] ?? '') !== $delAid));
+        if (assessments_save($d)) $msg = 'Asesmen dihapus.'; else $err = 'Gagal menghapus asesmen.';
+    } else {
+        $err = 'Asesmen tidak ditemukan / bukan milik Anda.';
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['audit_aid'], $_POST['audit_rid'])) {
+    $auAid = trim((string) $_POST['audit_aid']);
+    $auRid = trim((string) $_POST['audit_rid']);
+    $as = assessment_find($auAid);
+    if ($as && (string) ($as['author_id'] ?? '') === $aid) {
+        $total = count($as['questions'] ?? []);
+        $auScore = max(0, min($total, (int) ($_POST['audit_score'] ?? 0)));
+        assessments_update($auAid, function ($x) use ($auRid, $auScore) {
+            $rs = $x['responses'] ?? [];
+            foreach ($rs as $k => $r) {
+                if ((string) ($r['id'] ?? '') === $auRid) { $rs[$k]['audited'] = true; $rs[$k]['audit_score'] = $auScore; }
+            }
+            $x['responses'] = $rs;
+            return $x;
+        });
+        $msg = 'Skor audit disimpan.';
+    } else {
+        $err = 'Tidak berhak mengaudit asesmen ini.';
+    }
+}
+
 if (isset($_GET['saved'])) $msg = 'Postingan disimpan.';
 if (isset($_GET['deleted'])) $msg = 'Postingan dihapus.';
 
@@ -181,6 +262,10 @@ if ($editSlug !== '') {
     }
 }
 $showForm = ($editing !== null) || isset($_GET['new']);
+$myAssessments = assessments_by_author($aid);
+$respAid = isset($_GET['responses']) ? trim((string) $_GET['responses']) : '';
+$respAs = $respAid !== '' ? assessment_find($respAid) : null;
+if ($respAs && (string) ($respAs['author_id'] ?? '') !== $aid) $respAs = null;
 ?><!doctype html>
 <html lang="id">
 <head>
@@ -245,6 +330,32 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
       </form>
     </div>
   <?php else: ?>
+    <?php if ($respAs): ?>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-top:0;">
+          <h2 style="font-size:15px;margin:0;">Responden – <?php echo htmlspecialchars((string) $respAs['title'], ENT_QUOTES, 'UTF-8'); ?></h2>
+          <a class="btn" href="penulis-panel.php">Kembali</a>
+        </div>
+        <?php $rs = $respAs['responses'] ?? []; $qTotal = count($respAs['questions'] ?? []); ?>
+        <?php if (empty($rs)): ?>
+          <p class="muted">Belum ada responden.</p>
+        <?php else: foreach ($rs as $r): ?>
+          <div class="pcard">
+            <h3><?php echo htmlspecialchars((string) (($r['name'] ?? '') !== '' ? $r['name'] : '(tanpa nama)'), ENT_QUOTES, 'UTF-8'); ?> <span class="muted"><?php echo htmlspecialchars((string) ($r['ident'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></h3>
+            <?php $sc = !empty($r['audited']) ? $r['audit_score'] : ($r['score'] ?? null); ?>
+            <div class="muted">Skor: <?php echo $sc === null ? 'menunggu audit' : ((int) $sc . '/' . $qTotal); ?> · <?php echo htmlspecialchars((string) ($r['submitted_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php if (($respAs['grading'] ?? 'auto') === 'manual'): ?>
+              <form method="post" class="row" style="margin-top:8px;">
+                <input type="hidden" name="audit_aid" value="<?php echo htmlspecialchars((string) $respAs['id'], ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="hidden" name="audit_rid" value="<?php echo htmlspecialchars((string) ($r['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                <input type="text" name="audit_score" value="<?php echo $sc === null ? '' : (int) $sc; ?>" placeholder="skor 0-<?php echo (int) $qTotal; ?>" style="max-width:140px;">
+                <button type="submit" class="danger">Simpan skor</button>
+              </form>
+            <?php endif; ?>
+          </div>
+        <?php endforeach; endif; ?>
+      </div>
+    <?php endif; ?>
     <div class="card">
       <div class="row" style="justify-content:space-between;margin-top:0;">
         <h2 style="font-size:15px;margin:0;">Tulisan saya (<?php echo count($myPosts); ?>)</h2>
@@ -266,6 +377,55 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
           </div>
         </div>
       <?php endforeach; endif; ?>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:15px;margin:0 0 6px;">Pretest/Posttest (<?php echo count($myAssessments); ?>)</h2>
+      <?php if (empty($myAssessments)): ?>
+        <p class="muted">Belum ada asesmen.</p>
+      <?php else: foreach ($myAssessments as $as): ?>
+        <div class="pcard">
+          <h3><?php echo htmlspecialchars((string) $as['title'], ENT_QUOTES, 'UTF-8'); ?> <span class="muted">(<?php echo htmlspecialchars((string) ($as['type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>)</span></h3>
+          <div class="muted">Post: <?php echo htmlspecialchars((string) (($as['post_slug'] ?? '') !== '' ? $as['post_slug'] : '-'), ENT_QUOTES, 'UTF-8'); ?> · <?php echo count($as['questions'] ?? []); ?> soal · <?php echo count($as['responses'] ?? []); ?> responden</div>
+          <div class="row" style="margin-top:8px;">
+            <a class="btn" href="?responses=<?php echo rawurlencode((string) $as['id']); ?>">Lihat responden</a>
+            <a class="btn" href="/asesmen?id=<?php echo rawurlencode((string) $as['id']); ?>" target="_blank" rel="noopener">Buka</a>
+            <form method="post" style="margin:0;" onsubmit="return confirm('Hapus asesmen ini?');">
+              <input type="hidden" name="delete_assessment" value="<?php echo htmlspecialchars((string) $as['id'], ENT_QUOTES, 'UTF-8'); ?>">
+              <button type="submit" class="danger">Hapus</button>
+            </form>
+          </div>
+        </div>
+      <?php endforeach; endif; ?>
+
+      <h3 style="font-size:14px;margin:18px 0 6px;color:var(--muted);">Buat asesmen baru</h3>
+      <form method="post">
+        <input type="hidden" name="create_assessment" value="1">
+        <div class="grid2">
+          <div><label for="a_title">Judul</label><input type="text" id="a_title" name="a_title" required placeholder="Pretest Materi X"></div>
+          <div><label for="a_type">Tipe</label>
+            <select id="a_type" name="a_type" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);">
+              <option value="pretest">Pretest</option><option value="posttest">Posttest</option>
+            </select>
+          </div>
+          <div><label for="a_grading">Penilaian</label>
+            <select id="a_grading" name="a_grading" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);">
+              <option value="auto">Otomatis</option><option value="manual">Audit manual</option>
+            </select>
+          </div>
+          <div><label for="a_post">Postingan terkait</label>
+            <select id="a_post" name="a_post" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);">
+              <option value="">(tanpa postingan)</option>
+              <?php foreach ($myPosts as $pp): ?>
+                <option value="<?php echo htmlspecialchars((string) ($pp['slug'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($pp['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
+        <label for="a_questions">Daftar soal — satu soal per baris, format: <code>Pertanyaan | OpsiA | OpsiB | OpsiC | OpsiD | jawaban(1-4)</code></label>
+        <textarea id="a_questions" name="a_questions" rows="6" placeholder="Ibu kota Indonesia? | Jakarta | Bandung | Surabaya | Medan | 1"></textarea>
+        <div class="row"><button type="submit">Buat asesmen</button></div>
+      </form>
     </div>
 
     <div class="card">

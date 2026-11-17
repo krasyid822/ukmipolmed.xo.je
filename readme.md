@@ -1,4 +1,4 @@
-![](assets/demo/ukmi-polmed.gif)
+![](https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fassets%2Fdemo%2Fukmi-polmed.gif)
 
 ## Cara Uji Lokal
 

@@ -122,6 +122,10 @@ if (($adminComponentMode ?? '') === 'handle') {
 			if ($emb !== '') $embedList[] = $emb;
 		}
 		$image = trim((string) ($_POST['blog_image'] ?? ''));
+		if (stripos($image, 'data:') === 0 && function_exists('s3_put_data_uri')) {
+			$s3url = s3_put_data_uri($image);
+			if ($s3url) { $image = $s3url; }
+		}
 		$authorId = trim((string) ($_POST['blog_author_id'] ?? ''));
 		$focalX = isset($_POST['blog_focal_x']) ? max(0, min(100, (float) $_POST['blog_focal_x'])) : 50;
 		$focalY = isset($_POST['blog_focal_y']) ? max(0, min(100, (float) $_POST['blog_focal_y'])) : 50;
