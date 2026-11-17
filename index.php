@@ -1149,7 +1149,7 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
         </section>
 
         <footer>
-            <div>UKMI Politeknik Negeri Medan · Bersama bertumbuh dalam kebaikan.</div>
+            <div>UKMI Politeknik Negeri Medan · <?php echo e(($config['yel_yel'] ?? '') !== '' ? $config['yel_yel'] : 'Bersama bertumbuh dalam kebaikan.'); ?></div>
             <div class="footer-now">Now · <?php echo e(date('D'))." ".e(date('Y')).e(date('m')).e(date('d'))." · ".e(date('H:i:s'))." ".e(date('P')); ?></div>
             <nav aria-label="Media sosial UKMI Polmed" style="margin-top:8px;">
                 <div class="socials">

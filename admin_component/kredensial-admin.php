@@ -34,7 +34,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 				appendLog($config, $configPath, 'auth-updated', $maxLogs, $archiveLimitDays);
 				session_destroy();
 				$_SESSION = [];
-				header('Location: admin.php?msg=cred-updated');
+				header('Location: /admin.php?msg=cred-updated');
 				exit;
 			}
 		}

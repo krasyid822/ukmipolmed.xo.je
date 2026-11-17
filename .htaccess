@@ -30,6 +30,12 @@ RewriteCond %{THE_REQUEST} \s/+admin\.php[\s?] [NC]
 RewriteCond %{REQUEST_METHOD} =GET
 RewriteRule ^ /admin [R=301,L]
 
+# Alias login (akun berbasis peran: admin & penulis)
+RewriteRule ^login/?$ admin.php [L,QSA]
+
+# Panel penulis
+RewriteRule ^menulis/?$ penulis-panel.php [L,QSA]
+
 # Profil penulis
 RewriteRule ^penulis/?$ penulis.php?u=admin [L,QSA]
 RewriteRule ^penulis/([^/]+)/?$ penulis.php?u=$1 [L,QSA]

@@ -88,7 +88,15 @@ h1{margin:0;font-size:22px}
         <div>
           <h1><?php echo htmlspecialchars($author['pen_name'], ENT_QUOTES, 'UTF-8'); ?></h1>
           <?php if (($author['bio'] ?? '') !== ''): ?><p class="bio"><?php echo nl2br(htmlspecialchars($author['bio'], ENT_QUOTES, 'UTF-8')); ?></p><?php endif; ?>
-          <?php if (!empty($author['social'])): ?><div class="social"><a href="<?php echo htmlspecialchars($author['social'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener nofollow">Tautan sosial</a></div><?php endif; ?>
+          <?php if (!empty($author['socials'])): ?>
+            <div class="social" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+              <?php foreach ($author['socials'] as $s): $pf = social_platform($s); ?>
+                <a href="<?php echo htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener nofollow" title="<?php echo htmlspecialchars($pf, ENT_QUOTES, 'UTF-8'); ?>" aria-label="<?php echo htmlspecialchars($pf, ENT_QUOTES, 'UTF-8'); ?>" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;border:1px solid var(--stroke);color:var(--text);text-decoration:none;">
+                  <?php echo social_icon_svg($pf); ?>
+                </a>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
     </div>

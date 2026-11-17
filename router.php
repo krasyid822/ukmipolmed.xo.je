@@ -19,6 +19,14 @@ if (preg_match('#^/admin/?$#', $uri)) {
     require __DIR__ . '/admin.php';
     return true;
 }
+if (preg_match('#^/login/?$#', $uri)) {
+    require __DIR__ . '/admin.php';
+    return true;
+}
+if (preg_match('#^/menulis/?$#', $uri)) {
+    require __DIR__ . '/penulis-panel.php';
+    return true;
+}
 if (preg_match('#^/penulis/?$#', $uri)) {
     $_GET['u'] = 'admin';
     require __DIR__ . '/penulis.php';

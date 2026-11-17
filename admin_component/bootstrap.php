@@ -416,7 +416,7 @@ if ($flash === 'cred-updated') {
 
 if (isset($_GET['logout'])) {
 	session_destroy();
-	header('Location: admin.php');
+	header('Location: /admin.php');
 	exit;
 }
 
@@ -431,7 +431,7 @@ if (isset($_POST['user'], $_POST['key'])) {
 		$_SESSION['session_version'] = $sessionVersion;
 		$_SESSION['role'] = 'admin';
 		unset($_SESSION['author_id']);
-		header('Location: admin.php');
+		header('Location: /admin.php');
 		exit;
 	}
 	$writer = authors_find_by_username($user);
@@ -441,7 +441,7 @@ if (isset($_POST['user'], $_POST['key'])) {
 		$_SESSION['session_version'] = $sessionVersion;
 		$_SESSION['role'] = 'writer';
 		$_SESSION['author_id'] = $writer['id'] ?? '';
-		header('Location: penulis-panel.php');
+		header('Location: /penulis-panel.php');
 		exit;
 	}
 	appendLog($config, $configPath, 'login-fail', $maxLogs, $archiveLimitDays);
@@ -453,7 +453,7 @@ $currentRole = $loggedIn ? ($_SESSION['role'] ?? 'admin') : '';
 $currentAuthorId = $loggedIn && $currentRole === 'writer' ? ($_SESSION['author_id'] ?? '') : '';
 
 if ($loggedIn && $currentRole === 'writer') {
-	header('Location: penulis-panel.php');
+	header('Location: /penulis-panel.php');
 	exit;
 }
 

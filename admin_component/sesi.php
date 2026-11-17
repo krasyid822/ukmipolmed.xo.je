@@ -6,7 +6,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 		appendLog($config, $configPath, 'logout-all', $maxLogs, $archiveLimitDays);
 		session_destroy();
 		$_SESSION = [];
-		header('Location: admin.php?msg=logout-all');
+		header('Location: /admin.php?msg=logout-all');
 		exit;
 	}
 	return;
