@@ -102,6 +102,9 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
       <h1><?php echo h($assessment['title']); ?></h1>
       <div class="muted">Tipe: <?php echo h($assessment['type'] ?? '-'); ?> · Penilaian: <?php echo (($assessment['grading'] ?? 'auto') === 'auto') ? 'otomatis' : 'audit manual'; ?></div>
     </div>
+    <?php if (!empty($assessment['task_image'])): ?>
+      <div class="card"><img src="<?php echo h($assessment['task_image']); ?>" alt="Gambar soal" style="max-width:100%;border-radius:10px;border:1px solid var(--stroke);"></div>
+    <?php endif; ?>
     <form method="post" class="card">
       <input type="hidden" name="a_id" value="<?php echo h($assessment['id']); ?>">
       <label for="r_name">Nama</label>

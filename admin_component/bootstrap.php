@@ -488,7 +488,7 @@ require __DIR__ . '/header-card-presentation.php';
 require __DIR__ . '/divisi-kepengurusan.php';
 require __DIR__ . '/kartu-dokumentasi.php';
 require __DIR__ . '/pengelola-faq.php';
-require __DIR__ . '/pegelola-blog.php';
+require __DIR__ . '/pengelola-blog.php';
 require __DIR__ . '/log.php';
 require __DIR__ . '/penyimpanan-insight.php';
 require __DIR__ . '/sesi.php';

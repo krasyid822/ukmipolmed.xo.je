@@ -187,6 +187,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment']))
         if ($q === '' || count($options) < 2 || $ci < 0 || $ci >= count($options)) continue;
         $questions[] = ['q' => $q, 'options' => $options, 'correct' => $ci];
     }
+    $taskImg = (string) ($_POST['a_task_image'] ?? '');
+    if (stripos($taskImg, 'data:') === 0 && function_exists('s3_put_data_uri')) {
+        $tu = s3_put_data_uri($taskImg);
+        if ($tu) $taskImg = $tu;
+    }
     $ownsPost = false;
     foreach ($myPosts as $pp) { if ((string) ($pp['slug'] ?? '') === $aPost) { $ownsPost = true; break; } }
     if ($aTitle === '' || empty($questions)) {
@@ -203,6 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment']))
             'type' => $aType,
             'grading' => $aGrading,
             'questions' => $questions,
+            'task_image' => $taskImg,
             'responses' => [],
             'created_at' => date('c'),
         ];
@@ -293,6 +299,8 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .danger{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(148,163,184,0.25);box-shadow:none}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -424,6 +432,10 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
         </div>
         <label for="a_questions">Daftar soal — satu soal per baris, format: <code>Pertanyaan | OpsiA | OpsiB | OpsiC | OpsiD | jawaban(1-4)</code></label>
         <textarea id="a_questions" name="a_questions" rows="6" placeholder="Ibu kota Indonesia? | Jakarta | Bandung | Surabaya | Medan | 1"></textarea>
+        <label for="a_xlsx">Gambar soal dari Excel (opsional) — .xlsx/.xls/.csv diubah jadi gambar</label>
+        <input type="file" id="a_xlsx" accept=".xlsx,.xls,.csv" style="margin-top:6px;">
+        <input type="hidden" name="a_task_image" id="a_task_image" value="">
+        <div id="a_task_preview" style="margin-top:8px;"></div>
         <div class="row"><button type="submit">Buat asesmen</button></div>
       </form>
     </div>
@@ -446,5 +458,46 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
     </div>
   <?php endif; ?>
 </div>
+<script>
+(function () {
+  var inp = document.getElementById('a_xlsx');
+  var hid = document.getElementById('a_task_image');
+  var prev = document.getElementById('a_task_preview');
+  if (!inp) return;
+  inp.addEventListener('change', async function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    try {
+      if (typeof XLSX === 'undefined' || typeof html2canvas === 'undefined') {
+        alert('Library konversi belum termuat. Muat ulang halaman.');
+        return;
+      }
+      var buf = await f.arrayBuffer();
+      var wb = XLSX.read(buf, { type: 'array' });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var html = XLSX.utils.sheet_to_html(ws);
+      var box = document.createElement('div');
+      box.style.cssText = 'position:fixed;left:-99999px;top:0;background:#ffffff;color:#000000;padding:14px;font:13px system-ui,sans-serif;';
+      box.innerHTML = html;
+      box.querySelectorAll('table').forEach(function (t) { t.style.borderCollapse = 'collapse'; });
+      box.querySelectorAll('td,th').forEach(function (c) { c.style.border = '1px solid #999'; c.style.padding = '4px 6px'; });
+      document.body.appendChild(box);
+      var canvas = await html2canvas(box, { backgroundColor: '#ffffff', scale: 2 });
+      document.body.removeChild(box);
+      var dataUrl = canvas.toDataURL('image/png');
+      hid.value = dataUrl;
+      prev.innerHTML = '';
+      var img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.maxWidth = '100%';
+      img.style.border = '1px solid var(--stroke)';
+      img.style.borderRadius = '8px';
+      prev.appendChild(img);
+    } catch (err) {
+      alert('Gagal konversi Excel: ' + err);
+    }
+  });
+})();
+</script>
 </body>
 </html>

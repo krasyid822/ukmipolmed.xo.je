@@ -562,7 +562,7 @@ require __DIR__ . '/admin_component/bootstrap.php';
 				<?php require __DIR__ . '/admin_component/pengelola-faq.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="blog" data-feature-label="Pengelola Blog">
-				<?php require __DIR__ . '/admin_component/pegelola-blog.php'; ?>
+				<?php require __DIR__ . '/admin_component/pengelola-blog.php'; ?>
 			</div>
 		<?php else: ?>
 			<h1>Login Admin</h1>
