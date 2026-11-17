@@ -149,7 +149,7 @@ do_ftp_push() {
     echo "bye"
   } > "$s1"
   log "Upload ${#changed[@]} file ke .synup ..."
-  if ! timeout 400 lftp -f "$s1"; then rm -f "$s1"; die "Upload ke .synup gagal"; fi
+  timeout 400 lftp -f "$s1" || warn "Sebagian upload .synup gagal; lanjut verifikasi/fallback"
   rm -f "$s1"
 
   local upaths=()

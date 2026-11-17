@@ -272,6 +272,7 @@ $myAssessments = assessments_by_author($aid);
 $respAid = isset($_GET['responses']) ? trim((string) $_GET['responses']) : '';
 $respAs = $respAid !== '' ? assessment_find($respAid) : null;
 if ($respAs && (string) ($respAs['author_id'] ?? '') !== $aid) $respAs = null;
+$profileView = isset($_GET['profile']);
 ?><!doctype html>
 <html lang="id">
 <head>
@@ -307,6 +308,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
   <div class="row" style="justify-content:space-between;margin-top:0;">
     <div><h1>Panel Penulis</h1><div class="muted">@<?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?></div></div>
     <div class="row" style="margin:0;">
+      <a class="btn" href="?profile=1">Pengaturan Profil</a>
       <a class="btn" href="/penulis/<?php echo rawurlencode($username); ?>" target="_blank" rel="noopener">Lihat profil</a>
       <a class="btn" href="?logout=1">Keluar</a>
     </div>
@@ -315,7 +317,28 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
   <?php if ($msg !== ''): ?><p class="ok"><?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
   <?php if ($err !== ''): ?><p class="err"><?php echo htmlspecialchars($err, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
 
-  <?php if ($showForm): ?>
+  <?php if ($profileView): ?>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-top:0;">
+        <h2 style="font-size:15px;margin:0;">Pengaturan Profil</h2>
+        <a class="btn" href="penulis-panel.php">Kembali</a>
+      </div>
+      <form method="post">
+        <input type="hidden" name="save_profile" value="1">
+        <div class="grid2">
+          <div><label for="pen_name">Nama pena</label><input type="text" id="pen_name" name="pen_name" value="<?php echo htmlspecialchars((string) ($me['pen_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div>
+          <div><label for="avatar">Avatar URL</label><input type="text" id="avatar" name="avatar" value="<?php echo htmlspecialchars((string) ($me['avatar'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://...jpg"></div>
+        </div>
+        <label for="bio">Bio</label>
+        <textarea id="bio" name="bio" rows="2"><?php echo htmlspecialchars((string) ($me['bio'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+        <?php $meSocials = (!empty($me['socials']) && is_array($me['socials'])) ? $me['socials'] : (!empty($me['social']) ? [$me['social']] : []); ?>
+        <label for="socials" style="display:block;font-size:14px;color:var(--text);font-weight:600;margin:12px 0 2px;">Link Sosial Media</label>
+        <p class="muted" style="margin:0 0 6px;">Pisahkan dengan baris, satu akun satu baris.</p>
+        <textarea id="socials" name="socials" rows="3" placeholder="https://instagram.com/akun&#10;https://youtube.com/@akun"><?php echo htmlspecialchars(implode("\n", $meSocials), ENT_QUOTES, 'UTF-8'); ?></textarea>
+        <div class="row"><button type="submit">Simpan profil</button></div>
+      </form>
+    </div>
+  <?php elseif ($showForm): ?>
     <div class="card">
       <h2 style="font-size:15px;margin:0 0 6px;"><?php echo $editing ? 'Edit postingan' : 'Postingan baru'; ?></h2>
       <form method="post">
@@ -383,120 +406,89 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
               <button type="submit" class="danger">Hapus</button>
             </form>
           </div>
-        </div>
-      <?php endforeach; endif; ?>
-    </div>
-
-    <div class="card">
-      <h2 style="font-size:15px;margin:0 0 6px;">Pretest/Posttest (<?php echo count($myAssessments); ?>)</h2>
-      <?php if (empty($myAssessments)): ?>
-        <p class="muted">Belum ada asesmen.</p>
-      <?php else: foreach ($myAssessments as $as): ?>
-        <div class="pcard">
-          <h3><?php echo htmlspecialchars((string) $as['title'], ENT_QUOTES, 'UTF-8'); ?> <span class="muted">(<?php echo htmlspecialchars((string) ($as['type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>)</span></h3>
-          <div class="muted">Post: <?php echo htmlspecialchars((string) (($as['post_slug'] ?? '') !== '' ? $as['post_slug'] : '-'), ENT_QUOTES, 'UTF-8'); ?> · <?php echo count($as['questions'] ?? []); ?> soal · <?php echo count($as['responses'] ?? []); ?> responden</div>
-          <div class="row" style="margin-top:8px;">
-            <a class="btn" href="?responses=<?php echo rawurlencode((string) $as['id']); ?>">Lihat responden</a>
-            <a class="btn" href="/asesmen?id=<?php echo rawurlencode((string) $as['id']); ?>" target="_blank" rel="noopener">Buka</a>
-            <form method="post" style="margin:0;" onsubmit="return confirm('Hapus asesmen ini?');">
-              <input type="hidden" name="delete_assessment" value="<?php echo htmlspecialchars((string) $as['id'], ENT_QUOTES, 'UTF-8'); ?>">
-              <button type="submit" class="danger">Hapus</button>
-            </form>
+          <?php $__pa = assessments_for_post((string) ($p['slug'] ?? '')); ?>
+          <div style="margin-top:10px;border-top:1px dashed var(--stroke);padding-top:10px;">
+            <div class="muted" style="font-size:12px;margin-bottom:6px;">Pretest/Posttest:</div>
+            <?php foreach ($__pa as $as): ?>
+              <div class="row" style="margin:4px 0;">
+                <span style="font-size:13px;"><?php echo htmlspecialchars((string) $as['title'], ENT_QUOTES, 'UTF-8'); ?> (<?php echo htmlspecialchars((string) ($as['type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>) · <?php echo count($as['questions'] ?? []); ?> soal · <?php echo count($as['responses'] ?? []); ?> responden</span>
+                <a class="btn" href="?responses=<?php echo rawurlencode((string) $as['id']); ?>">Responden</a>
+                <form method="post" style="margin:0;" onsubmit="return confirm('Hapus asesmen ini?');">
+                  <input type="hidden" name="delete_assessment" value="<?php echo htmlspecialchars((string) $as['id'], ENT_QUOTES, 'UTF-8'); ?>">
+                  <button type="submit" class="danger">Hapus</button>
+                </form>
+              </div>
+            <?php endforeach; ?>
+            <details style="margin-top:6px;">
+              <summary style="cursor:pointer;color:var(--accent);font-size:13px;">+ Buat pretest/posttest untuk post ini</summary>
+              <form method="post" class="assess-form" style="margin-top:8px;">
+                <input type="hidden" name="create_assessment" value="1">
+                <input type="hidden" name="a_post" value="<?php echo htmlspecialchars((string) ($p['slug'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                <div class="grid2">
+                  <div><label>Judul</label><input type="text" name="a_title" required placeholder="Pretest Materi X"></div>
+                  <div><label>Tipe</label><select name="a_type" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);"><option value="pretest">Pretest</option><option value="posttest">Posttest</option></select></div>
+                  <div><label>Penilaian</label><select name="a_grading" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);"><option value="auto">Otomatis</option><option value="manual">Audit manual</option></select></div>
+                </div>
+                <label>Daftar soal — satu per baris: <code>Pertanyaan | OpsiA | OpsiB | OpsiC | OpsiD | jawaban(1-4)</code></label>
+                <textarea name="a_questions" rows="4" placeholder="Ibu kota Indonesia? | Jakarta | Bandung | Surabaya | Medan | 1"></textarea>
+                <label>Gambar soal dari Excel (opsional)</label>
+                <input type="file" class="a_xlsx" accept=".xlsx,.xls,.csv" style="margin-top:6px;">
+                <input type="hidden" name="a_task_image" class="a_task_image" value="">
+                <div class="a_task_preview" style="margin-top:8px;"></div>
+                <div class="row"><button type="submit">Buat asesmen</button></div>
+              </form>
+            </details>
           </div>
         </div>
       <?php endforeach; endif; ?>
-
-      <h3 style="font-size:14px;margin:18px 0 6px;color:var(--muted);">Buat asesmen baru</h3>
-      <form method="post">
-        <input type="hidden" name="create_assessment" value="1">
-        <div class="grid2">
-          <div><label for="a_title">Judul</label><input type="text" id="a_title" name="a_title" required placeholder="Pretest Materi X"></div>
-          <div><label for="a_type">Tipe</label>
-            <select id="a_type" name="a_type" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);">
-              <option value="pretest">Pretest</option><option value="posttest">Posttest</option>
-            </select>
-          </div>
-          <div><label for="a_grading">Penilaian</label>
-            <select id="a_grading" name="a_grading" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);">
-              <option value="auto">Otomatis</option><option value="manual">Audit manual</option>
-            </select>
-          </div>
-          <div><label for="a_post">Postingan terkait</label>
-            <select id="a_post" name="a_post" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);">
-              <option value="">(tanpa postingan)</option>
-              <?php foreach ($myPosts as $pp): ?>
-                <option value="<?php echo htmlspecialchars((string) ($pp['slug'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars((string) ($pp['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-        </div>
-        <label for="a_questions">Daftar soal — satu soal per baris, format: <code>Pertanyaan | OpsiA | OpsiB | OpsiC | OpsiD | jawaban(1-4)</code></label>
-        <textarea id="a_questions" name="a_questions" rows="6" placeholder="Ibu kota Indonesia? | Jakarta | Bandung | Surabaya | Medan | 1"></textarea>
-        <label for="a_xlsx">Gambar soal dari Excel (opsional) — .xlsx/.xls/.csv diubah jadi gambar</label>
-        <input type="file" id="a_xlsx" accept=".xlsx,.xls,.csv" style="margin-top:6px;">
-        <input type="hidden" name="a_task_image" id="a_task_image" value="">
-        <div id="a_task_preview" style="margin-top:8px;"></div>
-        <div class="row"><button type="submit">Buat asesmen</button></div>
-      </form>
     </div>
 
-    <div class="card">
-      <h2 style="font-size:15px;margin:0 0 6px;">Profil publik</h2>
-      <form method="post">
-        <input type="hidden" name="save_profile" value="1">
-        <div class="grid2">
-          <div><label for="pen_name">Nama pena</label><input type="text" id="pen_name" name="pen_name" value="<?php echo htmlspecialchars((string) ($me['pen_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div>
-          <div><label for="avatar">Avatar URL</label><input type="text" id="avatar" name="avatar" value="<?php echo htmlspecialchars((string) ($me['avatar'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="https://...jpg"></div>
-        </div>
-        <label for="bio">Bio</label>
-        <textarea id="bio" name="bio" rows="2"><?php echo htmlspecialchars((string) ($me['bio'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
-        <?php $meSocials = (!empty($me['socials']) && is_array($me['socials'])) ? $me['socials'] : (!empty($me['social']) ? [$me['social']] : []); ?>
-        <label for="socials">Social media link (satu per baris)</label>
-        <textarea id="socials" name="socials" rows="3" placeholder="https://instagram.com/akun&#10;https://youtube.com/@akun"><?php echo htmlspecialchars(implode("\n", $meSocials), ENT_QUOTES, 'UTF-8'); ?></textarea>
-        <div class="row"><button type="submit">Simpan profil</button></div>
-      </form>
-    </div>
   <?php endif; ?>
 </div>
 <script>
 (function () {
-  var inp = document.getElementById('a_xlsx');
-  var hid = document.getElementById('a_task_image');
-  var prev = document.getElementById('a_task_preview');
-  if (!inp) return;
-  inp.addEventListener('change', async function (e) {
-    var f = e.target.files && e.target.files[0];
-    if (!f) return;
-    try {
-      if (typeof XLSX === 'undefined' || typeof html2canvas === 'undefined') {
-        alert('Library konversi belum termuat. Muat ulang halaman.');
-        return;
+  function setupForm(form) {
+    var inp = form.querySelector('.a_xlsx');
+    var hid = form.querySelector('.a_task_image');
+    var prev = form.querySelector('.a_task_preview');
+    if (!inp || !hid) return;
+    inp.addEventListener('change', async function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      try {
+        if (typeof XLSX === 'undefined' || typeof html2canvas === 'undefined') {
+          alert('Library konversi belum termuat. Muat ulang halaman.');
+          return;
+        }
+        var buf = await f.arrayBuffer();
+        var wb = XLSX.read(buf, { type: 'array' });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var html = XLSX.utils.sheet_to_html(ws);
+        var box = document.createElement('div');
+        box.style.cssText = 'position:fixed;left:-99999px;top:0;background:#ffffff;color:#000000;padding:14px;font:13px system-ui,sans-serif;';
+        box.innerHTML = html;
+        box.querySelectorAll('table').forEach(function (t) { t.style.borderCollapse = 'collapse'; });
+        box.querySelectorAll('td,th').forEach(function (c) { c.style.border = '1px solid #999'; c.style.padding = '4px 6px'; });
+        document.body.appendChild(box);
+        var canvas = await html2canvas(box, { backgroundColor: '#ffffff', scale: 2 });
+        document.body.removeChild(box);
+        var dataUrl = canvas.toDataURL('image/png');
+        hid.value = dataUrl;
+        if (prev) {
+          prev.innerHTML = '';
+          var img = document.createElement('img');
+          img.src = dataUrl;
+          img.style.maxWidth = '100%';
+          img.style.border = '1px solid var(--stroke)';
+          img.style.borderRadius = '8px';
+          prev.appendChild(img);
+        }
+      } catch (err) {
+        alert('Gagal konversi Excel: ' + err);
       }
-      var buf = await f.arrayBuffer();
-      var wb = XLSX.read(buf, { type: 'array' });
-      var ws = wb.Sheets[wb.SheetNames[0]];
-      var html = XLSX.utils.sheet_to_html(ws);
-      var box = document.createElement('div');
-      box.style.cssText = 'position:fixed;left:-99999px;top:0;background:#ffffff;color:#000000;padding:14px;font:13px system-ui,sans-serif;';
-      box.innerHTML = html;
-      box.querySelectorAll('table').forEach(function (t) { t.style.borderCollapse = 'collapse'; });
-      box.querySelectorAll('td,th').forEach(function (c) { c.style.border = '1px solid #999'; c.style.padding = '4px 6px'; });
-      document.body.appendChild(box);
-      var canvas = await html2canvas(box, { backgroundColor: '#ffffff', scale: 2 });
-      document.body.removeChild(box);
-      var dataUrl = canvas.toDataURL('image/png');
-      hid.value = dataUrl;
-      prev.innerHTML = '';
-      var img = document.createElement('img');
-      img.src = dataUrl;
-      img.style.maxWidth = '100%';
-      img.style.border = '1px solid var(--stroke)';
-      img.style.borderRadius = '8px';
-      prev.appendChild(img);
-    } catch (err) {
-      alert('Gagal konversi Excel: ' + err);
-    }
-  });
+    });
+  }
+  document.querySelectorAll('.assess-form').forEach(setupForm);
 })();
 </script>
 </body>

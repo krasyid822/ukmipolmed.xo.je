@@ -1253,14 +1253,31 @@ try {
 			</script>
 
 			<?php $__assess = assessments_for_post($posts[0]['slug'] ?? ''); ?>
-			<?php if (!empty($__assess)): ?>
-				<div style="margin-top:14px;padding:14px 16px;border:1px solid var(--stroke);border-radius:14px;background:rgba(255,255,255,0.03);">
-					<strong>Asesmen:</strong>
-					<?php foreach ($__assess as $as): ?>
-						<a class="btn ghost" style="margin-left:8px;" href="/asesmen?id=<?php echo urlencode((string) ($as['id'] ?? '')); ?>"><?php echo e((string) ($as['title'] ?? 'Asesmen')); ?> (<?php echo e((string) ($as['type'] ?? '')); ?>)</a>
-					<?php endforeach; ?>
+			<?php foreach ($__assess as $as): ?>
+				<div style="margin-top:16px;padding:16px;border:1px solid var(--stroke);border-radius:14px;background:rgba(255,255,255,0.03);">
+					<h3 style="margin:0 0 4px;font-size:17px;"><?php echo e((string) ($as['title'] ?? 'Asesmen')); ?> <span style="color:var(--muted);font-size:13px;">(<?php echo e((string) ($as['type'] ?? '')); ?>)</span></h3>
+					<div style="color:var(--muted);font-size:13px;margin-bottom:10px;">Penilaian: <?php echo (($as['grading'] ?? 'auto') === 'auto') ? 'otomatis' : 'audit manual'; ?></div>
+					<?php if (!empty($as['task_image'])): ?>
+						<div style="margin-bottom:12px;"><img src="<?php echo e((string) $as['task_image']); ?>" alt="Gambar soal" style="max-width:100%;border-radius:10px;border:1px solid var(--stroke);"></div>
+					<?php endif; ?>
+					<form method="post" action="/asesmen">
+						<input type="hidden" name="a_id" value="<?php echo e((string) ($as['id'] ?? '')); ?>">
+						<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+							<input type="text" name="r_name" required placeholder="Nama Anda" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--text);">
+							<input type="text" name="r_ident" placeholder="Identitas (opsional)" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--text);">
+						</div>
+						<?php foreach (($as['questions'] ?? []) as $qi => $q): ?>
+							<div style="margin:12px 0;padding:10px;border:1px solid var(--stroke);border-radius:10px;">
+								<p style="margin:0 0 6px;font-weight:600;"><?php echo (int) $qi + 1; ?>. <?php echo e((string) ($q['q'] ?? '')); ?></p>
+								<?php foreach (($q['options'] ?? []) as $oi => $opt): ?>
+									<label style="display:block;font-size:14px;color:var(--text);margin:3px 0;"><input type="radio" name="q<?php echo (int) $qi; ?>" value="<?php echo (int) $oi; ?>"> <?php echo e((string) $opt); ?></label>
+								<?php endforeach; ?>
+							</div>
+						<?php endforeach; ?>
+						<button type="submit" class="btn primary">Kirim jawaban</button>
+					</form>
 				</div>
-			<?php endif; ?>
+			<?php endforeach; ?>
 
 			<?php
 			// Separate comments UI into its own card below the article
