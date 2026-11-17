@@ -150,23 +150,34 @@ function render_markdown($text)
 	return $html;
 }
 
-function apply_embeds($html, $embeds, $enabled)
+function apply_embeds($html, $embeds, $enabled, $igFix = false)
 {
 	if (!$enabled || empty($embeds) || !is_array($embeds)) return $html;
+	$cls = $igFix ? 'embed-box instagram-embed-wrapper' : 'embed-box';
+	$wrap = function ($emb) use ($cls) { return '<div class="' . $cls . '">' . $emb . '</div>'; };
 	$remaining = $embeds;
 	$output = $html;
 	foreach ($embeds as $idx => $emb) {
 		$token = '[[EMBED' . ($idx + 1) . ']]';
 		$pos = stripos($output, $token);
 		if ($pos !== false) {
-			$output = substr_replace($output, '<div class="embed-box">' . $emb . '</div>', $pos, strlen($token));
+			$output = substr_replace($output, $wrap($emb), $pos, strlen($token));
 			unset($remaining[$idx]);
 		}
 	}
 	if (!empty($remaining)) {
-		$output .= "\n" . implode("\n", array_map(fn($emb) => '<div class="embed-box">' . $emb . '</div>', $remaining));
+		$output .= "\n" . implode("\n", array_map($wrap, $remaining));
 	}
 	return $output;
+}
+
+function render_gdrive($folder, $view)
+{
+	$folder = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $folder);
+	if ($folder === '') return '';
+	$view = ($view === 'list') ? 'list' : 'grid';
+	$src = 'https://drive.google.com/embeddedfolderview?id=' . rawurlencode($folder) . '#' . $view;
+	return '<div class="gdrive-embed-wrapper"><iframe src="' . htmlspecialchars($src, ENT_QUOTES) . '" style="width:100%;height:600px;border:0" loading="lazy" allowfullscreen></iframe></div>';
 }
 
 $baseHost = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id';
@@ -432,6 +443,9 @@ $posts = array_map(function ($post) use ($baseUrl) {
 		'image_data' => $imageData,
 		'focal_x' => isset($post['focal_x']) ? max(0, min(100, (float) $post['focal_x'])) : 50,
 		'focal_y' => isset($post['focal_y']) ? max(0, min(100, (float) $post['focal_y'])) : 50,
+		'ig_embed_fix' => !empty($post['ig_embed_fix']),
+		'gdrive_folder' => preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($post['gdrive_folder'] ?? '')),
+		'gdrive_view' => (($post['gdrive_view'] ?? 'grid') === 'list') ? 'list' : 'grid',
 		'embeds' => $embedList,
 		'embed_enabled' => $embedEnabled,
 		'created_at' => $created,
@@ -1059,6 +1073,12 @@ try {
 		.article .body ul, .article .body ol { margin: 0 0 12px 18px; }
 		.embed-box { margin: 14px 0 0; padding: 14px; border: 1px solid var(--stroke); border-radius: 12px; background: rgba(255,255,255,0.03); }
 		.embed-box iframe { width: 100%; }
+		.instagram-embed-wrapper { max-width: 100%; overflow: hidden; }
+		.instagram-embed-wrapper .instagram-media { margin: 0 !important; max-width: 100% !important; width: 100% !important; min-width: 0 !important; }
+		.instagram-embed-wrapper iframe.instagram-media { width: 100% !important; min-width: 0 !important; max-width: 100% !important; }
+		.gdrive-embed-wrapper { position: relative; width: 100%; overflow: hidden; }
+		.gdrive-embed-wrapper iframe { display: block; width: 100% !important; height: 600px !important; border: 0 !important; }
+		@media (max-width: 600px) { .gdrive-embed-wrapper iframe { height: 70vh !important; } }
 
 		.loading-overlay {
 			position: fixed;
@@ -1178,7 +1198,13 @@ try {
 				<?php if ($articleImage !== ''): ?>
 					<div style="margin:10px 0 14px;"><img src="<?php echo e($articleImage); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; object-position: <?php echo (int) ($posts[0]['focal_x'] ?? 50); ?>% <?php echo (int) ($posts[0]['focal_y'] ?? 50); ?>%; border-radius:12px; border:1px solid var(--stroke);"></div>
 				<?php endif; ?>
-				<div class="body"><?php echo apply_embeds($posts[0]['body_html'], $posts[0]['embeds'] ?? [], !empty($posts[0]['embed_enabled'])); ?></div>
+				<?php
+				$aBody = apply_embeds($posts[0]['body_html'], $posts[0]['embeds'] ?? [], !empty($posts[0]['embed_enabled']), !empty($posts[0]['ig_embed_fix']));
+				$gdriveHtml = render_gdrive($posts[0]['gdrive_folder'] ?? '', $posts[0]['gdrive_view'] ?? 'grid');
+				if ($gdriveHtml !== '' && strpos($aBody, '[[GDRIVE]]') !== false) { $aBody = str_replace('[[GDRIVE]]', $gdriveHtml, $aBody); $gdriveHtml = ''; }
+				?>
+				<div class="body"><?php echo $aBody; ?></div>
+				<?php if ($gdriveHtml !== ''): ?><div class="body"><?php echo $gdriveHtml; ?></div><?php endif; ?>
 
 			</div>
 

@@ -277,6 +277,9 @@ foreach ($config['posts'] as $post) {
 		'image' => trim((string) ($post['image'] ?? '')),
 		'focal_x' => isset($post['focal_x']) ? max(0, min(100, (float) $post['focal_x'])) : 50,
 		'focal_y' => isset($post['focal_y']) ? max(0, min(100, (float) $post['focal_y'])) : 50,
+		'ig_embed_fix' => !empty($post['ig_embed_fix']),
+		'gdrive_folder' => preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($post['gdrive_folder'] ?? '')),
+		'gdrive_view' => (($post['gdrive_view'] ?? 'grid') === 'list') ? 'list' : 'grid',
 		'embed_enabled' => !empty($post['embed_enabled']),
 		'embeds' => $embedList,
 		'created_at' => $post['created_at'] ?? date('c'),
@@ -293,7 +296,7 @@ $posts = array_slice($posts, 0, $maxPosts);
 $postsArchived = is_array($config['posts_archived'] ?? null) ? array_values($config['posts_archived']) : [];
 
 $blogEditingIdx = -1;
-$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'focal_x' => 50, 'focal_y' => 50, 'embeds' => [], 'embed_enabled' => false];
+$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'focal_x' => 50, 'focal_y' => 50, 'ig_embed_fix' => false, 'gdrive_folder' => '', 'gdrive_view' => 'grid', 'embeds' => [], 'embed_enabled' => false];
 
 $maxLogs = 30;
 $archiveLimitDays = 60;

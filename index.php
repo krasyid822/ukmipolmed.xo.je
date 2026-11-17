@@ -1248,6 +1248,7 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
         let agendaIndex = 0;
         function swapAgenda(next) {
             if (!tagEl || !titleEl || !detailEl) return;
+            sendInsight('agenda_view');
             [tagEl, titleEl, detailEl].forEach(el => el.classList.add('flipping'));
             setTimeout(() => {
                 tagEl.textContent = next.tag || '';
@@ -1398,6 +1399,7 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
 
         window.addEventListener('load', () => {
             sendInsight('home_view');
+            sendInsight('agenda_view');
         });
 
         document.querySelectorAll('[data-insight]').forEach(el => {

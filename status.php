@@ -215,7 +215,7 @@ function buildSummary(array $insights, string $todayKey, string $storeFile, floa
 
 	$orgSpecific = [
 		'dokumentasi_clicks' => sumPrefixes($insights['events'], ['doc_']),
-		'agenda_updates' => $insights['events']['agenda_admin_update'] ?? 0,
+		'agenda_updates' => ($insights['events']['agenda_admin_update'] ?? 0) + ($insights['events']['blog_admin_update'] ?? 0),
 		'cta_daftar_clicks' => sumPrefixes($insights['events'], ['cta_daftar', 'cta_daftar_', 'cta_daftar-']),
 		'blog_views_total' => array_sum($blogViewsBySlug),
 		'blog_views_by_slug' => $blogViewsBySlug,
@@ -549,7 +549,7 @@ if ($view === 'ui') {
 			kvFill('kv-org', [
 				['Klik dokumentasi', fmt(data.org_specific?.dokumentasi_clicks)],
 				['Klik tombol daftar', fmt(data.org_specific?.cta_daftar_clicks)],
-				['Pembaruan agenda', fmt(data.org_specific?.agenda_updates)],
+				['Pembaruan konten (agenda + blog)', fmt(data.org_specific?.agenda_updates)],
 				['Blog dibuka (total)', fmt(data.org_specific?.blog_views_total)],
 				['Kunjungan halaman utama', fmt(data.org_specific?.home_views)],
 			]);

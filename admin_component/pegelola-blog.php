@@ -12,12 +12,15 @@ if (($adminComponentMode ?? '') === 'handle') {
 				'image' => $posts[$reqIdx]['image'] ?? '',
 				'focal_x' => $posts[$reqIdx]['focal_x'] ?? 50,
 				'focal_y' => $posts[$reqIdx]['focal_y'] ?? 50,
+				'ig_embed_fix' => !empty($posts[$reqIdx]['ig_embed_fix']),
+				'gdrive_folder' => $posts[$reqIdx]['gdrive_folder'] ?? '',
+				'gdrive_view' => ($posts[$reqIdx]['gdrive_view'] ?? 'grid') === 'list' ? 'list' : 'grid',
 				'embeds' => !empty($posts[$reqIdx]['embeds']) && is_array($posts[$reqIdx]['embeds']) ? $posts[$reqIdx]['embeds'] : [],
 				'embed_enabled' => !empty($posts[$reqIdx]['embed_enabled']),
 			];
 		} elseif ($reqIdx === -1) {
 			$blogEditingIdx = -1;
-			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'focal_x' => 50, 'focal_y' => 50, 'embeds' => [], 'embed_enabled' => false];
+			$blogDraft = ['title' => '', 'slug' => '', 'summary' => '', 'body' => '', 'image' => '', 'focal_x' => 50, 'focal_y' => 50, 'ig_embed_fix' => false, 'gdrive_folder' => '', 'gdrive_view' => 'grid', 'embeds' => [], 'embed_enabled' => false];
 		}
 	}
 
@@ -120,6 +123,9 @@ if (($adminComponentMode ?? '') === 'handle') {
 		$image = trim((string) ($_POST['blog_image'] ?? ''));
 		$focalX = isset($_POST['blog_focal_x']) ? max(0, min(100, (float) $_POST['blog_focal_x'])) : 50;
 		$focalY = isset($_POST['blog_focal_y']) ? max(0, min(100, (float) $_POST['blog_focal_y'])) : 50;
+		$igFix = isset($_POST['blog_ig_embed_fix']) && $_POST['blog_ig_embed_fix'] === '1';
+		$gdriveFolder = preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($_POST['blog_gdrive_folder'] ?? ''));
+		$gdriveView = (($_POST['blog_gdrive_view'] ?? 'grid') === 'list') ? 'list' : 'grid';
 		$idx = isset($_POST['blog_edit_idx']) ? (int) $_POST['blog_edit_idx'] : -1;
 		$now = date('c');
 		$created = ($idx >= 0 && isset($posts[$idx])) ? ($posts[$idx]['created_at'] ?? $now) : $now;
@@ -167,6 +173,9 @@ if (($adminComponentMode ?? '') === 'handle') {
 					'image' => $image,
 					'focal_x' => $focalX,
 					'focal_y' => $focalY,
+					'ig_embed_fix' => $igFix,
+					'gdrive_folder' => $gdriveFolder,
+					'gdrive_view' => $gdriveView,
 					'embeds' => $embedList,
 					'embed_enabled' => $embedEnabled,
 					'created_at' => $created,
@@ -251,6 +260,29 @@ if (($adminComponentMode ?? '') === 'handle') {
 					<span class="slider"></span>
 				</label>
 			</label>
+			<label style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+				<span>Perbaiki layout embed Instagram (wrapper)</span>
+				<label class="toggle">
+					<input type="checkbox" id="blog_ig_embed_fix" name="blog_ig_embed_fix" value="1" <?php echo !empty($blogDraft['ig_embed_fix']) ? 'checked' : ''; ?>>
+					<span class="slider"></span>
+				</label>
+			</label>
+			<div style="margin-top:10px;">
+				<label for="blog_gdrive_folder">Google Drive Folder ID (embed folder)</label>
+				<input type="text" id="blog_gdrive_folder" name="blog_gdrive_folder" value="<?php echo htmlspecialchars((string) ($blogDraft['gdrive_folder'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="contoh: 1qGwpjmQIQO8rN1odas0njDSf72VRrTCa">
+				<div style="display:flex; gap:10px; align-items:center; margin-top:6px;">
+					<label for="blog_gdrive_view" style="margin:0;">Tampilan</label>
+					<select id="blog_gdrive_view" name="blog_gdrive_view" style="padding:6px;border-radius:8px;">
+						<option value="grid" <?php echo (($blogDraft['gdrive_view'] ?? 'grid') === 'grid') ? 'selected' : ''; ?>>Grid</option>
+						<option value="list" <?php echo (($blogDraft['gdrive_view'] ?? 'grid') === 'list') ? 'selected' : ''; ?>>List</option>
+					</select>
+				</div>
+				<p class="muted-text" style="margin:6px 0 0; line-height:1.55;">
+					Cara ambil Folder ID: buka Google Drive → klik kanan folder → <b>Share</b> → <b>General access</b> = <b>Anyone with the link</b> → <b>Copy link</b>. URL-nya seperti
+					<code>https://drive.google.com/drive/folders/<b>FOLDER-ID</b>?usp=sharing</code> — ambil bagian <b>FOLDER-ID</b> saja.
+					Kosongkan jika tidak memakai embed folder Drive. Sisipkan <code>[[GDRIVE]]</code> di konten untuk menempatkan posisi embed; jika tidak, embed ditambahkan di akhir artikel.
+				</p>
+			</div>
 			<div id="blog_embed_wrap" style="margin-top:6px; <?php echo !empty($blogDraft['embed_enabled']) ? '' : 'display:none;'; ?>">
 				<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
 					<label style="margin:0;">Daftar embed (gunakan [[EMBED1]], [[EMBED2]], ... di konten untuk posisi)</label>
