@@ -671,8 +671,9 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
         .footer-now {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 7px 11px;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+            padding: 7px 12px;
             border-radius: 999px;
             background: rgba(108, 247, 197, 0.12);
             color: var(--accent);
@@ -680,8 +681,59 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
             font-size: 12px;
             font-weight: 700;
             letter-spacing: 0.3px;
-            margin: 10px 0 0 auto;
-            width: max-content;
+            margin: 10px 0 0;
+            max-width: 100%;
+        }
+
+        .footer-now .fs-list {
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+        }
+
+        .footer-now .fs-item {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 4px;
+            white-space: nowrap;
+            color: var(--muted);
+            font-weight: 600;
+            transition: color .2s ease, background .2s ease;
+        }
+
+        .footer-now .fs-item .fs-name {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            opacity: .75;
+        }
+
+        .footer-now .fs-item .fs-time {
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .footer-now .fs-item.is-active {
+            color: #04160f;
+            background: var(--accent);
+            border-radius: 999px;
+            padding: 2px 9px;
+        }
+
+        .footer-now .fs-item.is-active .fs-name,
+        .footer-now .fs-item.is-active .fs-time { color: #04160f; opacity: 1; }
+
+        .footer-now .fs-next {
+            color: var(--accent);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            opacity: .9;
+        }
+
+        @media (max-width: 640px) {
+            .footer-now { width: 100%; justify-content: center; }
+            .footer-now .fs-list { justify-content: center; }
         }
 
         h1 {
@@ -1150,11 +1202,21 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
 
         <footer>
             <div>UKMI Politeknik Negeri Medan · <?php echo e(($config['yel_yel'] ?? '') !== '' ? $config['yel_yel'] : 'Bersama bertumbuh dalam kebaikan.'); ?></div>
-            <div class="footer-now">Now · <?php echo e(date('D'))." ".e(date('Y')).e(date('m')).e(date('d'))." · ".e(date('H:i:s'))." ".e(date('P')); ?></div>
+            <div class="footer-now" id="footer-sholat"
+                 aria-label="Jadwal waktu sholat Masjid Baitul Ilmi Polmed, metode Kemenag/NU">
+                <span class="fs-list">
+                    <span class="fs-item" data-prayer="fajr"><span class="fs-name">Subuh</span> <span class="fs-time" data-time="fajr">--:--</span></span>
+                    <span class="fs-item" data-prayer="dhuhr"><span class="fs-name">Dzuhur</span> <span class="fs-time" data-time="dhuhr">--:--</span></span>
+                    <span class="fs-item" data-prayer="asr"><span class="fs-name">Ashar</span> <span class="fs-time" data-time="asr">--:--</span></span>
+                    <span class="fs-item" data-prayer="maghrib"><span class="fs-name">Maghrib</span> <span class="fs-time" data-time="maghrib">--:--</span></span>
+                    <span class="fs-item" data-prayer="isha"><span class="fs-name">Isya</span> <span class="fs-time" data-time="isha">--:--</span></span>
+                </span>
+                <span class="fs-next" id="fs-next" hidden></span>
+            </div>
             <nav aria-label="Media sosial UKMI Polmed" style="margin-top:8px;">
                 <div class="socials">
-                    <a href="https://www.instagram.com/ukmipolmed/" target="_blank" rel="noopener"><img alt="Ikon Instagram Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="https://ukmipolmed.my.id/https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2F460e25a7e6dce46da1c7467a4f89fa575e36b598.webp" style="width: 24px; height: 24px; margin-right: 5px;">Instagram</a>
-                    <a href="https://www.youtube.com/c/UKMIPolmedTV" target="_blank" rel="noopener"><img alt="Ikon YouTube Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2F17342d1f7b206c79f21e40eb6411c86ed82c8d5e.svg" style="width: 24px; height: 24px; margin-right: 5px;">YouTube</a>
+                    <a href="https://www.instagram.com/ukmipolmed/" target="_blank" rel="noopener"><img alt="Ikon Instagram Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="/foto.php?key=ukmipolmed%2Fuploads%2F460e25a7e6dce46da1c7467a4f89fa575e36b598.webp" style="width: 24px; height: 24px; margin-right: 5px;">Instagram</a>
+                    <a href="https://www.youtube.com/c/UKMIPolmedTV" target="_blank" rel="noopener"><img alt="Ikon YouTube Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="/foto.php?key=ukmipolmed%2Fuploads%2F17342d1f7b206c79f21e40eb6411c86ed82c8d5e.svg" style="width: 24px; height: 24px; margin-right: 5px;">YouTube</a>
                     <a href="https://web.facebook.com/ukmipolmedmedan/" target="_blank" rel="noopener"><img alt="Ikon Facebook Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36' height='40' width='40'%3E%3Cpath fill='%230866FF' d='M20.181 35.87C29.094 34.791 36 27.202 36 18c0-9.941-8.059-18-18-18S0 8.059 0 18c0 8.442 5.811 15.526 13.652 17.471L14 34h5.5l.681 1.87Z'/%3E%3Cpath fill='%23FFFFFF' d='M13.651 35.471v-11.97H9.936V18h3.715v-2.37c0-6.127 2.772-8.964 8.784-8.964 1.138 0 3.103.223 3.91.446v4.983c-.425-.043-1.167-.065-2.081-.065-2.952 0-4.09 1.116-4.09 4.025V18h5.883l-1.008 5.5h-4.867v12.37a18.183 18.183 0 0 1-6.53-.399Z'/%3E%3C/svg%3E" style="width: 24px; height: 24px; margin-right: 5px;">Facebook</a>
                     <a href="https://x.com/ukmipolmed" target="_blank" rel="noopener"><img alt="Ikon X atau Twitter Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg%3E%3Cpath fill='%23000000' d='M21.742 21.75l-7.563-11.179 7.056-8.321h-2.456l-5.691 6.714-4.54-6.714H2.359l7.29 10.776L2.25 21.75h2.456l6.035-7.118 4.818 7.118h6.191-.008zM7.739 3.818L18.81 20.182h-2.447L5.29 3.818h2.447z'/%3E%3C/g%3E%3C/svg%3E" style="width: 24px; height: 24px; margin-right: 5px;">X (Twitter)</a>
                     <a href="https://www.linkedin.com/company/unit-kegiatan-mahasiswa-islam-ukmi-politeknik-negeri-medan" target="_blank" rel="noopener"><img alt="Ikon LinkedIn Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath fill='%230a66c2' d='M34 2.5v29a2.5 2.5 0 0 1-2.5 2.5h-29A2.5 2.5 0 0 1 0 31.5v-29A2.5 2.5 0 0 1 2.5 0h29A2.5 2.5 0 0 1 34 2.5M10 13H5v16h5zm.45-5.5a2.88 2.88 0 0 0-2.86-2.9H7.5a2.9 2.9 0 0 0 0 5.8 2.88 2.88 0 0 0 2.95-2.81zM29 19.28c0-4.81-3.06-6.68-6.1-6.68a5.7 5.7 0 0 0-5.06 2.58h-.14V13H13v16h5v-8.51a3.32 3.32 0 0 1 3-3.58h.19c1.59 0 2.77 1 2.77 3.52V29h5z'/%3E%3C/svg%3E" style="width: 24px; height: 24px; margin-right: 5px;">LinkedIn</a>
@@ -1173,13 +1235,13 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
             <nav aria-label="Sumber terkait" style="margin-top:10px;">
                 <p style="font-size:13px; color:var(--muted); margin:0 0 6px;">Sumber & referensi terkait:</p>
                 <div class="socials">
-                    <a href="https://polmed.ac.id" target="_blank" rel="noopener"><img alt="Logo Politeknik Negeri Medan" src="https://ukmipolmed.my.id/https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2F12e3c93596fc1fa6c8bba0bed8db27220fa3e687.webp" style="width: 24px; height: 24px; margin-right: 5px;">Politeknik Negeri Medan</a>
-                   <!-- <a href="https://ldii.or.id" target="_blank" rel="noopener"><img alt="Logo Lembaga Dakwah Islam Indonesia" src="https://ukmipolmed.my.id/https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2F022395e1d85db34370ea4e49065537d777917bc6.webp" style="width: 24px; height: 24px; margin-right: 5px;">LDII</a> -->
-                    <a href="https://masjidbaitulilmi.polmed.ac.id/" target="_blank" rel="noopener"><img alt="Logo Masjid Baitul Ilmi Politeknik Negeri Medan" src="https://ukmipolmed.my.id/https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2F9502a6d477496e78d3a72eacdb15ae5b3e1f66bf.webp" style="width: 24px; height: 24px; margin-right: 5px;">Masjid Baitul Ilmi</a>
-                    <a href="https://kemenag.go.id" target="_blank" rel="noopener"><img alt="Logo Kementerian Agama Republik Indonesia" src="https://ukmipolmed.my.id/https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2Fd82408ad770460776fcf2e54f292ca311139136c.webp" style="width: 24px; height: 24px; margin-right: 5px;">Kemenag RI</a>
-                    <a href="https://nu.or.id" target="_blank" rel="noopener"><img alt="Logo Nahdlatul Ulama" src="https://ukmipolmed.my.id/https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2F09921d5c00a1469f5d4b11dc99d7befeaa72be58.webp" style="width: 24px; height: 24px; margin-right: 5px;">NU Online</a>
-                    <a href="https://muhammadiyah.or.id/" target="_blank" rel="noopener"><img alt="Logo Muhammadiyah" src="https://ukmipolmed.my.id/https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2F5d6e20dc098110351e0878817bdf856a881dc4dd.webp" style="width: 24px; height: 24px; margin-right: 5px;">Muhammadiyah</a>
-                    <a href="https://id.wikipedia.org/wiki/Ikhwanul_Muslimin" target="_blank" rel="noopener"><img alt="Ilustrasi referensi Ikhwanul Muslimin dari Wikipedia" src="https://ukmipolmed.my.id/https://ukmipolmed.my.id/foto.php?key=ukmipolmed%2Fuploads%2F35e13df26de983d583d101c6680abff5bc9d882d.webp" style="width: 24px; height: 24px; margin-right: 5px;">Wiki: Ikhwanul Muslimin</a>
+                    <a href="https://polmed.ac.id" target="_blank" rel="noopener"><img alt="Logo Politeknik Negeri Medan" src="/foto.php?key=ukmipolmed%2Fuploads%2F12e3c93596fc1fa6c8bba0bed8db27220fa3e687.webp" style="width: 24px; height: 24px; margin-right: 5px;">Politeknik Negeri Medan</a>
+                   <!-- <a href="https://ldii.or.id" target="_blank" rel="noopener"><img alt="Logo Lembaga Dakwah Islam Indonesia" src="/foto.php?key=ukmipolmed%2Fuploads%2F022395e1d85db34370ea4e49065537d777917bc6.webp" style="width: 24px; height: 24px; margin-right: 5px;">LDII</a> -->
+                    <a href="https://masjidbaitulilmi.polmed.ac.id/" target="_blank" rel="noopener"><img alt="Logo Masjid Baitul Ilmi Politeknik Negeri Medan" src="/foto.php?key=ukmipolmed%2Fuploads%2F9502a6d477496e78d3a72eacdb15ae5b3e1f66bf.webp" style="width: 24px; height: 24px; margin-right: 5px;">Masjid Baitul Ilmi</a>
+                    <a href="https://kemenag.go.id" target="_blank" rel="noopener"><img alt="Logo Kementerian Agama Republik Indonesia" src="/foto.php?key=ukmipolmed%2Fuploads%2Fd82408ad770460776fcf2e54f292ca311139136c.webp" style="width: 24px; height: 24px; margin-right: 5px;">Kemenag RI</a>
+                    <a href="https://nu.or.id" target="_blank" rel="noopener"><img alt="Logo Nahdlatul Ulama" src="/foto.php?key=ukmipolmed%2Fuploads%2F09921d5c00a1469f5d4b11dc99d7befeaa72be58.webp" style="width: 24px; height: 24px; margin-right: 5px;">NU Online</a>
+                    <a href="https://muhammadiyah.or.id/" target="_blank" rel="noopener"><img alt="Logo Muhammadiyah" src="/foto.php?key=ukmipolmed%2Fuploads%2F5d6e20dc098110351e0878817bdf856a881dc4dd.webp" style="width: 24px; height: 24px; margin-right: 5px;">Muhammadiyah</a>
+                    <a href="https://id.wikipedia.org/wiki/Ikhwanul_Muslimin" target="_blank" rel="noopener"><img alt="Ilustrasi referensi Ikhwanul Muslimin dari Wikipedia" src="/foto.php?key=ukmipolmed%2Fuploads%2F35e13df26de983d583d101c6680abff5bc9d882d.webp" style="width: 24px; height: 24px; margin-right: 5px;">Wiki: Ikhwanul Muslimin</a>
 
                     <!-- <a href="" target="_blank" rel="noopener"><img src="" style="width: 24px; height: 24px; margin-right: 5px;"></a> -->
                 </div>
@@ -1406,6 +1468,90 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
             el.addEventListener('click', () => sendInsight(el.getAttribute('data-insight')));
         });
 
+    </script>
+    <script src="js/adhan.umd.min.js"></script>
+    <script>
+    (function () {
+      var LAT = 3.563484742344483, LNG = 98.65425015257077; // Masjid Baitul Ilmi Polmed (sekretariat UKMI)
+      var ORDER = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+      var root = document.getElementById('footer-sholat');
+      if (!root) return;
+      var times = null, dayKey = '', timer = null;
+
+      function pad(n) { return (n < 10 ? '0' : '') + n; }
+      function fmt(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+
+      function buildTimes(now) {
+        if (!window.adhan) return false;
+        var coords = new window.adhan.Coordinates(LAT, LNG);
+        var p = window.adhan.CalculationMethod.Singapore(); // Kemenag/NU
+        // ihtiyati +2 menit (default al-waqt)
+        p.adjustments.fajr = p.adjustments.dhuhr = p.adjustments.asr = p.adjustments.maghrib = p.adjustments.isha = 2;
+        times = new window.adhan.PrayerTimes(coords, now, p);
+        dayKey = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+        return true;
+      }
+
+      function renderTimes() {
+        ORDER.forEach(function (k) {
+          var el = root.querySelector('[data-time="' + k + '"]');
+          if (el && times && times[k] instanceof Date) el.textContent = fmt(times[k]);
+        });
+      }
+
+      function tick() {
+        var now = new Date();
+        var k = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+        if (!times || k !== dayKey) { if (!buildTimes(now)) return; renderTimes(); }
+
+        // cari sholat berikutnya hari ini
+        var nextKey = null, nextTime = null;
+        for (var i = 0; i < ORDER.length; i++) {
+          var t = times[ORDER[i]];
+          if (t && t > now) { nextKey = ORDER[i]; nextTime = t; break; }
+        }
+        // setelah Isya -> Subuh esok hari
+        if (!nextTime && window.adhan) {
+          var tomorrow = new Date(now.getTime() + 86400000);
+          var coords = new window.adhan.Coordinates(LAT, LNG);
+          var p2 = window.adhan.CalculationMethod.Singapore();
+          p2.adjustments.fajr = 2;
+          nextKey = 'fajr';
+          nextTime = new window.adhan.PrayerTimes(coords, tomorrow, p2).fajr;
+        }
+
+        // highlight sholat berikutnya
+        root.querySelectorAll('.fs-item').forEach(function (el) {
+          el.classList.toggle('is-active', el.getAttribute('data-prayer') === nextKey);
+        });
+
+        // countdown ke sholat berikutnya
+        var nextEl = document.getElementById('fs-next');
+        if (nextEl && nextTime) {
+          var diff = nextTime - now;
+          if (diff < 0) diff = 0;
+          var h = Math.floor(diff / 3600000);
+          var m = Math.floor((diff % 3600000) / 60000);
+          var s = Math.floor((diff % 60000) / 1000);
+          var label = root.querySelector('[data-prayer="' + nextKey + '"] .fs-name');
+          nextEl.hidden = false;
+          nextEl.textContent = '→ ' + (label ? label.textContent : '') + ' ' + pad(h) + ':' + pad(m) + ':' + pad(s);
+        }
+      }
+
+      var adhanTries = 0;
+      function start() {
+        if (!window.adhan) {
+          if (++adhanTries > 20) return; // menyerah setelah ~6 detik jika library gagal dimuat
+          setTimeout(start, 300);
+          return;
+        }
+        tick();
+        if (!timer) timer = setInterval(tick, 1000);
+      }
+
+      start();
+    })();
     </script>
 </body>
 </html>

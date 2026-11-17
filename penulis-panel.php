@@ -34,6 +34,9 @@ if ($meIdx < 0) {
 }
 $me = $data['authors'][$meIdx];
 $username = (string) ($me['username'] ?? '');
+$meFeatures = (isset($me['features']) && is_array($me['features'])) ? $me['features'] : null;
+$allowAssessment = $meFeatures === null ? true : in_array('assessment', $meFeatures, true);
+$allowEmbed = $meFeatures === null ? true : in_array('embed', $meFeatures, true);
 
 if (isset($_GET['logout'])) {
     session_destroy();
@@ -104,6 +107,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
     }
     $image = trim((string) ($_POST['image'] ?? ''));
     if (stripos($image, 'data:') === 0 && function_exists('s3_put_data_uri')) { $u = s3_put_data_uri($image); if ($u) $image = $u; }
+    $focalX = isset($_POST['focal_x']) ? max(0, min(100, (float) $_POST['focal_x'])) : 50;
+    $focalY = isset($_POST['focal_y']) ? max(0, min(100, (float) $_POST['focal_y'])) : 50;
+    $gdriveIds = $_POST['gdrive_id'] ?? [];
+    $gdriveViews = $_POST['gdrive_view'] ?? [];
+    $gdriveFolders = [];
+    if (is_array($gdriveIds)) {
+        foreach ($gdriveIds as $k => $gid) {
+            $gid = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $gid);
+            if ($gid === '') continue;
+            $gv = (is_array($gdriveViews) && isset($gdriveViews[$k]) && $gdriveViews[$k] === 'list') ? 'list' : 'grid';
+            $gdriveFolders[] = ['id' => $gid, 'view' => $gv];
+        }
+    }
+    $gdriveFolder = $gdriveFolders[0]['id'] ?? '';
+    $gdriveView = $gdriveFolders[0]['view'] ?? 'grid';
+    $igFix = !empty($_POST['ig_embed_fix']);
+    $embedsRaw = $_POST['embeds'] ?? '';
+    $embeds = [];
+    if (is_array($embedsRaw)) {
+        foreach ($embedsRaw as $e) { $e = trim((string) $e); if ($e !== '') $embeds[] = $e; }
+    } else {
+        foreach (preg_split('/\r?\n/', (string) $embedsRaw) as $ln) { $ln = trim($ln); if ($ln !== '') $embeds[] = $ln; }
+    }
+    $embedEnabled = !empty($embeds);
     if ($title === '') {
         $err = 'Judul wajib diisi.';
     } else {
@@ -127,6 +154,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
                 $cfg['posts'][$i]['summary'] = $summary;
                 $cfg['posts'][$i]['body'] = $body;
                 $cfg['posts'][$i]['image'] = $image;
+                $cfg['posts'][$i]['focal_x'] = $focalX;
+                $cfg['posts'][$i]['focal_y'] = $focalY;
+                if ($allowEmbed) {
+                    $cfg['posts'][$i]['gdrive_folder'] = $gdriveFolder;
+                    $cfg['posts'][$i]['gdrive_view'] = $gdriveView;
+                    $cfg['posts'][$i]['gdrive_folders'] = $gdriveFolders;
+                    $cfg['posts'][$i]['ig_embed_fix'] = $igFix;
+                    $cfg['posts'][$i]['embeds'] = $embeds;
+                    $cfg['posts'][$i]['embed_enabled'] = $embedEnabled;
+                }
                 $cfg['posts'][$i]['author_id'] = $aid;
                 $cfg['posts'][$i]['updated_at'] = $now;
                 $found = true;
@@ -140,15 +177,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
                 'summary' => $summary,
                 'body' => $body,
                 'image' => $image,
+                'focal_x' => $focalX,
+                'focal_y' => $focalY,
                 'author_id' => $aid,
-                'embeds' => [],
-                'embed_enabled' => false,
+                'gdrive_folder' => $allowEmbed ? $gdriveFolder : '',
+                'gdrive_view' => $allowEmbed ? $gdriveView : 'grid',
+                'gdrive_folders' => $allowEmbed ? $gdriveFolders : [],
+                'ig_embed_fix' => $allowEmbed ? $igFix : false,
+                'embeds' => $allowEmbed ? $embeds : [],
+                'embed_enabled' => $allowEmbed ? $embedEnabled : false,
+                'embed_tokens_v2' => true,
                 'created_at' => $now,
                 'updated_at' => $now,
                 'comments' => [],
             ];
         }
-        if (isset($_POST['pa_add'])) {
+        if ($allowAssessment && isset($_POST['pa_add'])) {
             $paTitle = $title;
             if (true) {
                 $paType = (($_POST['pa_type'] ?? 'pretest') === 'posttest') ? 'posttest' : 'pretest';
@@ -264,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_post'])) {
 }
 
 // Buat asesmen (pretest/posttest)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment']) && $allowAssessment) {
     $aTitle = trim((string) ($_POST['a_title'] ?? ''));
     $aType = (($_POST['a_type'] ?? 'pretest') === 'posttest') ? 'posttest' : 'pretest';
     $aGrading = (($_POST['a_grading'] ?? 'auto') === 'manual') ? 'manual' : 'auto';
@@ -439,6 +483,10 @@ $profileView = isset($_GET['profile']);
 <style>
 :root{--bg:#0b1120;--card:#111a2e;--text:#e5e7eb;--muted:#94a3b8;--stroke:rgba(148,163,184,.2);--accent:#38bdf8}
 *{box-sizing:border-box}
+#md_preview table{border-collapse:collapse;width:100%;margin:8px 0;}
+#md_preview th,#md_preview td{border:1px solid var(--stroke);padding:4px 6px;}
+#md_preview img{max-width:100%;}
+#md_preview pre{background:rgba(0,0,0,.3);padding:10px;border-radius:8px;overflow:auto;}
 body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#13203a,var(--bg));color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6}
 .wrap{max-width:820px;margin:0 auto;padding:24px 16px 60px}
 h1{font-size:20px;margin:0 0 4px}
@@ -456,6 +504,10 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
 .danger{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(148,163,184,0.25);box-shadow:none}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/turndown-plugin-gfm@1.0.2/dist/turndown-plugin-gfm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -500,13 +552,14 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
         <input type="hidden" name="orig_slug" value="<?php echo htmlspecialchars((string) ($editing['slug'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
         <label for="title">Judul</label>
         <input type="text" id="title" name="title" required value="<?php echo htmlspecialchars((string) ($editing['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-        <label>Konten (Markdown)</label>
-        <input type="hidden" name="body" id="body" value="<?php echo htmlspecialchars((string) ($editing['body'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+        <label for="body">Konten (Markdown)</label>
+        <textarea id="body" name="body" rows="14"><?php echo htmlspecialchars((string) ($editing['body'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
         <div class="row" style="margin-top:4px;">
-          <label class="btn" style="margin:0;cursor:pointer;">Upload file .md<input type="file" id="body_md_file" accept=".md,.markdown,.txt" style="display:none;"></label>
-          <input type="text" id="body_paste" placeholder="atau paste Markdown dari clipboard di sini" style="flex:1;min-width:200px;">
+          <label class="btn" style="margin:0;cursor:pointer;">Upload file .md / .docx<input type="file" id="body_md_file" accept=".md,.markdown,.txt,.docx" style="display:none;"></label>
+          <button type="button" id="md_preview_btn" class="btn" style="margin:0;">Preview</button>
+          <span id="body_info" class="muted" style="font-size:12px;"></span>
         </div>
-        <div id="body_info" class="muted" style="font-size:12px;margin-top:4px;"></div>
+        <div id="md_preview" style="display:none;margin-top:8px;padding:12px;border:1px solid var(--stroke);border-radius:10px;background:rgba(255,255,255,0.02);"></div>
 
         <label>Gambar sampul</label>
         <input type="hidden" name="image" id="image" value="<?php echo htmlspecialchars((string) ($editing['image'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
@@ -515,6 +568,14 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
           <input type="text" id="cover_paste" placeholder="atau paste URL https://... / data:image/...;base64,..." style="flex:1;min-width:200px;">
         </div>
         <div id="cover_info" class="muted" style="font-size:12px;margin-top:4px;"></div>
+
+        <label>Titik fokus sampul (klik gambar untuk menetapkan)</label>
+        <input type="hidden" name="focal_x" id="focal_x" value="<?php echo (int) ($editing['focal_x'] ?? 50); ?>">
+        <input type="hidden" name="focal_y" id="focal_y" value="<?php echo (int) ($editing['focal_y'] ?? 50); ?>">
+        <div id="cover_pick" style="position:relative;width:100%;max-width:380px;margin-top:6px;display:none;cursor:crosshair;border:1px solid var(--stroke);border-radius:10px;overflow:hidden;">
+          <img id="cover_pick_img" alt="Pratinjau titik fokus sampul" style="display:block;width:100%;height:auto;">
+          <span id="cover_pick_marker" style="position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid #fff;background:rgba(56,189,248,.75);transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 0 2px rgba(0,0,0,.45);"></span>
+        </div>
 
         <?php $__postAssess = $editing ? assessments_for_post((string) ($editing['slug'] ?? '')) : []; ?>
         <?php if (!empty($__postAssess)): ?>
@@ -528,6 +589,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
             <?php endforeach; ?>
           </div>
         <?php endif; ?>
+        <?php if ($allowAssessment): ?>
         <div style="margin-top:12px;border-top:1px dashed var(--stroke);padding-top:10px;">
           <label for="pa_xlsx">File Excel tugas &amp; kunci (beri Fill HITAM pada sel kunci)</label>
           <input type="file" id="pa_xlsx" class="pa_xlsx" accept=".xlsx,.xls,.csv" style="margin-top:6px;">
@@ -536,6 +598,39 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
           <input type="hidden" name="pa_clean_xlsx" class="pa_clean_xlsx" value="">
           <div class="pa_task_preview" style="margin-top:8px;"></div>
         </div>
+        <?php endif; ?>
+        <?php if ($allowEmbed): ?>
+        <div style="margin-top:12px;border-top:1px dashed var(--stroke);padding-top:10px;">
+          <div class="muted" style="font-size:12px;margin-bottom:6px;">Embed Master</div>
+          <label>Google Drive Folder (bisa lebih dari satu) — token [[GDRIVE0]], [[GDRIVE1]], ...</label>
+          <div id="gdrive_list">
+            <?php $__gd0 = (array) ($editing['gdrive_folders'] ?? []); if (empty($__gd0) && !empty($editing['gdrive_folder'])) { $__gd0 = [['id' => $editing['gdrive_folder'], 'view' => $editing['gdrive_view'] ?? 'grid']]; } if (empty($__gd0)) { $__gd0 = [['id' => '', 'view' => 'grid']]; } foreach ($__gd0 as $__gd): ?>
+            <div class="gdrive-item" style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+              <input type="text" name="gdrive_id[]" value="<?php echo htmlspecialchars((string) ($__gd['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Folder ID" style="flex:1;">
+              <select name="gdrive_view[]" style="width:110px;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);">
+                <option value="grid" <?php echo (($__gd['view'] ?? 'grid') === 'grid') ? 'selected' : ''; ?>>Grid</option>
+                <option value="list" <?php echo (($__gd['view'] ?? 'grid') === 'list') ? 'selected' : ''; ?>>List</option>
+              </select>
+              <button type="button" class="btn danger remove-gdrive" style="margin:0;">Hapus</button>
+            </div>
+            <?php endforeach; ?>
+          </div>
+          <button type="button" id="add-gdrive" class="btn" style="margin-top:6px;">+ Tambah GDrive</button>
+
+          <label style="margin-top:10px;">Embed HTML (bisa lebih dari satu) — token [[EMBED0]], [[EMBED1]], ...</label>
+          <div id="embed_list">
+            <?php $__emb0 = (array) ($editing['embeds'] ?? []); if (empty($__emb0)) $__emb0 = ['']; foreach ($__emb0 as $__emb): ?>
+            <div class="embed-item" style="display:flex; gap:8px; align-items:flex-start; margin-top:6px;">
+              <textarea name="embeds[]" rows="3" style="flex:1;" placeholder="<iframe ...></iframe>"><?php echo htmlspecialchars((string) $__emb, ENT_QUOTES, 'UTF-8'); ?></textarea>
+              <button type="button" class="btn danger remove-embed" style="margin:0;">Hapus</button>
+            </div>
+            <?php endforeach; ?>
+          </div>
+          <button type="button" id="add-embed" class="btn" style="margin-top:6px;">+ Tambah embed</button>
+          <p class="muted" style="font-size:12px;margin:6px 0 0;">Tempatkan [[EMBED0]]/[[GDRIVE0]] di konten sesuai posisi. Tanpa token → muncul di akhir.</p>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;"><input type="checkbox" name="ig_embed_fix" value="1" <?php echo !empty($editing['ig_embed_fix']) ? 'checked' : ''; ?>> Perbaiki layout embed Instagram</label>
+        </div>
+        <?php endif; ?>
         <div class="row">
           <button type="submit">Simpan</button>
           <a class="btn danger" href="penulis-panel.php">Batal</a>
@@ -694,9 +789,59 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
   var bf = document.getElementById('body_md_file');
   if (bf) bf.addEventListener('change', function (e) {
     var f = e.target.files && e.target.files[0]; if (!f) return;
-    var rd = new FileReader();
-    rd.onload = function () { var t = String(rd.result); if (validMd(t)) setBody(t); else alert('Berkas bukan Markdown yang valid.'); };
-    rd.readAsText(f); e.target.value = '';
+    var name = (f.name || '').toLowerCase();
+    if (/\.docx$/.test(name)) {
+      if (typeof mammoth === 'undefined' || typeof TurndownService === 'undefined') { alert('Library konversi docx belum termuat.'); e.target.value = ''; return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        mammoth.convertToHtml({ arrayBuffer: fr.result }).then(function (res) {
+          var html = res.value || '';
+          try {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            doc.querySelectorAll('table').forEach(function (tbl) {
+              tbl.querySelectorAll('td,th').forEach(function (cell) {
+                var h = cell.innerHTML;
+                h = h.replace(/<br\s*\/?>/gi, ' ');
+                h = h.replace(/<\/(p|div|li|h[1-6])>/gi, ' ');
+                h = h.replace(/<(p|div|li|h[1-6])[^>]*>/gi, ' ');
+                h = h.replace(/[ \t\f\v]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
+                cell.innerHTML = h;
+              });
+              var allRows = Array.prototype.slice.call(tbl.querySelectorAll('tr')).filter(function (r) {
+                return r.querySelectorAll('td,th').length > 0;
+              });
+              if (!allRows.length) return;
+              var thead = doc.createElement('thead');
+              var htr = doc.createElement('tr');
+              allRows[0].querySelectorAll('td,th').forEach(function (c) {
+                var th = doc.createElement('th');
+                th.innerHTML = c.innerHTML;
+                htr.appendChild(th);
+              });
+              thead.appendChild(htr);
+              var tbody = doc.createElement('tbody');
+              allRows.slice(1).forEach(function (r) { tbody.appendChild(r); });
+              while (tbl.firstChild) tbl.removeChild(tbl.firstChild);
+              tbl.appendChild(thead);
+              tbl.appendChild(tbody);
+            });
+            html = doc.body.innerHTML;
+          } catch (e) {}
+          var td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
+          if (typeof turndownPluginGfm !== 'undefined' && turndownPluginGfm && turndownPluginGfm.gfm) { td.use(turndownPluginGfm.gfm); }
+          var md = td.turndown(html);
+          md = md.replace(/<\/?(table|thead|tbody|tr|td|th)\b[^>]*>/gi, '');
+          md = md.replace(/\n{3,}/g, '\n\n').trim();
+          if (validMd(md)) setBody(md); else alert('Hasil konversi .docx tidak valid.');
+        }).catch(function (err) { alert('Gagal mengonversi .docx: ' + err); });
+      };
+      fr.readAsArrayBuffer(f);
+    } else {
+      var rd = new FileReader();
+      rd.onload = function () { var t = String(rd.result); if (validMd(t)) setBody(t); else alert('Berkas bukan Markdown yang valid.'); };
+      rd.readAsText(f);
+    }
+    e.target.value = '';
   });
   var bp = document.getElementById('body_paste');
   if (bp) bp.addEventListener('paste', function (e) {
@@ -705,9 +850,26 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
     if (validMd(t)) { bp.value = ''; setBody(t); } else alert('Clipboard tidak sesuai format Markdown.');
   });
 
+  var pvBtn = document.getElementById('md_preview_btn');
+  var pv = document.getElementById('md_preview');
+  var bodyTA = document.getElementById('body');
+  function renderPreview() {
+    if (!pv) return;
+    var txt = bodyTA ? bodyTA.value : '';
+    if (typeof marked !== 'undefined') { pv.innerHTML = marked.parse(txt); }
+    else { pv.textContent = txt; }
+  }
+  if (pvBtn && pv && bodyTA) {
+    pvBtn.addEventListener('click', function () {
+      if (pv.style.display === 'block') { pv.style.display = 'none'; pvBtn.textContent = 'Preview'; }
+      else { renderPreview(); pv.style.display = 'block'; pvBtn.textContent = 'Sembunyikan'; }
+    });
+    bodyTA.addEventListener('input', function () { if (pv.style.display === 'block') renderPreview(); });
+  }
+
   var imgHid = document.getElementById('image');
   var coverInfo = document.getElementById('cover_info');
-  function setImg(v) { if (imgHid) imgHid.value = v; if (coverInfo) coverInfo.textContent = v ? 'Sampul diset.' : ''; }
+  function setImg(v) { if (imgHid) imgHid.value = v; if (coverInfo) coverInfo.textContent = v ? 'Sampul diset.' : ''; renderPick(); }
   function validImg(t) { t = (t || '').trim(); if (/^https?:\/\/\S+$/i.test(t)) return true; if (/^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+$/i.test(t)) return true; return false; }
   var cf = document.getElementById('cover_file');
   if (cf) cf.addEventListener('change', function (e) {
@@ -722,6 +884,85 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
     var cd = e.clipboardData || window.clipboardData; var t = cd ? cd.getData('text') : '';
     if (!t) return; e.preventDefault(); t = t.trim();
     if (validImg(t)) { cp.value = ''; setImg(t); } else alert('Clipboard harus URL https://... atau data:image/...;base64,...');
+  });
+
+  var fxp = document.getElementById('focal_x');
+  var fyp = document.getElementById('focal_y');
+  var pickEl = document.getElementById('cover_pick');
+  var pickImg = document.getElementById('cover_pick_img');
+  var pickMarker = document.getElementById('cover_pick_marker');
+  function posMarker() {
+    if (!pickMarker) return;
+    var x = parseFloat((fxp && fxp.value) || '50');
+    var y = parseFloat((fyp && fyp.value) || '50');
+    pickMarker.style.left = (isNaN(x) ? 50 : x) + '%';
+    pickMarker.style.top = (isNaN(y) ? 50 : y) + '%';
+  }
+  function renderPick() {
+    if (!pickEl || !pickImg) return;
+    var v = ((imgHid && imgHid.value) || '').trim();
+    if (v.indexOf('data:') === 0 || /^https?:\/\//i.test(v)) {
+      if (pickImg.getAttribute('src') !== v) pickImg.src = v;
+      pickEl.style.display = 'block';
+    } else {
+      pickEl.style.display = 'none';
+    }
+    posMarker();
+  }
+  if (pickEl) pickEl.addEventListener('click', function (ev) {
+    var r = pickEl.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    var x = Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width) * 100));
+    var y = Math.max(0, Math.min(100, ((ev.clientY - r.top) / r.height) * 100));
+    if (fxp) fxp.value = Math.round(x);
+    if (fyp) fyp.value = Math.round(y);
+    posMarker();
+  });
+  if (pickImg) pickImg.addEventListener('load', posMarker);
+  renderPick();
+})();
+</script>
+<script>
+(function () {
+  function bindList(listId, addId, rowClass, removeClass, makeRow) {
+    var list = document.getElementById(listId);
+    var add = document.getElementById(addId);
+    if (!list || !add) return;
+    add.addEventListener('click', function () { list.appendChild(makeRow()); });
+    list.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('.' + removeClass);
+      if (!btn) return;
+      var item = btn.closest('.' + rowClass);
+      if (item) item.remove();
+    });
+  }
+  bindList('embed_list', 'add-embed', 'embed-item', 'remove-embed', function () {
+    var d = document.createElement('div');
+    d.className = 'embed-item';
+    d.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin-top:6px;';
+    var ta = document.createElement('textarea');
+    ta.name = 'embeds[]'; ta.rows = 3; ta.style.flex = '1'; ta.placeholder = '<iframe ...></iframe>';
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn danger remove-embed'; b.style.margin = '0'; b.textContent = 'Hapus';
+    d.appendChild(ta); d.appendChild(b);
+    return d;
+  });
+  bindList('gdrive_list', 'add-gdrive', 'gdrive-item', 'remove-gdrive', function () {
+    var d = document.createElement('div');
+    d.className = 'gdrive-item';
+    d.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px;';
+    var inp = document.createElement('input');
+    inp.type = 'text'; inp.name = 'gdrive_id[]'; inp.placeholder = 'Folder ID'; inp.style.flex = '1';
+    var sel = document.createElement('select');
+    sel.name = 'gdrive_view[]';
+    sel.style.cssText = 'width:110px;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);';
+    var o1 = document.createElement('option'); o1.value = 'grid'; o1.textContent = 'Grid';
+    var o2 = document.createElement('option'); o2.value = 'list'; o2.textContent = 'List';
+    sel.appendChild(o1); sel.appendChild(o2);
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn danger remove-gdrive'; b.style.margin = '0'; b.textContent = 'Hapus';
+    d.appendChild(inp); d.appendChild(sel); d.appendChild(b);
+    return d;
   });
 })();
 </script>

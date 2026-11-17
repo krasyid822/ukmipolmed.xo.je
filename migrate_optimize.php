@@ -73,7 +73,9 @@ $ix = __DIR__ . '/index.php';
 if (is_readable($ix)) {
     $html = (string) file_get_contents($ix);
     $report['index_php']['bytes_before'] = strlen($html);
-    $html2 = preg_replace_callback('#foto\.php\?key=([A-Za-z0-9%._-]+)#', function ($m) use (&$report) {
+    // Konsumsi prefiks absolut (jika ada) agar tidak menimbulkan domain ganda
+    // seperti https://host/https://host/foto.php saat skrip dijalankan ulang.
+    $html2 = preg_replace_callback('#(?:https?://[^/"\'\s]+/)?foto\.php\?key=([A-Za-z0-9%._-]+)#', function ($m) use (&$report) {
         $url = opt_key(urldecode($m[1]), $report, 'index_php');
         return $url ? $url : $m[0];
     }, $html);

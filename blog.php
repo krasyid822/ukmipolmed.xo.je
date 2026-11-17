@@ -94,27 +94,6 @@ function render_markdown($text)
 	return $pd->text($text);
 }
 
-function apply_embeds($html, $embeds, $enabled, $igFix = false)
-{
-	if (!$enabled || empty($embeds) || !is_array($embeds)) return $html;
-	$cls = $igFix ? 'embed-box instagram-embed-wrapper' : 'embed-box';
-	$wrap = function ($emb) use ($cls) { return '<div class="' . $cls . '">' . $emb . '</div>'; };
-	$remaining = $embeds;
-	$output = $html;
-	foreach ($embeds as $idx => $emb) {
-		$token = '[[EMBED' . ($idx + 1) . ']]';
-		$pos = stripos($output, $token);
-		if ($pos !== false) {
-			$output = substr_replace($output, $wrap($emb), $pos, strlen($token));
-			unset($remaining[$idx]);
-		}
-	}
-	if (!empty($remaining)) {
-		$output .= "\n" . implode("\n", array_map($wrap, $remaining));
-	}
-	return $output;
-}
-
 function render_gdrive($folder, $view)
 {
 	$folder = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $folder);
@@ -1160,12 +1139,50 @@ try {
 					<div style="margin:10px 0 14px;"><img src="<?php echo e($articleImage); ?>" alt="Gambar <?php echo e($posts[0]['title']); ?>" style="width:100%; max-height:420px; object-fit:cover; object-position: <?php echo (int) ($posts[0]['focal_x'] ?? 50); ?>% <?php echo (int) ($posts[0]['focal_y'] ?? 50); ?>%; border-radius:12px; border:1px solid var(--stroke);"></div>
 				<?php endif; ?>
 				<?php
-				$aBody = apply_embeds($posts[0]['body_html'], $posts[0]['embeds'] ?? [], !empty($posts[0]['embed_enabled']), !empty($posts[0]['ig_embed_fix']));
-				$gdriveHtml = render_gdrive($posts[0]['gdrive_folder'] ?? '', $posts[0]['gdrive_view'] ?? 'grid');
-				if ($gdriveHtml !== '' && strpos($aBody, '[[GDRIVE]]') !== false) { $aBody = str_replace('[[GDRIVE]]', $gdriveHtml, $aBody); $gdriveHtml = ''; }
+				$igFix = !empty($posts[0]['ig_embed_fix']);
+				$aBody = (string) ($posts[0]['body_html'] ?? '');
+				if (empty($posts[0]['embed_tokens_v2']) && strpos($aBody, '[[EMBED0]]') === false) {
+					$aBody = preg_replace_callback('/\[\[EMBED(\d+)\]\]/', function ($m) { return '[[EMBED' . ((int) $m[1] - 1) . ']]'; }, $aBody);
+				}
+				$aBody = str_replace('[[GDRIVE]]', '[[GDRIVE0]]', $aBody);
+				$embeds = (is_array($posts[0]['embeds'] ?? null)) ? $posts[0]['embeds'] : [];
+				$gds = [];
+				if (!empty($posts[0]['gdrive_folders']) && is_array($posts[0]['gdrive_folders'])) {
+					foreach ($posts[0]['gdrive_folders'] as $g) { if (is_array($g)) $gds[] = $g; }
+				} elseif (!empty($posts[0]['gdrive_folder'])) {
+					$gds[] = ['id' => $posts[0]['gdrive_folder'], 'view' => $posts[0]['gdrive_view'] ?? 'grid'];
+				}
+				$placedE = [];
+				foreach ($embeds as $i => $emb) {
+					$emb = trim((string) $emb);
+					if ($emb === '') continue;
+					$token = '[[EMBED' . $i . ']]';
+					if (strpos($aBody, $token) !== false) {
+						$wrap = '<div class="embed-box' . ($igFix ? ' instagram-embed-wrapper' : '') . '">' . $emb . '</div>';
+						$aBody = str_replace($token, $wrap, $aBody);
+						$placedE[$i] = true;
+					}
+				}
+				$placedG = [];
+				foreach ($gds as $j => $g) {
+					$html = render_gdrive((string) ($g['id'] ?? ''), (string) ($g['view'] ?? 'grid'));
+					if ($html === '') continue;
+					$token = '[[GDRIVE' . $j . ']]';
+					if (strpos($aBody, $token) !== false) { $aBody = str_replace($token, $html, $aBody); $placedG[$j] = true; }
+				}
+				foreach ($embeds as $i => $emb) {
+					$emb = trim((string) $emb);
+					if ($emb === '' || !empty($placedE[$i])) continue;
+					$aBody .= "\n" . '<div class="embed-box' . ($igFix ? ' instagram-embed-wrapper' : '') . '">' . $emb . '</div>';
+				}
+				foreach ($gds as $j => $g) {
+					if (!empty($placedG[$j])) continue;
+					$html = render_gdrive((string) ($g['id'] ?? ''), (string) ($g['view'] ?? 'grid'));
+					if ($html !== '') $aBody .= "\n" . $html;
+				}
+				$aBody = preg_replace('/\[\[(EMBED|GDRIVE)\d+\]\]/', '', $aBody);
 				?>
 				<div class="body"><?php echo $aBody; ?></div>
-				<?php if ($gdriveHtml !== ''): ?><div class="body"><?php echo $gdriveHtml; ?></div><?php endif; ?>
 
 			</div>
 

@@ -16,6 +16,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 				'ig_embed_fix' => !empty($posts[$reqIdx]['ig_embed_fix']),
 				'gdrive_folder' => $posts[$reqIdx]['gdrive_folder'] ?? '',
 				'gdrive_view' => ($posts[$reqIdx]['gdrive_view'] ?? 'grid') === 'list' ? 'list' : 'grid',
+				'gdrive_folders' => !empty($posts[$reqIdx]['gdrive_folders']) && is_array($posts[$reqIdx]['gdrive_folders']) ? $posts[$reqIdx]['gdrive_folders'] : [],
 				'embeds' => !empty($posts[$reqIdx]['embeds']) && is_array($posts[$reqIdx]['embeds']) ? $posts[$reqIdx]['embeds'] : [],
 				'embed_enabled' => !empty($posts[$reqIdx]['embed_enabled']),
 			];
@@ -130,8 +131,19 @@ if (($adminComponentMode ?? '') === 'handle') {
 		$focalX = isset($_POST['blog_focal_x']) ? max(0, min(100, (float) $_POST['blog_focal_x'])) : 50;
 		$focalY = isset($_POST['blog_focal_y']) ? max(0, min(100, (float) $_POST['blog_focal_y'])) : 50;
 		$igFix = isset($_POST['blog_ig_embed_fix']) && $_POST['blog_ig_embed_fix'] === '1';
-		$gdriveFolder = preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($_POST['blog_gdrive_folder'] ?? ''));
-		$gdriveView = (($_POST['blog_gdrive_view'] ?? 'grid') === 'list') ? 'list' : 'grid';
+		$gdriveIds = $_POST['blog_gdrive_id'] ?? [];
+		$gdriveViews = $_POST['blog_gdrive_view'] ?? [];
+		$gdriveFolders = [];
+		if (is_array($gdriveIds)) {
+			foreach ($gdriveIds as $gk => $gid) {
+				$gid = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $gid);
+				if ($gid === '') continue;
+				$gv = (is_array($gdriveViews) && isset($gdriveViews[$gk]) && $gdriveViews[$gk] === 'list') ? 'list' : 'grid';
+				$gdriveFolders[] = ['id' => $gid, 'view' => $gv];
+			}
+		}
+		$gdriveFolder = $gdriveFolders[0]['id'] ?? '';
+		$gdriveView = $gdriveFolders[0]['view'] ?? 'grid';
 		$idx = isset($_POST['blog_edit_idx']) ? (int) $_POST['blog_edit_idx'] : -1;
 		$now = date('c');
 		$created = ($idx >= 0 && isset($posts[$idx])) ? ($posts[$idx]['created_at'] ?? $now) : $now;
@@ -183,6 +195,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 					'ig_embed_fix' => $igFix,
 					'gdrive_folder' => $gdriveFolder,
 					'gdrive_view' => $gdriveView,
+					'gdrive_folders' => $gdriveFolders,
 					'embeds' => $embedList,
 					'embed_enabled' => $embedEnabled,
 					'created_at' => $created,
@@ -193,9 +206,12 @@ if (($adminComponentMode ?? '') === 'handle') {
 				if ($preservedArchivedAt) $newPost['archived_at'] = $preservedArchivedAt;
 
 				if ($idx >= 0 && isset($posts[$idx])) {
+					// Pertahankan status token 0-index lama; jangan set untuk post legacy.
+					if (!empty($posts[$idx]['embed_tokens_v2'])) $newPost['embed_tokens_v2'] = true;
 					$posts[$idx] = $newPost;
 					$blogEditingIdx = $idx;
 				} else {
+					$newPost['embed_tokens_v2'] = true;
 					array_unshift($posts, $newPost);
 					$posts = array_slice($posts, 0, $maxPosts);
 					$blogEditingIdx = 0;
@@ -284,24 +300,28 @@ if (($adminComponentMode ?? '') === 'handle') {
 				</label>
 			</label>
 			<div style="margin-top:10px;">
-				<label for="blog_gdrive_folder">Google Drive Folder ID (embed folder)</label>
-				<input type="text" id="blog_gdrive_folder" name="blog_gdrive_folder" value="<?php echo htmlspecialchars((string) ($blogDraft['gdrive_folder'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="contoh: 1qGwpjmQIQO8rN1odas0njDSf72VRrTCa">
-				<div style="display:flex; gap:10px; align-items:center; margin-top:6px;">
-					<label for="blog_gdrive_view" style="margin:0;">Tampilan</label>
-					<select id="blog_gdrive_view" name="blog_gdrive_view" style="padding:6px;border-radius:8px;">
-						<option value="grid" <?php echo (($blogDraft['gdrive_view'] ?? 'grid') === 'grid') ? 'selected' : ''; ?>>Grid</option>
-						<option value="list" <?php echo (($blogDraft['gdrive_view'] ?? 'grid') === 'list') ? 'selected' : ''; ?>>List</option>
-					</select>
+				<label>Google Drive Folder (bisa lebih dari satu) — token [[GDRIVE0]], [[GDRIVE1]], ...</label>
+				<div id="gdrive_list">
+					<?php $__gd0 = (array) ($blogDraft['gdrive_folders'] ?? []); if (empty($__gd0) && !empty($blogDraft['gdrive_folder'])) { $__gd0 = [['id' => $blogDraft['gdrive_folder'], 'view' => $blogDraft['gdrive_view'] ?? 'grid']]; } if (empty($__gd0)) { $__gd0 = [['id' => '', 'view' => 'grid']]; } foreach ($__gd0 as $__gd): ?>
+					<div class="gdrive-item" style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+						<input type="text" name="blog_gdrive_id[]" value="<?php echo htmlspecialchars((string) ($__gd['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Folder ID" style="flex:1;padding:6px;border-radius:8px;">
+						<select name="blog_gdrive_view[]" style="padding:6px;border-radius:8px;">
+							<option value="grid" <?php echo (($__gd['view'] ?? 'grid') === 'grid') ? 'selected' : ''; ?>>Grid</option>
+							<option value="list" <?php echo (($__gd['view'] ?? 'grid') === 'list') ? 'selected' : ''; ?>>List</option>
+						</select>
+						<button type="button" class="remove-gdrive" style="background: rgba(255,255,255,0.08); color: var(--text); border:1px solid rgba(148,163,184,0.25); border-radius:8px; padding:6px 10px;">Hapus</button>
+					</div>
+					<?php endforeach; ?>
 				</div>
+				<button type="button" id="add-gdrive" style="margin-top:6px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow:none; border: 1px solid rgba(148,163,184,0.25);">Tambah GDrive</button>
 				<p class="muted-text" style="margin:6px 0 0; line-height:1.55;">
-					Cara ambil Folder ID: buka Google Drive → klik kanan folder → <b>Share</b> → <b>General access</b> = <b>Anyone with the link</b> → <b>Copy link</b>. URL-nya seperti
-					<code>https://drive.google.com/drive/folders/<b>FOLDER-ID</b>?usp=sharing</code> — ambil bagian <b>FOLDER-ID</b> saja.
-					Kosongkan jika tidak memakai embed folder Drive. Sisipkan <code>[[GDRIVE]]</code> di konten untuk menempatkan posisi embed; jika tidak, embed ditambahkan di akhir artikel.
+					Cara ambil Folder ID: Google Drive → klik kanan folder → <b>Share</b> → <b>General access</b> = <b>Anyone with the link</b> → <b>Copy link</b>; ambil bagian <b>FOLDER-ID</b> dari <code>https://drive.google.com/drive/folders/FOLDER-ID?usp=sharing</code>.
+					Tempatkan dengan token <code>[[GDRIVE0]]</code>, <code>[[GDRIVE1]]</code>, dst; tanpa token muncul di akhir.
 				</p>
 			</div>
 			<div id="blog_embed_wrap" style="margin-top:6px; <?php echo !empty($blogDraft['embed_enabled']) ? '' : 'display:none;'; ?>">
 				<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
-					<label style="margin:0;">Daftar embed (gunakan [[EMBED1]], [[EMBED2]], ... di konten untuk posisi)</label>
+					<label style="margin:0;">Daftar embed (token: [[EMBED0]], [[EMBED1]], ... — Embed 1 memakai [[EMBED0]])</label>
 					<button type="button" id="add-embed" style="max-width:180px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Tambah embed</button>
 				</div>
 				<div id="blog_embed_list" class="stack-sm">
@@ -318,7 +338,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 					</div>
 					<?php endforeach; ?>
 				</div>
-				<p class="muted-text" style="margin:4px 0 0;">Letakkan token [[EMBED1]], [[EMBED2]], ... di konten untuk menentukan posisi. Embed yang tidak ditandai akan muncul di akhir.</p>
+				<p class="muted-text" style="margin:4px 0 0;">Letakkan [[EMBED0]], [[EMBED1]], ... di konten sesuai posisi (Embed 1 → [[EMBED0]]). Embed tanpa token muncul di akhir.</p>
 			</div>
 		</div>
 		</div>
@@ -533,6 +553,24 @@ if (($adminComponentMode ?? '') === 'handle') {
 	}
 	blogEmbedAdd?.addEventListener('click', () => addEmbedItem(''));
 	attachEmbedRemoveHandlers();
+
+	var gdriveList = document.getElementById('gdrive_list');
+	var gdriveAdd = document.getElementById('add-gdrive');
+	function addGdriveItem() {
+		if (!gdriveList) return;
+		var d = document.createElement('div');
+		d.className = 'gdrive-item';
+		d.style = 'display:flex; gap:8px; align-items:center; margin-top:6px;';
+		d.innerHTML = '<input type="text" name="blog_gdrive_id[]" placeholder="Folder ID" style="flex:1;padding:6px;border-radius:8px;"><select name="blog_gdrive_view[]" style="padding:6px;border-radius:8px;"><option value="grid">Grid</option><option value="list">List</option></select><button type="button" class="remove-gdrive" style="background: rgba(255,255,255,0.08); color: var(--text); border:1px solid rgba(148,163,184,0.25); border-radius:8px; padding:6px 10px;">Hapus</button>';
+		gdriveList.appendChild(d);
+	}
+	gdriveAdd?.addEventListener('click', addGdriveItem);
+	gdriveList?.addEventListener('click', function (e) {
+		var b = e.target.closest && e.target.closest('.remove-gdrive');
+		if (!b) return;
+		var it = b.closest('.gdrive-item');
+		if (it) it.remove();
+	});
 
 	function positionFocalMarker() {
 		if (!focalMarker) return;

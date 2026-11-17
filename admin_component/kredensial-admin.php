@@ -68,6 +68,10 @@ if (($adminComponentMode ?? '') === 'handle') {
 				'bio' => '',
 				'avatar' => '',
 				'social' => '',
+				'features' => array_values(array_merge(
+					isset($_POST['feat_assessment']) ? ['assessment'] : [],
+					isset($_POST['feat_embed']) ? ['embed'] : []
+				)),
 				'created_at' => date('c'),
 			];
 			if (authors_save($d)) {
@@ -95,6 +99,44 @@ if (($adminComponentMode ?? '') === 'handle') {
 			$message = 'Akun penulis dihapus.';
 		} else {
 			$error = 'Gagal menghapus / akun tidak ditemukan.';
+		}
+	}
+
+	if ($loggedIn && isset($_POST['edit_author'])) {
+		$eid = trim((string) $_POST['edit_author']);
+		$nu = trim((string) ($_POST['edit_username'] ?? ''));
+		$d = authors_load();
+		$idx = -1;
+		foreach ($d['authors'] as $i => $a) {
+			if ((string) ($a['id'] ?? '') === $eid) { $idx = $i; break; }
+		}
+		if ($nu === '') {
+			$error = 'Username wajib diisi.';
+		} elseif ($idx < 0) {
+			$error = 'Akun tidak ditemukan.';
+		} else {
+			$dup = false;
+			foreach ($d['authors'] as $j => $b) {
+				if ($j !== $idx && strcasecmp((string) ($b['username'] ?? ''), $nu) === 0) { $dup = true; break; }
+			}
+			if ($dup) {
+				$error = 'Username sudah dipakai.';
+			} else {
+				$d['authors'][$idx]['username'] = $nu;
+				$d['authors'][$idx]['pen_name'] = trim((string) ($_POST['edit_pen_name'] ?? '')) ?: $nu;
+				$np = (string) ($_POST['edit_password'] ?? '');
+				if ($np !== '') { $d['authors'][$idx]['password_hash'] = password_hash($np, PASSWORD_DEFAULT); }
+				$d['authors'][$idx]['features'] = array_values(array_merge(
+					isset($_POST['edit_feat_assessment']) ? ['assessment'] : [],
+					isset($_POST['edit_feat_embed']) ? ['embed'] : []
+				));
+				if (authors_save($d)) {
+					appendLog($config, $configPath, 'author-updated', $maxLogs, $archiveLimitDays);
+					$message = 'Akun penulis diperbarui.';
+				} else {
+					$error = 'Gagal menyimpan perubahan akun.';
+				}
+			}
 		}
 	}
 
@@ -151,6 +193,10 @@ if (($adminComponentMode ?? '') === 'handle') {
 		<div><label for="author_username">Username</label><input type="text" id="author_username" name="author_username" required placeholder="penulis1" autocomplete="off"></div>
 		<div><label for="author_password">Password</label><input type="text" id="author_password" name="author_password" required placeholder="kata sandi" autocomplete="off"></div>
 		<div><label for="author_pen_name">Nama pena</label><input type="text" id="author_pen_name" name="author_pen_name" placeholder="Nama Pena"></div>
+		<div style="grid-column:1/-1; display:flex; gap:16px; flex-wrap:wrap;">
+			<label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="feat_assessment" value="1"> Asesmen Excel</label>
+			<label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="feat_embed" value="1"> Embed Master (GDrive folder + perbaikan IG)</label>
+		</div>
 		<div><button type="submit">Buat akun</button></div>
 	</form>
 	<?php $authList = authors_load()['authors'] ?? []; ?>
@@ -159,12 +205,31 @@ if (($adminComponentMode ?? '') === 'handle') {
 	<?php else: ?>
 		<ul style="margin:10px 0 0; padding:0; list-style:none;">
 			<?php foreach ($authList as $au): ?>
-			<li style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-top:1px solid rgba(148,163,184,0.15);">
-				<span><?php echo htmlspecialchars((string) (($au['pen_name'] ?? '') !== '' ? $au['pen_name'] : ($au['username'] ?? '')), ENT_QUOTES, 'UTF-8'); ?> <span class="muted-text">@<?php echo htmlspecialchars((string) ($au['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></span>
-				<form method="post" style="margin:0;" onsubmit="return confirm('Hapus akun penulis ini?');">
-					<input type="hidden" name="delete_author" value="<?php echo htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-					<button type="submit" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
-				</form>
+			<li style="padding:8px 0; border-top:1px solid rgba(148,163,184,0.15);">
+				<div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+					<span><?php echo htmlspecialchars((string) (($au['pen_name'] ?? '') !== '' ? $au['pen_name'] : ($au['username'] ?? '')), ENT_QUOTES, 'UTF-8'); ?> <span class="muted-text">@<?php echo htmlspecialchars((string) ($au['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></span>
+					<form method="post" style="margin:0;" onsubmit="return confirm('Hapus akun penulis ini?');">
+						<input type="hidden" name="delete_author" value="<?php echo htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						<button type="submit" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
+					</form>
+				</div>
+				<details style="margin-top:6px;">
+					<summary style="cursor:pointer;color:var(--accent);font-size:13px;">Edit</summary>
+					<form method="post" class="stack-sm" style="margin-top:8px;">
+						<input type="hidden" name="edit_author" value="<?php echo htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr));">
+							<div><label>Username</label><input type="text" name="edit_username" value="<?php echo htmlspecialchars((string) ($au['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required></div>
+							<div><label>Nama pena</label><input type="text" name="edit_pen_name" value="<?php echo htmlspecialchars((string) ($au['pen_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div>
+							<div><label>Password baru (kosongkan = tetap)</label><input type="text" name="edit_password" placeholder="opsional"></div>
+						</div>
+						<?php $f = is_array($au['features'] ?? null) ? $au['features'] : null; ?>
+						<div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:8px;">
+							<label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" name="edit_feat_assessment" value="1" <?php echo ($f === null || in_array('assessment', $f, true)) ? 'checked' : ''; ?>> Asesmen Excel</label>
+							<label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" name="edit_feat_embed" value="1" <?php echo ($f === null || in_array('embed', $f, true)) ? 'checked' : ''; ?>> Embed Master</label>
+						</div>
+						<div><button type="submit">Simpan perubahan</button></div>
+					</form>
+				</details>
 			</li>
 			<?php endforeach; ?>
 		</ul>
