@@ -189,7 +189,9 @@ do_ftp_push() {
   fi
 
   : > "$MANIFEST"
-  for rel in "${FILES[@]}"; do printf '%s\t%s\n' "$rel" "${M[$rel]:-${H[$rel]}}" >> "$MANIFEST"; done
+  for rel in "${FILES[@]}"; do
+    if [ -n "${M[$rel]:-}" ]; then printf '%s\t%s\n' "$rel" "${M[$rel]}" >> "$MANIFEST"; fi
+  done
   ok "Manifest diperbarui"
 }
 

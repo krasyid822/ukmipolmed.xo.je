@@ -83,73 +83,15 @@ function convert_lists($text)
 
 function render_markdown($text)
 {
-	$text = str_replace(["\r\n", "\r"], "\n", (string) $text);
-	// Remove invisible / zero-width / BOM characters that break regex anchors
-	$text = preg_replace('/[\x{200B}\x{FEFF}\x{200C}\x{200D}\x{00A0}]/u', '', $text);
-	$text = trim($text);
-	if ($text === '') return '';
-
-	$codeBlocks = [];
-
-	// Extract fenced code blocks from the raw text first so other replacements won't touch them.
-	$text = preg_replace_callback('/```\s*([a-zA-Z0-9_+-]*)\s*\n(.*?)```/s', function ($m) use (&$codeBlocks) {
-		$lang = trim($m[1] ?? '');
-		$code = $m[2] ?? '';
-		$codeEsc = htmlspecialchars($code, ENT_QUOTES, 'UTF-8');
-		$cls = $lang !== '' ? ' class="language-' . htmlspecialchars($lang, ENT_QUOTES, 'UTF-8') . '"' : '';
-		$idx = count($codeBlocks);
-		$codeBlocks[$idx] = '<pre><code' . $cls . '>' . $codeEsc . '</code></pre>';
-		return "%%CODEBLOCK{$idx}%%";
-	}, $text);
-
-	// Escape the remaining text
-	$escaped = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
-
-	// Inline code (single backticks)
-	$escaped = preg_replace_callback('/`([^`]+)`/', function ($m) use (&$codeBlocks) {
-		$idx = count($codeBlocks);
-		$codeBlocks[$idx] = '<code>' . htmlspecialchars($m[1], ENT_QUOTES, 'UTF-8') . '</code>';
-		return "%%CODEBLOCK{$idx}%%";
-	}, $escaped);
-
-	// Headings
-	$escaped = preg_replace('/^###### (.+)$/m', '<h6>$1</h6>', $escaped);
-	$escaped = preg_replace('/^##### (.+)$/m', '<h5>$1</h5>', $escaped);
-	$escaped = preg_replace('/^#### (.+)$/m', '<h4>$1</h4>', $escaped);
-	$escaped = preg_replace('/^### (.+)$/m', '<h3>$1</h3>', $escaped);
-	$escaped = preg_replace('/^## (.+)$/m', '<h2>$1</h2>', $escaped);
-	$escaped = preg_replace('/^# (.+)$/m', '<h1>$1</h1>', $escaped);
-
-	// Bold and emphasis (non-greedy)
-	$escaped = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $escaped);
-	$escaped = preg_replace('/\*(.+?)\*/', '<em>$1</em>', $escaped);
-
-	// Links: allow http/https only
-	$escaped = preg_replace_callback('/\[(.+?)\]\((https?:[^)]+)\)/', function ($m) {
-		$url = htmlspecialchars($m[2], ENT_QUOTES, 'UTF-8');
-		return '<a href="' . $url . '" target="_blank" rel="noopener">' . $m[1] . '</a>';
-	}, $escaped);
-
-	// Convert lists (works with escaped text since markers are unchanged)
-	$escaped = convert_lists($escaped);
-
-	// Split into blocks and wrap paragraphs (preserve blocks that already start with tags)
-	$blocks = preg_split('/\n{2,}/', trim($escaped));
-	$blocks = array_map(function ($block) {
-		if (preg_match('/^\s*<(ul|ol|pre|h[1-6])/i', $block)) {
-			return $block;
-		}
-		return '<p>' . nl2br($block) . '</p>';
-	}, $blocks);
-
-	$html = implode("\n", $blocks);
-
-	// Put back code blocks and inline code placeholders
-	foreach ($codeBlocks as $idx => $codeHtml) {
-		$html = str_replace("%%CODEBLOCK{$idx}%%", $codeHtml, $html);
+	static $pd = null;
+	if ($pd === null) {
+		require_once __DIR__ . '/lib/Parsedown.php';
+		$pd = new Parsedown();
+		$pd->setSafeMode(true);
 	}
-
-	return $html;
+	$text = str_replace(["\r\n", "\r"], "\n", (string) $text);
+	$text = preg_replace('/[\x{200B}\x{FEFF}\x{200C}\x{200D}\x{00A0}]/u', '', $text);
+	return $pd->text($text);
 }
 
 function apply_embeds($html, $embeds, $enabled, $igFix = false)
@@ -1255,27 +1197,8 @@ try {
 			<?php $__assess = assessments_for_post($posts[0]['slug'] ?? ''); ?>
 			<?php foreach ($__assess as $as): ?>
 				<div style="margin-top:16px;padding:16px;border:1px solid var(--stroke);border-radius:14px;background:rgba(255,255,255,0.03);">
-					<h3 style="margin:0 0 4px;font-size:17px;"><?php echo e((string) ($as['title'] ?? 'Asesmen')); ?> <span style="color:var(--muted);font-size:13px;">(<?php echo e((string) ($as['type'] ?? '')); ?>)</span></h3>
-					<div style="color:var(--muted);font-size:13px;margin-bottom:10px;">Penilaian: <?php echo (($as['grading'] ?? 'auto') === 'auto') ? 'otomatis' : 'audit manual'; ?></div>
-					<?php if (!empty($as['task_image'])): ?>
-						<div style="margin-bottom:12px;"><img src="<?php echo e((string) $as['task_image']); ?>" alt="Gambar soal" style="max-width:100%;border-radius:10px;border:1px solid var(--stroke);"></div>
-					<?php endif; ?>
-					<form method="post" action="/asesmen">
-						<input type="hidden" name="a_id" value="<?php echo e((string) ($as['id'] ?? '')); ?>">
-						<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-							<input type="text" name="r_name" required placeholder="Nama Anda" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--text);">
-							<input type="text" name="r_ident" placeholder="Identitas (opsional)" style="flex:1;min-width:160px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--text);">
-						</div>
-						<?php foreach (($as['questions'] ?? []) as $qi => $q): ?>
-							<div style="margin:12px 0;padding:10px;border:1px solid var(--stroke);border-radius:10px;">
-								<p style="margin:0 0 6px;font-weight:600;"><?php echo (int) $qi + 1; ?>. <?php echo e((string) ($q['q'] ?? '')); ?></p>
-								<?php foreach (($q['options'] ?? []) as $oi => $opt): ?>
-									<label style="display:block;font-size:14px;color:var(--text);margin:3px 0;"><input type="radio" name="q<?php echo (int) $qi; ?>" value="<?php echo (int) $oi; ?>"> <?php echo e((string) $opt); ?></label>
-								<?php endforeach; ?>
-							</div>
-						<?php endforeach; ?>
-						<button type="submit" class="btn primary">Kirim jawaban</button>
-					</form>
+					<h3 style="margin:0 0 10px;font-size:17px;"><?php echo e((string) ($as['title'] ?? 'Asesmen')); ?></h3>
+					<a class="btn primary" href="/asesmen?id=<?php echo urlencode((string) ($as['id'] ?? '')); ?>">Kerjakan asesmen</a>
 				</div>
 			<?php endforeach; ?>
 
