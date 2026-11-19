@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/store.php';
 function e($value)
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -221,11 +222,11 @@ if (is_readable($defaultPath)) {
 }
 
 $configPath = __DIR__ . '/data.json';
-if (is_readable($configPath)) {
-    $configData = json_decode((string) file_get_contents($configPath), true);
-    if (is_array($configData) && !empty($configData['faqs'])) {
-        $faqItems = mergeFaqItems($faqItems, normalizeFaqItems($configData['faqs'], $faqFallbackTimestamp));
-    }
+$configData = (function_exists('data_store_is_sharded') && data_store_is_sharded())
+    ? ['faqs' => data_store_faqs_read()]
+    : store_read_json($configPath);
+if (is_array($configData) && !empty($configData['faqs'])) {
+    $faqItems = mergeFaqItems($faqItems, normalizeFaqItems($configData['faqs'], $faqFallbackTimestamp));
 }
 
 if (empty($faqItems)) {
@@ -244,15 +245,15 @@ if (empty($faqItems)) {
 
 $canonicalHost = preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je'));
 $canonicalBase = 'https://' . $canonicalHost;
-$indexUrl = $canonicalBase . '/index.php';
-$faqUrl = $canonicalBase . '/faq.php';
+$indexUrl = $canonicalBase . '/';
+$faqUrl = $canonicalBase . '/faq';
 $faqIdUrl = $faqUrl . '#faq';
 
 $faqSchema = [
     '@context' => 'https://schema.org',
     '@type' => 'FAQPage',
-    'name' => 'FAQ UKMI Polmed',
-    'description' => 'Kumpulan pertanyaan dan jawaban resmi seputar UKMI Polmed, mulai dari AD/ART, STKO, GBHK, hingga informasi organisasi yang sering ditanyakan.',
+    'name' => 'FAQ UKMI POLMED',
+    'description' => 'Kumpulan pertanyaan dan jawaban resmi seputar UKMI POLMED, mulai dari AD/ART, STKO, GBHK, hingga informasi organisasi yang sering ditanyakan.',
     'url' => $faqUrl,
     'inLanguage' => 'id-ID',
     'mainEntity' => [],
@@ -284,7 +285,7 @@ $breadcrumbSchema = [
         [
             '@type' => 'ListItem',
             'position' => 2,
-            'name' => 'FAQ UKMI Polmed',
+            'name' => 'FAQ UKMI POLMED',
             'item' => $faqUrl,
         ],
     ],
@@ -293,13 +294,13 @@ $breadcrumbSchema = [
 $webPageSchema = [
     '@context' => 'https://schema.org',
     '@type' => 'WebPage',
-    'name' => 'FAQ UKMI Polmed',
+    'name' => 'FAQ UKMI POLMED',
     'url' => $faqUrl,
-    'description' => 'Kumpulan pertanyaan dan jawaban resmi seputar UKMI Polmed, AD/ART, STKO, GBHK, dan struktur organisasi.',
+    'description' => 'Kumpulan pertanyaan dan jawaban resmi seputar UKMI POLMED, AD/ART, STKO, GBHK, dan struktur organisasi.',
     'inLanguage' => 'id-ID',
     'isPartOf' => [
         '@type' => 'WebSite',
-        'name' => 'UKMI Polmed',
+        'name' => 'UKMI POLMED',
         'url' => $indexUrl,
     ],
     'mainEntity' => [
@@ -308,8 +309,8 @@ $webPageSchema = [
     ],
 ];
 
-$pageTitle = 'FAQ UKMI Polmed: AD/ART, STKO, GBHK, dan Info Organisasi';
-$pageDescription = 'Cari jawaban resmi seputar UKMI Polmed, termasuk AD/ART, STKO, GBHK, struktur divisi, dan informasi organisasi yang paling sering ditanyakan.';
+$pageTitle = 'FAQ UKMI POLMED: AD/ART, STKO, GBHK, dan Info Organisasi';
+$pageDescription = 'Cari jawaban resmi seputar UKMI POLMED, termasuk AD/ART, STKO, GBHK, struktur divisi, dan informasi organisasi yang paling sering ditanyakan.';
 ?>
 <!doctype html>
 <html lang="id">
@@ -318,11 +319,11 @@ $pageDescription = 'Cari jawaban resmi seputar UKMI Polmed, termasuk AD/ART, STK
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?php echo e($pageTitle); ?></title>
     <meta name="description" content="<?php echo e($pageDescription); ?>">
-    <meta name="keywords" content="FAQ UKMI Polmed, AD/ART UKMI Polmed, STKO UKMI Polmed, GBHK UKMI Polmed, organisasi UKMI, pertanyaan UKMI Polmed">
+    <meta name="keywords" content="FAQ UKMI POLMED, AD/ART UKMI POLMED, STKO UKMI POLMED, GBHK UKMI POLMED, organisasi UKMI, pertanyaan UKMI POLMED">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="<?php echo e($faqUrl); ?>">
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="UKMI Polmed">
+    <meta property="og:site_name" content="UKMI POLMED">
     <meta property="og:title" content="<?php echo e($pageTitle); ?>">
     <meta property="og:description" content="<?php echo e($pageDescription); ?>">
     <meta property="og:url" content="<?php echo e($faqUrl); ?>">
@@ -335,216 +336,20 @@ $pageDescription = 'Cari jawaban resmi seputar UKMI Polmed, termasuk AD/ART, STK
     <?php endif; ?>
     <script type="application/ld+json"><?php echo json_encode($breadcrumbSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?></script>
     <script type="application/ld+json"><?php echo json_encode($webPageSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?></script>
-    <style>
-        :root {
-            --bg: #f5f6f8;
-            --panel: #ffffff;
-            --panel-soft: #f0f4ff;
-            --line: #dce3f0;
-            --text: #172132;
-            --muted: #52627a;
-            --accent: #0b5fff;
-            --accent-soft: #dbe7ff;
-            --radius: 14px;
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(180deg, #eef3ff 0%, var(--bg) 260px);
-            color: var(--text);
-            min-height: 100vh;
-        }
-
-        .wrap {
-            max-width: none;
-            margin: 0 auto;
-            padding: 0;
-        }
-
-        .topbar {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            margin-bottom: 0;
-            padding: 14px 16px;
-        }
-
-        .topbar a {
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .panel {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 0;
-            box-shadow: 0 8px 24px rgba(17, 35, 64, 0.08);
-            overflow: hidden;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            min-height: calc(100vh - 60px);
-        }
-
-        .sidebar {
-            border-right: 1px solid var(--line);
-            background: var(--panel-soft);
-            padding: 16px;
-            min-height: inherit;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar h1 {
-            margin: 0 0 8px;
-            font-size: 20px;
-        }
-
-        .sidebar p {
-            margin: 0 0 14px;
-            font-size: 14px;
-            color: var(--muted);
-            line-height: 1.5;
-        }
-
-        .search {
-            width: 100%;
-            border: 1px solid #c9d6f0;
-            border-radius: 10px;
-            padding: 11px 12px;
-            font-size: 14px;
-            margin-bottom: 12px;
-            background: #fff;
-        }
-
-        .faq-nav {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            flex: 0 1 auto;
-            min-height: 180px;
-            max-height: clamp(220px, calc(100vh - 260px), 760px);
-            overflow: auto;
-            padding-right: 4px;
-        }
-
-        .faq-link {
-            display: block;
-            border: 1px solid #cfd9f2;
-            border-radius: 10px;
-            padding: 10px 11px;
-            text-decoration: none;
-            color: #1e2a3f;
-            background: #fff;
-            line-height: 1.4;
-            font-size: 14px;
-            cursor: pointer;
-            user-select: none;
-            touch-action: manipulation;
-        }
-
-        .faq-link.active {
-            background: var(--accent-soft);
-            border-color: #96b5ff;
-            color: #11367f;
-            font-weight: 600;
-        }
-
-        .faq-link.hidden,
-        .faq-item.hidden {
-            display: none;
-        }
-
-        .content {
-            padding: 22px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .empty {
-            padding: 14px;
-            border: 1px dashed #bfd0f8;
-            border-radius: 10px;
-            color: #385188;
-            background: #f5f9ff;
-            font-size: 14px;
-        }
-
-        .faq-item {
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 16px;
-            background: #fff;
-            display: none;
-        }
-
-        .faq-item.active {
-            display: block;
-        }
-
-        .faq-item h2 {
-            margin: 0 0 10px;
-            font-size: 23px;
-            line-height: 1.28;
-        }
-
-        .faq-meta {
-            margin-bottom: 10px;
-            font-size: 12px;
-            color: var(--muted);
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .faq-answer {
-            color: var(--text);
-            line-height: 1.7;
-            font-size: 16px;
-        }
-
-        @media (max-width: 900px) {
-            .layout {
-                grid-template-columns: 1fr;
-                min-height: auto;
-            }
-
-            .sidebar {
-                border-right: 0;
-                border-bottom: 1px solid var(--line);
-                min-height: auto;
-            }
-
-            .faq-nav {
-                max-height: 240px;
-            }
-
-            .faq-item h2 {
-                font-size: 20px;
-            }
-        }
-    </style>
+    <?php require __DIR__ . '/components/faq-styles.php'; ?>
 </head>
 <body>
+    <?php require __DIR__ . '/components/loading-overlay.php'; ?>
     <div class="wrap">
         <div class="topbar">
-            <a href="index.php">Kembali ke beranda</a>
-            <a href="blog.php">Buka blog</a>
+            <a href="/">Kembali ke beranda</a>
+            <a href="/blog">Buka blog</a>
         </div>
 
         <div class="panel layout">
             <aside class="sidebar">
-                <h1>FAQ UKMI Polmed</h1>
-                <p>Pertanyaan dan jawaban resmi seputar UKMI Polmed, termasuk AD/ART, STKO, GBHK, struktur divisi, dan informasi organisasi yang paling sering dicari.</p>
+                <h1>FAQ UKMI POLMED</h1>
+                <p>Pertanyaan dan jawaban resmi seputar UKMI POLMED, termasuk AD/ART, STKO, GBHK, struktur divisi, dan informasi organisasi yang paling sering dicari.</p>
                 <p style="margin-top:-6px; color: var(--muted);">Pilih pertanyaan di bawah untuk melihat jawaban, atau cari kata kunci tertentu.</p>
                 <input id="faq-search" class="search" type="search" placeholder="Cari pertanyaan atau jawaban..." autocomplete="off">
                 <div class="faq-nav" id="faq-nav" aria-label="Daftar pertanyaan FAQ">
@@ -554,7 +359,7 @@ $pageDescription = 'Cari jawaban resmi seputar UKMI Polmed, termasuk AD/ART, STK
                 </div>
             </aside>
 
-            <main class="content" id="faq-content" aria-label="Isi FAQ UKMI Polmed">
+            <main class="content" id="faq-content" aria-label="Isi FAQ UKMI POLMED">
                 <div class="empty" id="empty-state" style="display:none;">Tidak ada FAQ yang cocok dengan pencarianmu.</div>
                 <?php foreach ($faqItems as $item): ?>
                     <article class="faq-item" id="faq-item-<?php echo e($item['slug']); ?>" data-slug="<?php echo e($item['slug']); ?>" data-search="<?php echo e(strtolower($item['question'] . ' ' . $item['answer'])); ?>">
@@ -570,85 +375,6 @@ $pageDescription = 'Cari jawaban resmi seputar UKMI Polmed, termasuk AD/ART, STK
         </div>
     </div>
 
-    <script>
-    (function () {
-        const links = Array.from(document.querySelectorAll('.faq-link'));
-        const items = Array.from(document.querySelectorAll('.faq-item'));
-        const searchInput = document.getElementById('faq-search');
-        const emptyState = document.getElementById('empty-state');
-
-        const getItem = (slug) => document.getElementById('faq-item-' + slug);
-        const nav = document.getElementById('faq-nav');
-
-        const visibleLinks = () => links.filter((link) => !link.classList.contains('hidden'));
-        const visibleItems = () => items.filter((item) => !item.classList.contains('hidden'));
-
-        const activate = (slug, updateHash = true) => {
-            if (!slug) return;
-            const target = getItem(slug);
-            if (!target || target.classList.contains('hidden')) return;
-
-            items.forEach((item) => item.classList.toggle('active', item.dataset.slug === slug));
-            links.forEach((link) => link.classList.toggle('active', link.dataset.slug === slug));
-
-            const activeLink = links.find((link) => link.dataset.slug === slug);
-            if (activeLink) {
-                activeLink.scrollIntoView({ block: 'nearest' });
-            }
-            target.scrollIntoView({ block: 'start', behavior: 'smooth' });
-
-            if (updateHash) {
-                history.replaceState(null, '', '#' + encodeURIComponent(slug));
-            }
-        };
-
-        const filterFaq = (query) => {
-            const q = (query || '').toLowerCase().trim();
-            links.forEach((link) => {
-                const searchable = (link.dataset.search || '').toLowerCase();
-                const match = q === '' || searchable.indexOf(q) !== -1;
-                link.classList.toggle('hidden', !match);
-            });
-
-            items.forEach((item) => {
-                const searchable = (item.dataset.search || '').toLowerCase();
-                const match = q === '' || searchable.indexOf(q) !== -1;
-                item.classList.toggle('hidden', !match);
-            });
-
-            const hasVisible = visibleItems().length > 0;
-            emptyState.style.display = hasVisible ? 'none' : 'block';
-
-            const currentActive = document.querySelector('.faq-item.active:not(.hidden)');
-            if (!currentActive && hasVisible) {
-                const first = visibleLinks()[0];
-                if (first) activate(first.dataset.slug, false);
-            }
-        };
-
-        if (nav) {
-            nav.addEventListener('click', (event) => {
-                const link = event.target.closest('.faq-link');
-                if (!link || !nav.contains(link) || link.classList.contains('hidden')) return;
-                event.preventDefault();
-                activate(link.dataset.slug, true);
-            });
-        }
-
-        if (searchInput) {
-            searchInput.addEventListener('input', () => {
-                filterFaq(searchInput.value);
-            });
-        }
-
-        const hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
-        filterFaq('');
-        if (hash && getItem(hash)) {
-            activate(hash, false);
-        } else if (links.length > 0) {
-            activate(links[0].dataset.slug, false);
-        }
-    })();
-    </script>
+    <?php require __DIR__ . '/components/faq-scripts.php'; ?>
 </body>
 </html>

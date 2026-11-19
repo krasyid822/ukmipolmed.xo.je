@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Badge Diedit oleh Admin UKMI POLMED">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF3B0" />
+      <stop offset="25%" stop-color="#E09F3E" />
+      <stop offset="50%" stop-color="#FFE066" />
+      <stop offset="75%" stop-color="#B87333" />
+      <stop offset="100%" stop-color="#FFF3B0" />
+    </linearGradient>
+    <linearGradient id="goldDarkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#8A6218" />
+    </linearGradient>
+    <radialGradient id="greenBgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0B4F3E" />
+      <stop offset="70%" stop-color="#063328" />
+      <stop offset="100%" stop-color="#031D16" />
+    </radialGradient>
+    <linearGradient id="ribbonGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#04241C" />
+      <stop offset="50%" stop-color="#0A4737" />
+      <stop offset="100%" stop-color="#04241C" />
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+    <filter id="textShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.7" />
+    </filter>
+    <pattern id="islamicPattern" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M40 0 L80 40 L40 80 L0 40 Z" fill="none" stroke="#116B54" stroke-width="1.5" opacity="0.35" />
+      <rect x="11.7" y="11.7" width="56.6" height="56.6" fill="none" stroke="#116B54" stroke-width="1.5" opacity="0.35" />
+      <circle cx="40" cy="40" r="12" fill="none" stroke="#116B54" stroke-width="1" opacity="0.25" />
+    </pattern>
+    <path id="topTextPath" d="M 155,512 A 357,357 0 1,1 869,512" fill="none" />
+    <path id="bottomTextPath" d="M 125,512 A 387,387 0 0,0 899,512" fill="none" />
+    <polygon id="star" points="0,-12 3.5,-3.5 12,0 3.5,3.5 0,12 -3.5,3.5 -12,0 -3.5,-3.5" fill="url(#goldGrad)" />
+  </defs>
+  <rect width="1024" height="1024" fill="#042920" />
+  <rect width="1024" height="1024" fill="url(#islamicPattern)" />
+  <circle cx="512" cy="512" r="475" fill="url(#goldGrad)" filter="url(#dropShadow)" />
+  <circle cx="512" cy="512" r="458" fill="#04241C" />
+  <circle cx="512" cy="512" r="446" fill="none" stroke="url(#goldGrad)" stroke-width="3" />
+  <circle cx="512" cy="512" r="325" fill="url(#greenBgGrad)" stroke="url(#goldGrad)" stroke-width="10" />
+  <circle cx="512" cy="512" r="312" fill="none" stroke="url(#goldDarkGrad)" stroke-width="2" stroke-dasharray="6,6" />
+  <text font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="52" fill="url(#goldGrad)" letter-spacing="6" filter="url(#textShadow)">
+    <textPath href="#topTextPath" startOffset="50%" text-anchor="middle">DIEDIT OLEH ADMIN</textPath>
+  </text>
+  <text font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="40" fill="url(#goldGrad)" letter-spacing="4" filter="url(#textShadow)">
+    <textPath href="#bottomTextPath" startOffset="50%" text-anchor="middle">UKMI POLITEKNIK NEGERI MEDAN</textPath>
+  </text>
+  <use href="#star" x="128" y="425" transform="scale(1.1) translate(-11, -38)" />
+  <use href="#star" x="128" y="595" transform="scale(1.1) translate(-11, -54)" />
+  <use href="#star" x="896" y="425" transform="scale(1.1) translate(-81, -38)" />
+  <use href="#star" x="896" y="595" transform="scale(1.1) translate(-81, -54)" />
+  <path d="M 512,215 
+           C 555,255 615,265 645,310 
+           C 685,315 725,355 725,405 
+           L 725,615 
+           C 725,665 685,705 645,710 
+           C 615,755 555,765 512,805 
+           C 469,765 409,755 379,710 
+           C 339,705 299,665 299,615 
+           L 299,405 
+           C 299,355 339,315 379,310 
+           C 409,265 469,255 512,215 Z" fill="#073D30" stroke="url(#goldGrad)" stroke-width="7" filter="url(#dropShadow)" />
+  <g transform="translate(360, 365) scale(0.65)" opacity="0.5">
+    <rect x="-35" y="-35" width="70" height="70" fill="none" stroke="#FFE066" stroke-width="4" />
+    <rect x="-35" y="-35" width="70" height="70" fill="none" stroke="#FFE066" stroke-width="4" transform="rotate(45)" />
+  </g>
+  <g transform="translate(664, 365) scale(0.65)" opacity="0.5">
+    <rect x="-35" y="-35" width="70" height="70" fill="none" stroke="#FFE066" stroke-width="4" />
+    <rect x="-35" y="-35" width="70" height="70" fill="none" stroke="#FFE066" stroke-width="4" transform="rotate(45)" />
+  </g>
+  <g transform="translate(335, 420)" stroke="url(#goldGrad)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M -30,10 Q -15,0 0,10 Q 15,0 30,10 L 30,-20 Q 15,-30 0,-20 Q -15,-30 -30,-20 Z" />
+    <line x1="0" y1="-20" x2="0" y2="10" />
+    <path d="M 10,-5 L 32,-27 L 38,-21 L 16,1 L 8,3 Z" fill="#073D30" />
+  </g>
+  <g transform="translate(685, 420)" stroke="url(#goldGrad)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-24" y="-22" width="48" height="30" rx="3" />
+    <line x1="-32" y1="12" x2="32" y2="12" stroke-width="4.5" />
+    <circle cx="0" cy="-7" r="6" />
+  </g>
+  <g transform="translate(512, 520)" filter="url(#dropShadow)">
+    <polygon points="-295,-45 -245,-45 -245,45 -295,45 -270,0" fill="#04241C" stroke="url(#goldGrad)" stroke-width="4" />
+    <polygon points="295,-45 245,-45 245,45 295,45 270,0" fill="#04241C" stroke="url(#goldGrad)" stroke-width="4" />
+    <rect x="-255" y="-56" width="510" height="112" rx="12" fill="url(#ribbonGreen)" stroke="url(#goldGrad)" stroke-width="6" />
+    <text x="0" y="34" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="98" fill="url(#goldGrad)" letter-spacing="8" text-anchor="middle" filter="url(#textShadow)">ADMIN</text>
+  </g>
+  <g transform="translate(512, 625)" filter="url(#dropShadow)">
+    <path d="M -195,-26 L 195,-26 L 180,26 L -180,26 Z" fill="#04241C" stroke="url(#goldGrad)" stroke-width="4.5" />
+    <text x="0" y="11" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="32" fill="url(#goldGrad)" letter-spacing="3" text-anchor="middle">UKMI POLMED</text>
+  </g>
+  <g transform="translate(512, 715)" filter="url(#dropShadow)">
+    <circle cx="0" cy="0" r="34" fill="#04241C" stroke="url(#goldGrad)" stroke-width="4" />
+    <path d="M -14,2 L -4,12 L 16,-10" fill="none" stroke="url(#goldGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g transform="translate(95, 512)">
+    <rect x="-22" y="-22" width="44" height="44" fill="#04241C" stroke="url(#goldGrad)" stroke-width="4" transform="rotate(45)" />
+    <circle cx="0" cy="0" r="8" fill="url(#goldGrad)" />
+  </g>
+  <g transform="translate(929, 512)">
+    <rect x="-22" y="-22" width="44" height="44" fill="#04241C" stroke="url(#goldGrad)" stroke-width="4" transform="rotate(45)" />
+    <circle cx="0" cy="0" r="8" fill="url(#goldGrad)" />
+  </g>
+</svg>

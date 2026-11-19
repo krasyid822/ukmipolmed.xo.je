@@ -93,7 +93,7 @@ Overviews/SGE, ChatGPT Search, Perplexity, Bing Copilot).
 
 Trik praktis:
   - 40-60 kata pertama paragraf harus langsung menjawab pertanyaan.
-  - Gunakan heading berbentuk pertanyaan natural ("Apa itu UKMI Polmed?").
+  - Gunakan heading berbentuk pertanyaan natural ("Apa itu UKMI POLMED?").
   - Pasang schema FAQPage & QAPage.
   - Tulis ringkasan padat di awal, detail menyusul.
 
@@ -104,7 +104,7 @@ dan struktur tanya-jawab di konten blog.
 3.2 GEO — Generative Engine Optimization
 --------------------------------------------------------------------------------
 Sepaket dengan AEO, fokus pada: dikutip (citation) oleh model AI.
-  - Brand mention konsisten ("UKMI Polmed").
+  - Brand mention konsisten ("UKMI POLMED").
   - Sediakan data/angka orisinal (statistik kegiatan, jumlah anggota, tahun).
   - Struktur HTML semantik & kutipan jelas memud让kan model mengutip sumber.
 
@@ -116,8 +116,8 @@ Perbedaan singkat: AEO = jawaban langsung di SERP; GEO = direferensikan AI.
 Keyword spesifik, volume kecil, konversi tinggi.
   Short tail        -> Long tail
   "UKMI"            -> "UKMI Politeknik Negeri Medan kegiatan 2026"
-  "pendaftaran"     -> "cara daftar UKMI Polmed online 2026"
-  "agenda"          -> "agenda kegiatan mahasiswa Polmed November 2026"
+  "pendaftaran"     -> "cara daftar UKMI POLMED online 2026"
+  "agenda"          -> "agenda kegiatan mahasiswa POLMED November 2026"
 
 Sumber long tail di web ini: judul post blog spesifik, pertanyaan faq.php,
 nama agenda + tahun. Tips: riset keyword gratis (Google autocomplete, People
@@ -191,7 +191,7 @@ Status: [BELUM] struktur silo & internal linking antar silo belum diterapkan.
 Perjalanan pengunjung dari "belum kenal" hingga "siap bergabung".
 
   Tahap          Fungsi                Contoh konten di web ini
-  TOFU (Top)     Awareness             Artikel blog "Mengenal UKMI Polmed"
+  TOFU (Top)     Awareness             Artikel blog "Mengenal UKMI POLMED"
   MOFU (Middle)  Consideration         FAQ, profil pengurus, galeri, testimoni
   BOFU (Bottom)  Decision/Konversi     Form pendaftaran, link daftar, kontak
 
@@ -209,7 +209,7 @@ ALT TEXT (teks alternatif gambar): untuk screen reader + Google Image Search.
 
 ANCHOR TEXT (teks tautan):
   [BURUK] <a href="blog.php">klik di sini</a>
-  [BAIK]  <a href="blog.php">baca panduan pendaftaran UKMI Polmed</a>
+  [BAIK]  <a href="blog.php">baca panduan pendaftaran UKMI POLMED</a>
 
 Aturan anchor text: deskriptif, mengandung keyword natural, bervariasi.
 
@@ -417,7 +417,7 @@ Tips optimasi gambar:
 --------------------------------------------------------------------------------
 4.12 KONSISTENSI BRAND & SOSIAL
 --------------------------------------------------------------------------------
-[BAIK]   Nama "UKMI Polmed" cukup konsisten; logo & sosmed (Facebook dll) ada.
+[BAIK]   Nama "UKMI POLMED" cukup konsisten; logo & sosmed (Facebook dll) ada.
 [KURANG] sameAs di schema Organization belum ada (IG, FB, YouTube, TikTok).
 [KURANG] twitter:site/twitter:creator belum diisi.
 [BELUM]  Google Business Profile / entri organisasi (jika relevan) belum ada.
@@ -511,7 +511,7 @@ BAGIAN 7 — CONTOH KODE PERBAIKAN (SIAP PAKAI)
     {
       "@context": "https://schema.org",
       "@type": "Event",
-      "name": "Pelantikan Ketum UKMI Polmed 2026-2027",
+      "name": "Pelantikan Ketum UKMI POLMED 2026-2027",
       "startDate": "2026-02-25",
       "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
       "eventStatus": "https://schema.org/EventScheduled",
@@ -527,7 +527,7 @@ BAGIAN 7 — CONTOH KODE PERBAIKAN (SIAP PAKAI)
       },
       "organizer": {
         "@type": "Organization",
-        "name": "UKMI Polmed",
+        "name": "UKMI POLMED",
         "url": "https://ukmipolmed.xo.je/"
       }
     }
@@ -538,7 +538,7 @@ BAGIAN 7 — CONTOH KODE PERBAIKAN (SIAP PAKAI)
     {
       "@context": "https://schema.org",
       "@type": "Organization",
-      "name": "UKMI Polmed",
+      "name": "UKMI POLMED",
       "url": "https://ukmipolmed.xo.je/",
       "logo": "https://ukmipolmed.xo.je/logo-ukmi.png",
       "sameAs": [
@@ -569,7 +569,7 @@ BAGIAN 7 — CONTOH KODE PERBAIKAN (SIAP PAKAI)
               /uploads/xxxxkegiatan-ppi-2024-800.webp 800w,
               /uploads/xxxxkegiatan-ppi-2024-1200.webp 1200w"
       sizes="(max-width: 600px) 100vw, 50vw"
-      alt="Dokumentasi kegiatan PPI UKMI Polmed 2024"
+      alt="Dokumentasi kegiatan PPI UKMI POLMED 2024"
       width="800" height="600" loading="lazy" decoding="async">
 
 

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/store.php';
 // authors_helper.php — store akun penulis + profil admin (authors.json).
 // Dipakai oleh admin (bootstrap), blog publik (byline/profil), dan panel penulis.
 
@@ -11,7 +12,7 @@ function authors_default()
 {
     return [
         'admin_profile' => [
-            'pen_name' => 'Admin UKMI Polmed',
+            'pen_name' => 'Admin UKMI POLMED',
             'avatar' => '/logo-ukmi.png',
             'social' => 'https://www.instagram.com/ukmipolmed/',
         ],
@@ -26,16 +27,13 @@ function authors_load()
         return $cache;
     }
     $data = authors_default();
-    $p = authors_path();
-    if (is_readable($p)) {
-        $j = json_decode((string) @file_get_contents($p), true);
-        if (is_array($j)) {
-            if (isset($j['authors']) && is_array($j['authors'])) {
-                $data['authors'] = array_values($j['authors']);
-            }
-            if (isset($j['admin_profile']) && is_array($j['admin_profile'])) {
-                $data['admin_profile'] = array_merge($data['admin_profile'], $j['admin_profile']);
-            }
+    $j = store_read_json(authors_path());
+    if (is_array($j)) {
+        if (isset($j['authors']) && is_array($j['authors'])) {
+            $data['authors'] = array_values($j['authors']);
+        }
+        if (isset($j['admin_profile']) && is_array($j['admin_profile'])) {
+            $data['admin_profile'] = array_merge($data['admin_profile'], $j['admin_profile']);
         }
     }
     $cache = $data;
@@ -44,11 +42,7 @@ function authors_load()
 
 function authors_save($data)
 {
-    $encoded = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($encoded === false) {
-        return false;
-    }
-    return @file_put_contents(authors_path(), $encoded) !== false;
+    return store_save_json(authors_path(), $data);
 }
 
 function authors_find_by_username($username)
@@ -84,7 +78,7 @@ function author_display($authorId, $adminBio = '')
         $adminSocials = [];
         if (!empty($ap['social'])) $adminSocials[] = trim((string) $ap['social']);
         return [
-            'pen_name' => $ap['pen_name'] ?: 'Admin UKMI Polmed',
+            'pen_name' => $ap['pen_name'] ?: 'Admin UKMI POLMED',
             'bio' => (string) $adminBio,
             'avatar' => $ap['avatar'] ?: '/logo-ukmi.png',
             'social' => $ap['social'] ?? '',

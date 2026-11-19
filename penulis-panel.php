@@ -3,18 +3,18 @@ session_start();
 require_once __DIR__ . '/authors_helper.php';
 require_once __DIR__ . '/assessments_helper.php';
 require_once __DIR__ . '/s3_helper.php';
+require_once __DIR__ . '/s3_gc_helper.php';
+require_once __DIR__ . '/store.php';
 
 $configPath = __DIR__ . '/data.json';
-$config = [];
-if (is_readable($configPath)) {
-    $config = json_decode((string) @file_get_contents($configPath), true) ?: [];
-}
+$config = store_read_json($configPath);
+if (!is_array($config)) $config = [];
 $sessionVersion = (int) ($config['session_version'] ?? 1);
 $isWriter = !empty($_SESSION['admin_logged_in'])
     && (($_SESSION['role'] ?? '') === 'writer')
     && (($_SESSION['session_version'] ?? 0) === $sessionVersion);
 if (!$isWriter) {
-    header('Location: /admin.php');
+    header('Location: /admin');
     exit;
 }
 
@@ -29,7 +29,7 @@ foreach ($data['authors'] as $i => $a) {
 }
 if ($meIdx < 0) {
     session_destroy();
-    header('Location: /admin.php');
+    header('Location: /admin');
     exit;
 }
 $me = $data['authors'][$meIdx];
@@ -40,7 +40,7 @@ $allowEmbed = $meFeatures === null ? true : in_array('embed', $meFeatures, true)
 
 if (isset($_GET['logout'])) {
     session_destroy();
-    header('Location: /admin.php');
+    header('Location: /admin');
     exit;
 }
 
@@ -54,16 +54,79 @@ function wp_slugify($s)
 
 function wp_load_config($path)
 {
-    if (!is_readable($path)) return [];
-    $j = json_decode((string) @file_get_contents($path), true);
+    $j = store_read_json($path);
     return is_array($j) ? $j : [];
 }
 
 function wp_save_config($path, $cfg)
 {
-    $enc = json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($enc === false) return false;
-    return @file_put_contents($path, $enc) !== false;
+    return store_save_json($path, $cfg);
+}
+
+function wp_valid_cover_image($image)
+{
+    $image = trim((string) $image);
+    if ($image === '') return false;
+    if (preg_match('#^https?://\S+$#i', $image)) return true;
+    if (preg_match('#^data:image/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$#i', $image)) return true;
+    return false;
+}
+
+// Sidik jari sampul: hash isi + ukuran byte (dipakai untuk menolak gambar duplikat).
+function wp_cover_fingerprint($image)
+{
+    $image = trim((string) $image);
+    if ($image === '') return null;
+    if (stripos($image, 'data:') === 0) {
+        if (!preg_match('#^data:([a-z0-9.+-]+/[a-z0-9.+-]+);base64,(.*)$#is', $image, $m)) return null;
+        $mime = strtolower($m[1]);
+        $bin = base64_decode($m[2], true);
+        if ($bin === false || $bin === '') return null;
+        if (in_array($mime, ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'], true)) {
+            list($bin, $mime) = s3_optimize_image($bin, $mime);
+        } elseif ($mime === 'image/svg+xml') {
+            $bin = s3_sanitize_svg($bin);
+        }
+        return ['hash' => sha1($bin), 'size' => strlen($bin)];
+    }
+    if (preg_match('~uploads(?:/|%2F)([a-f0-9]{40})\.([a-z0-9]+)~i', rawurldecode($image), $m)) {
+        return ['hash' => strtolower($m[1]), 'size' => null];
+    }
+    return ['hash' => sha1($image), 'size' => null];
+}
+
+function wp_post_cover_fingerprint($post)
+{
+    if (!is_array($post)) return null;
+    $hash = trim((string) ($post['image_hash'] ?? ''));
+    if ($hash !== '') {
+        $size = isset($post['image_size']) ? (int) $post['image_size'] : null;
+        return ['hash' => $hash, 'size' => ($size !== null && $size > 0) ? $size : null];
+    }
+    return wp_cover_fingerprint((string) ($post['image'] ?? ''));
+}
+
+// Cari postingan lain yang memakai gambar sama (hash sama atau ukuran file sama).
+function wp_find_duplicate_cover($posts, $fp, $editSlug, $aid)
+{
+    if (!is_array($fp) || empty($fp['hash'])) return null;
+    foreach ((array) $posts as $p) {
+        if (!is_array($p)) continue;
+        $isSelf = $editSlug !== ''
+            && (string) ($p['slug'] ?? '') === $editSlug
+            && (string) ($p['author_id'] ?? '') === $aid;
+        if ($isSelf) continue;
+        if (trim((string) ($p['image'] ?? '')) === '') continue;
+        $pfp = wp_post_cover_fingerprint($p);
+        if (!is_array($pfp)) continue;
+        $hashDup = !empty($pfp['hash']) && hash_equals($fp['hash'], $pfp['hash']);
+        $sizeDup = isset($fp['size'], $pfp['size']) && $fp['size'] > 0 && $fp['size'] === $pfp['size'];
+        if ($hashDup || $sizeDup) {
+            $t = trim((string) ($p['title'] ?? ''));
+            return $t !== '' ? $t : 'tanpa judul';
+        }
+    }
+    return null;
 }
 
 $msg = '';
@@ -73,6 +136,7 @@ $err = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $data['authors'][$meIdx]['pen_name'] = trim((string) ($_POST['pen_name'] ?? ''));
     $data['authors'][$meIdx]['bio'] = trim((string) ($_POST['bio'] ?? ''));
+    $oldAvatar = (string) ($data['authors'][$meIdx]['avatar'] ?? '');
     $av = trim((string) ($_POST['avatar'] ?? ''));
     if (stripos($av, 'data:') === 0 && function_exists('s3_put_data_uri')) { $u = s3_put_data_uri($av); if ($u) $av = $u; }
     $data['authors'][$meIdx]['avatar'] = $av;
@@ -87,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     if (authors_save($data)) {
         $me = $data['authors'][$meIdx];
         $msg = 'Profil disimpan.';
+        s3_gc_prune_keys([$oldAvatar]);
     } else {
         $err = 'Gagal menyimpan profil.';
     }
@@ -106,6 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
         $summary = substr($plain, 0, 180);
     }
     $image = trim((string) ($_POST['image'] ?? ''));
+    $imageFp = wp_cover_fingerprint($image);
     if (stripos($image, 'data:') === 0 && function_exists('s3_put_data_uri')) { $u = s3_put_data_uri($image); if ($u) $image = $u; }
     $focalX = isset($_POST['focal_x']) ? max(0, min(100, (float) $_POST['focal_x'])) : 50;
     $focalY = isset($_POST['focal_y']) ? max(0, min(100, (float) $_POST['focal_y'])) : 50;
@@ -133,6 +199,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
     $embedEnabled = !empty($embeds);
     if ($title === '') {
         $err = 'Judul wajib diisi.';
+    } elseif (!wp_valid_cover_image($image)) {
+        $err = 'Gambar sampul wajib diunggah. Postingan tanpa gambar sampul tidak diizinkan.';
+    } elseif (($dupTitle = wp_find_duplicate_cover($cfg['posts'], $imageFp, $editSlug, $aid)) !== null) {
+        $err = 'Gambar sampul sudah dipakai pada postingan lain ("' . $dupTitle . '"). Gunakan gambar yang berbeda.';
     } else {
         $slug = wp_slugify($slugIn !== '' ? $slugIn : $title);
         // keunikan slug
@@ -147,13 +217,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
         }
         $now = date('c');
         $found = false;
+        $oldRefs = [];
         foreach ($cfg['posts'] as $i => $p) {
             if ($editSlug !== '' && (string) ($p['slug'] ?? '') === $editSlug && (string) ($p['author_id'] ?? '') === $aid) {
+                s3_gc_collect_refs($p, $oldRefs);
                 $cfg['posts'][$i]['title'] = $title;
                 $cfg['posts'][$i]['slug'] = $slug;
                 $cfg['posts'][$i]['summary'] = $summary;
                 $cfg['posts'][$i]['body'] = $body;
                 $cfg['posts'][$i]['image'] = $image;
+                $cfg['posts'][$i]['image_hash'] = $imageFp ? $imageFp['hash'] : '';
+                $cfg['posts'][$i]['image_size'] = $imageFp ? $imageFp['size'] : null;
                 $cfg['posts'][$i]['focal_x'] = $focalX;
                 $cfg['posts'][$i]['focal_y'] = $focalY;
                 if ($allowEmbed) {
@@ -177,6 +251,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
                 'summary' => $summary,
                 'body' => $body,
                 'image' => $image,
+                'image_hash' => $imageFp ? $imageFp['hash'] : '',
+                'image_size' => $imageFp ? $imageFp['size'] : null,
                 'focal_x' => $focalX,
                 'focal_y' => $focalY,
                 'author_id' => $aid,
@@ -285,7 +361,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
             }
         }
         if (wp_save_config($configPath, $cfg)) {
-            header('Location: /penulis-panel.php?saved=1');
+            if (!empty($oldRefs)) s3_gc_prune_keys(array_keys($oldRefs));
+            header('Location: /penulis-panel?saved=1');
             exit;
         }
         $err = 'Gagal menyimpan postingan.';
@@ -297,11 +374,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_post'])) {
     $delSlug = trim((string) $_POST['delete_post']);
     $cfg = wp_load_config($configPath);
     $before = count($cfg['posts'] ?? []);
-    $cfg['posts'] = array_values(array_filter($cfg['posts'] ?? [], function ($p) use ($delSlug, $aid) {
-        return !((string) ($p['slug'] ?? '') === $delSlug && (string) ($p['author_id'] ?? '') === $aid);
+    $oldRefs = [];
+    $cfg['posts'] = array_values(array_filter($cfg['posts'] ?? [], function ($p) use ($delSlug, $aid, &$oldRefs) {
+        $match = (string) ($p['slug'] ?? '') === $delSlug && (string) ($p['author_id'] ?? '') === $aid;
+        if ($match) s3_gc_collect_refs($p, $oldRefs);
+        return !$match;
     }));
     if (count($cfg['posts']) < $before && wp_save_config($configPath, $cfg)) {
-        header('Location: /penulis-panel.php?deleted=1');
+        if (!empty($oldRefs)) s3_gc_prune_keys(array_keys($oldRefs));
+        header('Location: /penulis-panel?deleted=1');
         exit;
     }
     $err = 'Gagal menghapus postingan.';
@@ -419,9 +500,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assessment']))
     $delAid = trim((string) $_POST['delete_assessment']);
     $as = assessment_find($delAid);
     if ($as && (string) ($as['author_id'] ?? '') === $aid) {
+        $oldRefs = [];
+        s3_gc_collect_refs($as, $oldRefs);
         $d = assessments_load();
         $d['assessments'] = array_values(array_filter($d['assessments'], fn($x) => (string) ($x['id'] ?? '') !== $delAid));
-        if (assessments_save($d)) $msg = 'Asesmen dihapus.'; else $err = 'Gagal menghapus asesmen.';
+        if (assessments_save($d)) {
+            if (!empty($oldRefs)) s3_gc_prune_keys(array_keys($oldRefs));
+            $msg = 'Asesmen dihapus.';
+        } else {
+            $err = 'Gagal menghapus asesmen.';
+        }
     } else {
         $err = 'Asesmen tidak ditemukan / bukan milik Anda.';
     }
@@ -480,29 +568,8 @@ $profileView = isset($_GET['profile']);
 <title>Panel Penulis – <?php echo htmlspecialchars((string) ($me['pen_name'] ?: $username), ENT_QUOTES, 'UTF-8'); ?></title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="/logo-ukmi.png">
-<style>
-:root{--bg:#0b1120;--card:#111a2e;--text:#e5e7eb;--muted:#94a3b8;--stroke:rgba(148,163,184,.2);--accent:#38bdf8}
-*{box-sizing:border-box}
-#md_preview table{border-collapse:collapse;width:100%;margin:8px 0;}
-#md_preview th,#md_preview td{border:1px solid var(--stroke);padding:4px 6px;}
-#md_preview img{max-width:100%;}
-#md_preview pre{background:rgba(0,0,0,.3);padding:10px;border-radius:8px;overflow:auto;}
-body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#13203a,var(--bg));color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6}
-.wrap{max-width:820px;margin:0 auto;padding:24px 16px 60px}
-h1{font-size:20px;margin:0 0 4px}
-.muted{color:var(--muted);font-size:13px}
-.card{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:16px;margin-top:14px}
-label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
-input[type=text],textarea{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text)}
-button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0;border-radius:9px;padding:9px 16px;font-weight:600;cursor:pointer}
-.btn{display:inline-block;text-decoration:none;color:var(--text);border:1px solid var(--stroke);border-radius:9px;padding:8px 12px;font-size:14px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-.ok{color:#4ade80}.err{color:#f87171}
-.pcard{display:block;text-decoration:none;color:inherit;border:1px solid var(--stroke);border-radius:12px;padding:12px 14px;margin-top:10px}
-.pcard h3{margin:0 0 3px;font-size:15px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.danger{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(148,163,184,0.25);box-shadow:none}
-</style>
+<script src="/components/ui-modal.js"></script>
+<?php require __DIR__ . '/components/penulis-panel-styles.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
@@ -510,6 +577,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 </head>
 <body>
+<?php require __DIR__ . '/components/loading-overlay.php'; ?>
 <div class="wrap">
   <div class="row" style="justify-content:space-between;margin-top:0;">
     <div><h1>Panel Penulis</h1><div class="muted">@<?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?></div></div>
@@ -527,7 +595,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
     <div class="card">
       <div class="row" style="justify-content:space-between;margin-top:0;">
         <h2 style="font-size:15px;margin:0;">Pengaturan Profil</h2>
-        <a class="btn" href="penulis-panel.php">Kembali</a>
+        <a class="btn" href="/penulis-panel">Kembali</a>
       </div>
       <form method="post">
         <input type="hidden" name="save_profile" value="1">
@@ -547,7 +615,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
   <?php elseif ($showForm): ?>
     <div class="card">
       <h2 style="font-size:15px;margin:0 0 6px;"><?php echo $editing ? 'Edit postingan' : 'Postingan baru'; ?></h2>
-      <form method="post">
+      <form method="post" id="post_form">
         <input type="hidden" name="save_post" value="1">
         <input type="hidden" name="orig_slug" value="<?php echo htmlspecialchars((string) ($editing['slug'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
         <label for="title">Judul</label>
@@ -561,7 +629,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
         </div>
         <div id="md_preview" style="display:none;margin-top:8px;padding:12px;border:1px solid var(--stroke);border-radius:10px;background:rgba(255,255,255,0.02);"></div>
 
-        <label>Gambar sampul</label>
+        <label>Gambar sampul (wajib, tidak boleh sama dengan postingan lain)</label>
         <input type="hidden" name="image" id="image" value="<?php echo htmlspecialchars((string) ($editing['image'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
         <div class="row" style="margin-top:4px;">
           <label class="btn" style="margin:0;cursor:pointer;">Upload gambar<input type="file" id="cover_file" accept="image/*" style="display:none;"></label>
@@ -633,7 +701,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
         <?php endif; ?>
         <div class="row">
           <button type="submit">Simpan</button>
-          <a class="btn danger" href="penulis-panel.php">Batal</a>
+          <a class="btn danger" href="/penulis-panel">Batal</a>
         </div>
       </form>
     </div>
@@ -642,7 +710,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
       <div class="card">
         <div class="row" style="justify-content:space-between;margin-top:0;">
           <h2 style="font-size:15px;margin:0;">Responden – <?php echo htmlspecialchars((string) $respAs['title'], ENT_QUOTES, 'UTF-8'); ?></h2>
-          <a class="btn" href="penulis-panel.php">Kembali</a>
+          <a class="btn" href="/penulis-panel">Kembali</a>
         </div>
         <?php
         $rs = $respAs['responses'] ?? [];
@@ -656,6 +724,9 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
             <h3><?php echo htmlspecialchars((string) (($r['name'] ?? '') !== '' ? $r['name'] : '(tanpa nama)'), ENT_QUOTES, 'UTF-8'); ?> <span class="muted"><?php echo htmlspecialchars((string) ($r['ident'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></h3>
             <?php $sc = !empty($r['audited']) ? $r['audit_score'] : ($r['score'] ?? null); ?>
             <div style="font-size:16px;margin-top:2px;"><strong>Skor: <?php echo $sc === null ? 'menunggu audit' : ((int) $sc . '/' . $qTotal); ?></strong> <span class="muted" style="font-size:13px;">· <?php echo htmlspecialchars((string) ($r['mode'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars((string) ($r['submitted_at'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></div>
+            <?php if (!empty($r['manual_count'])): ?>
+              <div style="margin-top:4px;font-size:13px;color:#fca5a5;">⚠ Pelanggaran: <?php echo (int) $r['manual_count']; ?> jawaban angka diketik manual (tanpa rumus)<?php if (!empty($r['manual_answers']) && is_array($r['manual_answers'])): ?> — <?php echo htmlspecialchars(implode(', ', array_map('strval', $r['manual_answers'])), ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></div>
+            <?php endif; ?>
             <?php if (($respAs['grading'] ?? 'auto') === 'manual'): ?>
               <form method="post" class="row" style="margin-top:8px;">
                 <input type="hidden" name="audit_aid" value="<?php echo htmlspecialchars((string) $respAs['id'], ENT_QUOTES, 'UTF-8'); ?>">
@@ -676,14 +747,18 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
       </div>
       <?php if (empty($myPosts)): ?>
         <p class="muted">Belum ada tulisan. Klik "Tulis baru".</p>
-      <?php else: foreach ($myPosts as $p): ?>
-        <div class="pcard">
+      <?php else: ?>
+        <input type="search" id="my_posts_search" placeholder="Cari tulisan saya..." aria-label="Cari tulisan saya" autocomplete="off" style="width:100%;margin:8px 0;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);">
+        <p class="muted" id="my_posts_search_info" style="margin:0 0 6px;font-size:13px;"></p>
+        <?php foreach ($myPosts as $p): ?>
+        <?php $__blob = strtolower(trim((string) ($p['title'] ?? '') . ' ' . (string) ($p['slug'] ?? '') . ' ' . (string) ($p['summary'] ?? ''))); ?>
+        <div class="pcard my-post-item" data-search="<?php echo htmlspecialchars($__blob, ENT_QUOTES, 'UTF-8'); ?>">
           <h3><?php echo htmlspecialchars((string) ($p['title'] ?? 'Tanpa judul'), ENT_QUOTES, 'UTF-8'); ?></h3>
           <div class="muted"><?php echo htmlspecialchars((string) (($p['created_at'] ?? '') ?: '-'), ENT_QUOTES, 'UTF-8'); ?><?php echo !empty($p['archived']) ? ' · (arsip)' : ''; ?></div>
           <div class="row" style="margin-top:8px;">
             <a class="btn" href="/blog/<?php echo rawurlencode((string) ($p['slug'] ?? '')); ?>" target="_blank" rel="noopener">Lihat</a>
             <a class="btn" href="?edit=<?php echo rawurlencode((string) ($p['slug'] ?? '')); ?>">Edit</a>
-            <form method="post" style="margin:0;" onsubmit="return confirm('Hapus postingan ini?');">
+            <form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus postingan ini?');">
               <input type="hidden" name="delete_post" value="<?php echo htmlspecialchars((string) ($p['slug'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
               <button type="submit" class="danger">Hapus</button>
             </form>
@@ -694,9 +769,9 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
             <div class="muted" style="font-size:12px;margin-bottom:6px;">Pretest/Posttest:</div>
             <?php foreach ($__pa as $as): ?>
               <div class="row" style="margin:4px 0;">
-                <span style="font-size:13px;"><?php echo htmlspecialchars((string) $as['title'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo count($as['key_cells'] ?? []); ?> sel kunci · <?php echo count($as['responses'] ?? []); ?> responden</span>
+                <span style="font-size:13px;"><?php echo htmlspecialchars((string) $as['title'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo count($as['key_cells'] ?? []); ?> sel kunci · <?php echo (int) ($as['response_count'] ?? count($as['responses'] ?? [])); ?> responden</span>
                 <a class="btn" href="?responses=<?php echo rawurlencode((string) $as['id']); ?>">Responden</a>
-                <form method="post" style="margin:0;" onsubmit="return confirm('Hapus asesmen ini?');">
+                <form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus asesmen ini?');">
                   <input type="hidden" name="delete_assessment" value="<?php echo htmlspecialchars((string) $as['id'], ENT_QUOTES, 'UTF-8'); ?>">
                   <button type="submit" class="danger">Hapus</button>
                 </form>
@@ -711,260 +786,7 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
 
   <?php endif; ?>
 </div>
-<script>
-(function () {
-  function cellVal(cell) {
-    var v = cell.value;
-    if (v != null && typeof v === 'object') {
-      if (v.result != null) return String(v.result);
-      if (typeof v.formula === 'string') return '=' + v.formula;
-      if (v.richText) return v.richText.map(function (t) { return t.text; }).join('');
-      if (v instanceof Date) return v.toISOString().slice(0, 10);
-      if (v.text != null) return String(v.text);
-    }
-    return v == null ? '' : String(v);
-  }
-  function ab2b64(buf) {
-    var bytes = new Uint8Array(buf), bin = '';
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin);
-  }
-  function setupForm(form) {
-    if (form.__excelBound) return;
-    form.__excelBound = true;
-    var inp = form.querySelector('.a_xlsx') || form.querySelector('.pa_xlsx');
-    var keyHid = form.querySelector('.a_key_cells') || form.querySelector('.pa_key_cells');
-    var cleanHid = form.querySelector('.a_clean_xlsx') || form.querySelector('.pa_clean_xlsx');
-    var prev = form.querySelector('.a_task_preview') || form.querySelector('.pa_task_preview');
-    if (!inp) return;
-    inp.addEventListener('change', async function (e) {
-      var f = e.target.files && e.target.files[0];
-      if (!f) return;
-      if (typeof ExcelJS === 'undefined') { alert('Library ExcelJS belum termuat. Muat ulang halaman.'); return; }
-      try {
-        var wb = new ExcelJS.Workbook();
-        await wb.xlsx.load(await f.arrayBuffer());
-        var keys = [];
-        wb.eachSheet(function (ws) {
-          ws.eachRow({ includeEmpty: false }, function (row) {
-            row.eachCell({ includeEmpty: false }, function (cell) {
-              var isBlack = false;
-              var fl = cell.fill;
-              if (fl && fl.type === 'pattern' && fl.fgColor) {
-                var argb = (fl.fgColor.argb || '').toUpperCase();
-                if (argb === 'FF000000') isBlack = true;
-                else if (fl.fgColor.theme != null && Number(fl.fgColor.theme) === 1 && !fl.fgColor.rgb) isBlack = true;
-              }
-              if (isBlack) keys.push({ s: ws.name, addr: cell.address, key: cellVal(cell) });
-            });
-          });
-        });
-        keys.forEach(function (k) {
-          var ws = wb.getWorksheet(k.s);
-          if (ws) { var c = ws.getCell(k.addr); c.value = null; c.fill = { type: 'pattern', pattern: 'none' }; }
-        });
-        if (keyHid) keyHid.value = JSON.stringify(keys);
-        var buf = await wb.xlsx.writeBuffer();
-        if (cleanHid) cleanHid.value = ab2b64(buf);
-        if (prev) {
-          prev.innerHTML = keys.length
-            ? '<div class="muted" style="font-size:12px;">Terdeteksi ' + keys.length + ' sel kunci (hitam): ' + keys.map(function (k) { return k.addr; }).join(', ') + '</div>'
-            : '<div class="muted" style="font-size:12px;">Tidak ada sel berwarna HITAM. Beri fill hitam pada sel kunci, lalu pilih file lagi.</div>';
-        }
-        if (!keys.length) alert('Tidak ada sel berwarna HITAM (kunci). Beri fill hitam pada sel jawaban.');
-      } catch (err) { alert('Gagal membaca Excel: ' + err); }
-    });
-  }
-  document.querySelectorAll('.assess-form').forEach(setupForm);
-  var paInput = document.querySelector('.pa_xlsx');
-  if (paInput) { var pf = paInput.closest('form'); if (pf) setupForm(pf); }
-})();
-</script>
-<script>
-(function () {
-  var bodyHid = document.getElementById('body');
-  var bodyInfo = document.getElementById('body_info');
-  function setBody(v) { if (bodyHid) bodyHid.value = v; if (bodyInfo) bodyInfo.textContent = v ? ('Konten: ' + v.length + ' karakter (Markdown)') : ''; }
-  function validMd(t) { if (!t || !t.trim()) return false; if (/^data:/i.test(t.trim())) return false; if (/<script/i.test(t)) return false; return true; }
-  var bf = document.getElementById('body_md_file');
-  if (bf) bf.addEventListener('change', function (e) {
-    var f = e.target.files && e.target.files[0]; if (!f) return;
-    var name = (f.name || '').toLowerCase();
-    if (/\.docx$/.test(name)) {
-      if (typeof mammoth === 'undefined' || typeof TurndownService === 'undefined') { alert('Library konversi docx belum termuat.'); e.target.value = ''; return; }
-      var fr = new FileReader();
-      fr.onload = function () {
-        mammoth.convertToHtml({ arrayBuffer: fr.result }).then(function (res) {
-          var html = res.value || '';
-          try {
-            var doc = new DOMParser().parseFromString(html, 'text/html');
-            doc.querySelectorAll('table').forEach(function (tbl) {
-              tbl.querySelectorAll('td,th').forEach(function (cell) {
-                var h = cell.innerHTML;
-                h = h.replace(/<br\s*\/?>/gi, ' ');
-                h = h.replace(/<\/(p|div|li|h[1-6])>/gi, ' ');
-                h = h.replace(/<(p|div|li|h[1-6])[^>]*>/gi, ' ');
-                h = h.replace(/[ \t\f\v]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
-                cell.innerHTML = h;
-              });
-              var allRows = Array.prototype.slice.call(tbl.querySelectorAll('tr')).filter(function (r) {
-                return r.querySelectorAll('td,th').length > 0;
-              });
-              if (!allRows.length) return;
-              var thead = doc.createElement('thead');
-              var htr = doc.createElement('tr');
-              allRows[0].querySelectorAll('td,th').forEach(function (c) {
-                var th = doc.createElement('th');
-                th.innerHTML = c.innerHTML;
-                htr.appendChild(th);
-              });
-              thead.appendChild(htr);
-              var tbody = doc.createElement('tbody');
-              allRows.slice(1).forEach(function (r) { tbody.appendChild(r); });
-              while (tbl.firstChild) tbl.removeChild(tbl.firstChild);
-              tbl.appendChild(thead);
-              tbl.appendChild(tbody);
-            });
-            html = doc.body.innerHTML;
-          } catch (e) {}
-          var td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
-          if (typeof turndownPluginGfm !== 'undefined' && turndownPluginGfm && turndownPluginGfm.gfm) { td.use(turndownPluginGfm.gfm); }
-          var md = td.turndown(html);
-          md = md.replace(/<\/?(table|thead|tbody|tr|td|th)\b[^>]*>/gi, '');
-          md = md.replace(/\n{3,}/g, '\n\n').trim();
-          if (validMd(md)) setBody(md); else alert('Hasil konversi .docx tidak valid.');
-        }).catch(function (err) { alert('Gagal mengonversi .docx: ' + err); });
-      };
-      fr.readAsArrayBuffer(f);
-    } else {
-      var rd = new FileReader();
-      rd.onload = function () { var t = String(rd.result); if (validMd(t)) setBody(t); else alert('Berkas bukan Markdown yang valid.'); };
-      rd.readAsText(f);
-    }
-    e.target.value = '';
-  });
-  var bp = document.getElementById('body_paste');
-  if (bp) bp.addEventListener('paste', function (e) {
-    var cd = e.clipboardData || window.clipboardData; var t = cd ? cd.getData('text') : '';
-    if (!t) return; e.preventDefault();
-    if (validMd(t)) { bp.value = ''; setBody(t); } else alert('Clipboard tidak sesuai format Markdown.');
-  });
-
-  var pvBtn = document.getElementById('md_preview_btn');
-  var pv = document.getElementById('md_preview');
-  var bodyTA = document.getElementById('body');
-  function renderPreview() {
-    if (!pv) return;
-    var txt = bodyTA ? bodyTA.value : '';
-    if (typeof marked !== 'undefined') { pv.innerHTML = marked.parse(txt); }
-    else { pv.textContent = txt; }
-  }
-  if (pvBtn && pv && bodyTA) {
-    pvBtn.addEventListener('click', function () {
-      if (pv.style.display === 'block') { pv.style.display = 'none'; pvBtn.textContent = 'Preview'; }
-      else { renderPreview(); pv.style.display = 'block'; pvBtn.textContent = 'Sembunyikan'; }
-    });
-    bodyTA.addEventListener('input', function () { if (pv.style.display === 'block') renderPreview(); });
-  }
-
-  var imgHid = document.getElementById('image');
-  var coverInfo = document.getElementById('cover_info');
-  function setImg(v) { if (imgHid) imgHid.value = v; if (coverInfo) coverInfo.textContent = v ? 'Sampul diset.' : ''; renderPick(); }
-  function validImg(t) { t = (t || '').trim(); if (/^https?:\/\/\S+$/i.test(t)) return true; if (/^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+$/i.test(t)) return true; return false; }
-  var cf = document.getElementById('cover_file');
-  if (cf) cf.addEventListener('change', function (e) {
-    var f = e.target.files && e.target.files[0]; if (!f) return;
-    if (!/^image\//.test(f.type)) { alert('Berkas harus gambar.'); e.target.value = ''; return; }
-    var rd = new FileReader();
-    rd.onload = function () { setImg(String(rd.result)); };
-    rd.readAsDataURL(f); e.target.value = '';
-  });
-  var cp = document.getElementById('cover_paste');
-  if (cp) cp.addEventListener('paste', function (e) {
-    var cd = e.clipboardData || window.clipboardData; var t = cd ? cd.getData('text') : '';
-    if (!t) return; e.preventDefault(); t = t.trim();
-    if (validImg(t)) { cp.value = ''; setImg(t); } else alert('Clipboard harus URL https://... atau data:image/...;base64,...');
-  });
-
-  var fxp = document.getElementById('focal_x');
-  var fyp = document.getElementById('focal_y');
-  var pickEl = document.getElementById('cover_pick');
-  var pickImg = document.getElementById('cover_pick_img');
-  var pickMarker = document.getElementById('cover_pick_marker');
-  function posMarker() {
-    if (!pickMarker) return;
-    var x = parseFloat((fxp && fxp.value) || '50');
-    var y = parseFloat((fyp && fyp.value) || '50');
-    pickMarker.style.left = (isNaN(x) ? 50 : x) + '%';
-    pickMarker.style.top = (isNaN(y) ? 50 : y) + '%';
-  }
-  function renderPick() {
-    if (!pickEl || !pickImg) return;
-    var v = ((imgHid && imgHid.value) || '').trim();
-    if (v.indexOf('data:') === 0 || /^https?:\/\//i.test(v)) {
-      if (pickImg.getAttribute('src') !== v) pickImg.src = v;
-      pickEl.style.display = 'block';
-    } else {
-      pickEl.style.display = 'none';
-    }
-    posMarker();
-  }
-  if (pickEl) pickEl.addEventListener('click', function (ev) {
-    var r = pickEl.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    var x = Math.max(0, Math.min(100, ((ev.clientX - r.left) / r.width) * 100));
-    var y = Math.max(0, Math.min(100, ((ev.clientY - r.top) / r.height) * 100));
-    if (fxp) fxp.value = Math.round(x);
-    if (fyp) fyp.value = Math.round(y);
-    posMarker();
-  });
-  if (pickImg) pickImg.addEventListener('load', posMarker);
-  renderPick();
-})();
-</script>
-<script>
-(function () {
-  function bindList(listId, addId, rowClass, removeClass, makeRow) {
-    var list = document.getElementById(listId);
-    var add = document.getElementById(addId);
-    if (!list || !add) return;
-    add.addEventListener('click', function () { list.appendChild(makeRow()); });
-    list.addEventListener('click', function (e) {
-      var btn = e.target.closest && e.target.closest('.' + removeClass);
-      if (!btn) return;
-      var item = btn.closest('.' + rowClass);
-      if (item) item.remove();
-    });
-  }
-  bindList('embed_list', 'add-embed', 'embed-item', 'remove-embed', function () {
-    var d = document.createElement('div');
-    d.className = 'embed-item';
-    d.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin-top:6px;';
-    var ta = document.createElement('textarea');
-    ta.name = 'embeds[]'; ta.rows = 3; ta.style.flex = '1'; ta.placeholder = '<iframe ...></iframe>';
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'btn danger remove-embed'; b.style.margin = '0'; b.textContent = 'Hapus';
-    d.appendChild(ta); d.appendChild(b);
-    return d;
-  });
-  bindList('gdrive_list', 'add-gdrive', 'gdrive-item', 'remove-gdrive', function () {
-    var d = document.createElement('div');
-    d.className = 'gdrive-item';
-    d.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px;';
-    var inp = document.createElement('input');
-    inp.type = 'text'; inp.name = 'gdrive_id[]'; inp.placeholder = 'Folder ID'; inp.style.flex = '1';
-    var sel = document.createElement('select');
-    sel.name = 'gdrive_view[]';
-    sel.style.cssText = 'width:110px;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text);';
-    var o1 = document.createElement('option'); o1.value = 'grid'; o1.textContent = 'Grid';
-    var o2 = document.createElement('option'); o2.value = 'list'; o2.textContent = 'List';
-    sel.appendChild(o1); sel.appendChild(o2);
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'btn danger remove-gdrive'; b.style.margin = '0'; b.textContent = 'Hapus';
-    d.appendChild(inp); d.appendChild(sel); d.appendChild(b);
-    return d;
-  });
-})();
-</script>
+<?php require __DIR__ . '/components/penulis-panel-scripts.php'; ?>
+<?php require __DIR__ . '/components/soft-save.php'; ?>
 </body>
 </html>

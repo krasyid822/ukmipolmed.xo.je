@@ -25,9 +25,17 @@ if (empty($targets)) {
     $targets = [
         '.htaccess', 'index.php', 'blog.php', 'status.php', 'admin.php', 'faq.php',
         'sitemap.php', 'sitemap.xml', 'og-image.php', 'penulis.php', 'penulis-panel.php',
-        'authors_helper.php', 'error.php', 'header.php', 'loading.php', 'oauth.php',
-        'admin_component/bootstrap.php', 'admin_component/pengelola-blog.php',
-        'admin_component/kredensial-admin.php',
+        'authors_helper.php', 'error.php', 'header.php', 'oauth.php',
+        'tentang-badge.php', 'badge-diedit-admin.svg',
+        'components/bootstrap.php', 'components/brand.php', 'components/pengelola-blog.php',
+        'components/kredensial-admin.php', 'components/beranda-styles.php',
+        'components/beranda-main.php', 'components/beranda-scripts.php',
+        'components/beranda-adhan.php', 'components/blog-komentar.php',
+        'components/blog-styles.php', 'components/blog-scripts.php',
+        'components/faq-styles.php', 'components/faq-scripts.php',
+        'components/status-styles.php', 'components/status-scripts.php',
+        'components/penulis-panel-styles.php', 'components/penulis-panel-scripts.php',
+        'components/loading-overlay.php', 'components/soft-save.php',
     ];
 }
 

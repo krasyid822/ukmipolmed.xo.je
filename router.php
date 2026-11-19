@@ -50,6 +50,23 @@ if ($uri === '/' || $uri === '') {
     return true;
 }
 
+// Hilangkan ekstensi .php: /index -> /, *.php -> URL tanpa ekstensi.
+if (preg_match('#^/index(?:\.php)?/?$#', $uri)) {
+    header('Location: /', true, 301);
+    return true;
+}
+if (preg_match('#^/([A-Za-z0-9_-]+)\.php$#', $uri, $m)) {
+    $qs = (string) ($_SERVER['QUERY_STRING'] ?? '');
+    header('Location: /' . $m[1] . ($qs !== '' ? '?' . $qs : ''), true, 301);
+    return true;
+}
+
+// Petakan URL tanpa ekstensi ke file .php yang sesuai.
+if (preg_match('#^/([A-Za-z0-9_-]+)/?$#', $uri, $m) && is_file(__DIR__ . '/' . $m[1] . '.php')) {
+    require __DIR__ . '/' . $m[1] . '.php';
+    return true;
+}
+
 $path = __DIR__ . $uri;
 if (is_file($path)) {
     return false;

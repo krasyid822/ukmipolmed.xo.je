@@ -4,12 +4,11 @@
 // Memperbarui data.json (posts) dan index.php (ikon). Proteksi ?k=.
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/s3_helper.php';
+require_once __DIR__ . '/maintenance_guard.php';
+require_once __DIR__ . '/store.php';
+require_once __DIR__ . '/maintenance_guard.php';
 
-if (($_REQUEST['k'] ?? '') !== 'UKMIrestore2026') {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'forbidden']);
-    exit;
-}
+maintenance_require_json();
 if (!s3_available()) {
     echo json_encode(['ok' => false, 'reason' => 's3_unavailable']);
     exit;
@@ -47,14 +46,14 @@ function opt_key($key, &$report, $bucketName)
 // ---- data.json ----
 $dj = __DIR__ . '/data.json';
 $changed = false;
-if (is_readable($dj)) {
-    $cfg = json_decode((string) file_get_contents($dj), true);
-    if (is_array($cfg)) {
+$cfg = store_read_json($dj);
+if (is_array($cfg)) {
+    {
         foreach (['posts', 'posts_archived'] as $section) {
             if (!empty($cfg[$section]) && is_array($cfg[$section])) {
                 foreach ($cfg[$section] as $i => $p) {
                     $img = (string) ($p['image'] ?? '');
-                    if (preg_match('#foto\.php\?key=([^&"\s]+)#', $img, $mm)) {
+                    if (preg_match('#foto(?:\.php)?\?key=([^&"\s]+)#', $img, $mm)) {
                         $newUrl = opt_key(urldecode($mm[1]), $report, 'data_json');
                         if ($newUrl) { $cfg[$section][$i]['image'] = $newUrl; $changed = true; }
                     }
@@ -62,8 +61,7 @@ if (is_readable($dj)) {
             }
         }
         if ($changed) {
-            @copy($dj, $dj . '.bak');
-            file_put_contents($dj, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            store_save_json($dj, $cfg);
         }
     }
 }
@@ -74,8 +72,8 @@ if (is_readable($ix)) {
     $html = (string) file_get_contents($ix);
     $report['index_php']['bytes_before'] = strlen($html);
     // Konsumsi prefiks absolut (jika ada) agar tidak menimbulkan domain ganda
-    // seperti https://host/https://host/foto.php saat skrip dijalankan ulang.
-    $html2 = preg_replace_callback('#(?:https?://[^/"\'\s]+/)?foto\.php\?key=([A-Za-z0-9%._-]+)#', function ($m) use (&$report) {
+    // seperti https://host/https://host/foto saat skrip dijalankan ulang.
+    $html2 = preg_replace_callback('#(?:https?://[^/"\'\s]+/)?foto(?:\.php)?\?key=([A-Za-z0-9%._-]+)#', function ($m) use (&$report) {
         $url = opt_key(urldecode($m[1]), $report, 'index_php');
         return $url ? $url : $m[0];
     }, $html);

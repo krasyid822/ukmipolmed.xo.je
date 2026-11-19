@@ -5,6 +5,11 @@
 /authors.json
 /assessments.json
 /s3_config.php
+/.s3_usage.json
+/.s3_uploads.json
+/.hosting_usage.json
+/.store/
+/seo-cache/
 /.syn_manifest
 /slimrepo.sh
 

@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: https://ukmipolmed.my.id/sitemap.php
+Disallow: /seo-cache/
+Sitemap: https://ukmipolmed.my.id/sitemap.xml

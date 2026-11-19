@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/components/brand.php'; ?>
 <style>
 header.header {
 	position: sticky;
@@ -36,16 +37,22 @@ header.header {
 	gap: 10px;
 	font-weight: 700;
 	letter-spacing: 0.4px;
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .brand-main {
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .brand-title {
 	font-weight: 900;
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .logo {
@@ -162,9 +169,9 @@ header.header {
 	<div class="nav" id="site-nav">
 		<div class="brand">
 			<div class="brand-main">
-				<img class="logo" src="/logo-ukmi.png" alt="Logo UKMI Polmed">
+				<img class="logo" src="/logo-ukmi.png" alt="Logo UKMI POLMED">
 				<span class="pulse-dot"></span>
-				<span class="brand-title">UKMI Polmed</span>
+				<?php echo ukmi_brand_auto('span', 'brand-title'); ?>
 			</div>
 			<button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-actions">☰ Menu</button>
 			<script>
@@ -181,15 +188,17 @@ header.header {
 			</script>
 		</div>
 		<div class="nav-actions" id="nav-actions">
-			<a class="btn ghost" href="/index.php">Home</a>
-			<a class="btn ghost" href="/index.php#program">Program</a>
-			<a class="btn ghost" href="/index.php#divisi">Divisi</a>
-			<a class="btn ghost" href="/index.php#dokumentasi">Dokumentasi</a>
-			<a class="btn ghost" href="/blog.php">Blog</a>
-			<a class="btn primary" href="/index.php#daftar" data-insight="nav_daftar">Daftar sekarang</a>
+			<a class="btn ghost" href="/">Home</a>
+			<a class="btn ghost" href="/#program">Program</a>
+			<a class="btn ghost" href="/#divisi">Divisi</a>
+			<a class="btn ghost" href="/#dokumentasi">Dokumentasi</a>
+			<a class="btn ghost" href="/blog">Blog</a>
+			<a class="btn primary" href="/#daftar" data-scroll-cta="cta-daftar-primary" data-insight="nav_daftar">Daftar sekarang</a>
 		</div>
 	</div>
 </header>
+
+<?php echo ukmi_brand_assets(); ?>
 
 <script>
 (() => {
@@ -222,6 +231,16 @@ header.header {
 			const link = event.target.closest('a[href]');
 			if (!link) return;
 
+			const scrollCta = link.getAttribute('data-scroll-cta');
+			const ctaHref = link.getAttribute('href') || '';
+			if (scrollCta && document.getElementById(scrollCta) && typeof window.ukmiScrollToCta === 'function') {
+				event.preventDefault();
+				const sectionId = ctaHref.includes('#') ? ctaHref.split('#')[1] : '';
+				window.ukmiScrollToCta(scrollCta, sectionId);
+				closeMenu();
+				return;
+			}
+
 			const rawHref = link.getAttribute('href') || '';
 			if (rawHref.startsWith('#')) {
 				event.preventDefault();
@@ -242,8 +261,8 @@ header.header {
 					const currentPath = window.location.pathname.replace(/\/$/, '');
 					const targetPath = url.pathname.replace(/\/$/, '');
 					const isSamePath = currentPath === targetPath ||
-						(currentPath === '' && targetPath === '/index.php') ||
-						(currentPath === '/index.php' && targetPath === '');
+						((currentPath === '' || currentPath === '/index' || currentPath === '/index.php') &&
+							(targetPath === '' || targetPath === '/index' || targetPath === '/index.php'));
 
 					if (isSamePath && url.hash) {
 						event.preventDefault();

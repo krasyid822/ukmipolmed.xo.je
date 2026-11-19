@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/store.php';
 
 $configPath = __DIR__ . '/data.json';
 $defaultPath = __DIR__ . '/default.json';
@@ -8,10 +9,7 @@ if (is_readable($defaultPath)) {
     $tmp = json_decode((string) file_get_contents($defaultPath), true);
     if (is_array($tmp)) $defaults = array_merge($defaults, $tmp);
 }
-$config = null;
-if (is_readable($configPath)) {
-    $config = json_decode((string) file_get_contents($configPath), true);
-}
+$config = store_read_json($configPath);
 
 $fbAppId = null;
 if (is_array($config) && !empty($config['fb_app_id'])) {
@@ -23,7 +21,7 @@ if (is_array($config) && !empty($config['fb_app_id'])) {
 $host = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
 $scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
 $baseUrl = $scheme . '://' . $host;
-$redirectUri = $baseUrl . '/oauth.php';
+$redirectUri = $baseUrl . '/oauth';
 
 function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
@@ -46,7 +44,7 @@ if (isset($_GET['code']) || isset($_GET['error'])) {
     <p>State: <?php echo h($state); ?> (<?php echo $stateOk ? 'ok' : 'mismatch'; ?>)</p>
     <p>Next: exchange this code for an access token on your server using the App Secret.</p>
 <?php endif; ?>
-<p><a href="/blog.php">Kembali ke blog</a></p>
+<p><a href="/blog">Kembali ke blog</a></p>
 </body></html>
 <?php
     exit;
@@ -83,6 +81,6 @@ if (!empty($fbAppId)) {
 <?php endif; ?>
 
 <p>Setelah Facebook mengarahkan kembali ke URL ini, Anda akan melihat parameter <code>code</code> (yang perlu ditukar menjadi access token oleh server).</p>
-<p><a href="/blog.php">Kembali ke blog</a></p>
+<p><a href="/blog">Kembali ke blog</a></p>
 </body></html>
 

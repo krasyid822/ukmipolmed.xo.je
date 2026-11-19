@@ -1,5 +1,35 @@
 <?php
-require __DIR__ . '/admin_component/bootstrap.php';
+define('UKMI_ADMIN_BOOTSTRAP', true);
+
+if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
+	session_start();
+}
+
+// Validasi murah sebelum output agar kegagalan konfigurasi awal tidak terjadi
+// setelah header terkirim.
+$__adminDefaultReady = false;
+if (is_readable(__DIR__ . '/default.json')) {
+	$__adminDefaultRaw = @file_get_contents(__DIR__ . '/default.json');
+	$__adminDefaultReady = $__adminDefaultRaw !== false && is_array(json_decode($__adminDefaultRaw, true));
+}
+unset($__adminDefaultRaw);
+
+$__adminSessionRole = (string) ($_SESSION['role'] ?? '');
+$__adminSessionAuth = !empty($_SESSION['admin_logged_in']) && $__adminSessionRole !== 'writer';
+
+// Tampilkan loader lebih awal untuk GET agar terlihat saat bootstrap S3
+// masih berjalan. Redirect (logout / penulis) tetap diproses sebelum output.
+$__adminEarlyLoad = ($_SERVER['REQUEST_METHOD'] === 'GET')
+	&& empty($_GET['logout'])
+	&& $__adminSessionRole !== 'writer'
+	&& $__adminDefaultReady;
+if (!$__adminEarlyLoad) {
+	require __DIR__ . '/components/bootstrap.php';
+}
+
+$__adminBodyClass = $__adminEarlyLoad
+	? ($__adminSessionAuth ? 'is-auth' : 'is-guest')
+	: ($loggedIn ? 'is-auth' : 'is-guest');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -11,6 +41,7 @@ require __DIR__ . '/admin_component/bootstrap.php';
 	<link rel="apple-touch-icon" href="logo-ukmi.png">
 	<link rel="shortcut icon" href="logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
+	<script src="/components/ui-modal.js"></script>
 	<script>
 		(function() {
 			const SCROLL_KEY = 'admin_scroll_y';
@@ -480,7 +511,18 @@ require __DIR__ . '/admin_component/bootstrap.php';
 		}
 	</style>
 </head>
-<body class="<?php echo $loggedIn ? 'is-auth' : 'is-guest'; ?>">
+<body class="<?php echo $__adminBodyClass; ?>">
+	<?php
+	if ($__adminEarlyLoad) {
+		require __DIR__ . '/components/loading-overlay.php';
+		while (ob_get_level() > 0) { @ob_end_flush(); }
+		@flush();
+		require __DIR__ . '/components/bootstrap.php';
+		echo '<script>document.body.className = ' . json_encode($loggedIn ? 'is-auth' : 'is-guest') . ';</script>';
+	} else {
+		require __DIR__ . '/components/loading-overlay.php';
+	}
+	?>
 	<?php if ($message || $error): ?>
 	<div class="toast-wrap" id="toast-wrap">
 		<?php if ($message): ?>
@@ -498,12 +540,15 @@ require __DIR__ . '/admin_component/bootstrap.php';
 	</div>
 	<?php endif; ?>
 	<div class="card">
-		<div style="margin-top:8px; float:right;">
+		<div style="margin-top:8px; float:right; display:flex; align-items:center; gap:12px;">
+			<?php if ($loggedIn): ?>
+			<a class="button-link" href="?logout=1" style="width:auto; padding:8px 14px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.25);">Keluar</a>
+			<?php endif; ?>
 			<a href="https://github.com/krasyid822/ukmipolmed.xo.je" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; font-size:13px;" title="Sisi belakang aplikasi ini!"><svg aria-hidden="true" focusable="false" class="octicon octicon-mark-github" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom"><path d="M12 1C5.923 1 1 5.923 1 12c0 4.867 3.149 8.979 7.521 10.436.55.096.756-.233.756-.522 0-.262-.013-1.128-.013-2.049-2.764.509-3.479-.674-3.699-1.292-.124-.317-.66-1.293-1.127-1.554-.385-.207-.936-.715-.014-.729.866-.014 1.485.797 1.691 1.128.99 1.663 2.571 1.196 3.204.907.096-.715.385-1.196.701-1.471-2.448-.275-5.005-1.224-5.005-5.432 0-1.196.426-2.186 1.128-2.956-.111-.275-.496-1.402.11-2.915 0 0 .921-.288 3.024 1.128a10.193 10.193 0 0 1 2.75-.371c.936 0 1.871.123 2.75.371 2.104-1.43 3.025-1.128 3.025-1.128.605 1.513.221 2.64.111 2.915.701.77 1.127 1.747 1.127 2.956 0 4.222-2.571 5.157-5.019 5.432.399.344.743 1.004.743 2.035 0 1.471-.014 2.654-.014 3.025 0 .289.206.632.756.522C19.851 20.979 23 16.854 23 12c0-6.077-4.922-11-11-11Z"></path></svg></a>
 		</div>
 		<div class="brand-admin">
-			<img src="logo-ukmi.png" alt="Logo UKMI Polmed">
-			<div class="title">UKMI Polmed · Admin</div>
+			<img src="logo-ukmi.png" alt="Logo UKMI POLMED">
+			<div class="title">UKMI POLMED · Admin</div>
 		</div>
 		<?php if ($loggedIn): ?>
 			<h1>Panel Admin</h1>
@@ -526,16 +571,16 @@ require __DIR__ . '/admin_component/bootstrap.php';
 				</div>
 			</div>
 			<div class="admin-feature-block" data-feature="insight-storage" data-feature-label="Penyimpanan Insight">
-				<?php require __DIR__ . '/admin_component/penyimpanan-insight.php'; ?>
+				<?php require __DIR__ . '/components/penyimpanan-insight.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="session" data-feature-label="Sesi">
-				<?php require __DIR__ . '/admin_component/sesi.php'; ?>
+				<?php require __DIR__ . '/components/sesi.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="credential" data-feature-label="Kredensial Admin">
-				<?php require __DIR__ . '/admin_component/kredensial-admin.php'; ?>
+				<?php require __DIR__ . '/components/kredensial-admin.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="log" data-feature-label="Log Akses">
-				<?php require __DIR__ . '/admin_component/log.php'; ?>
+				<?php require __DIR__ . '/components/log.php'; ?>
 			</div>
 			<?php if ($message): ?>
 				<div class="success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
@@ -543,26 +588,29 @@ require __DIR__ . '/admin_component/bootstrap.php';
 			<?php if ($error): ?>
 				<div class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
 			<?php endif; ?>
-			<div class="admin-feature-block" data-feature="agenda" data-feature-label="Agenda Terdekat">
-				<?php require __DIR__ . '/admin_component/agenda-terdekat.php'; ?>
-			</div>
 			<div class="admin-feature-block" data-feature="registration" data-feature-label="Link Pendaftaran">
-				<?php require __DIR__ . '/admin_component/link-pendaftaran.php'; ?>
+				<?php require __DIR__ . '/components/link-pendaftaran.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="hero-cards" data-feature-label="Header Card Presentation">
-				<?php require __DIR__ . '/admin_component/header-card-presentation.php'; ?>
+				<?php require __DIR__ . '/components/header-card-presentation.php'; ?>
+			</div>
+			<div class="admin-feature-block" data-feature="shortcut-cards" data-feature-label="Kartu Baca Ini">
+				<?php require __DIR__ . '/components/shortcut-cards.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="divisions" data-feature-label="Divisi Kepengurusan">
-				<?php require __DIR__ . '/admin_component/divisi-kepengurusan.php'; ?>
+				<?php require __DIR__ . '/components/divisi-kepengurusan.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="docs" data-feature-label="Kartu Dokumentasi">
-				<?php require __DIR__ . '/admin_component/kartu-dokumentasi.php'; ?>
+				<?php require __DIR__ . '/components/kartu-dokumentasi.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="faq" data-feature-label="Pengelola FAQ">
-				<?php require __DIR__ . '/admin_component/pengelola-faq.php'; ?>
+				<?php require __DIR__ . '/components/pengelola-faq.php'; ?>
 			</div>
 			<div class="admin-feature-block" data-feature="blog" data-feature-label="Pengelola Blog">
-				<?php require __DIR__ . '/admin_component/pengelola-blog.php'; ?>
+				<?php require __DIR__ . '/components/pengelola-blog.php'; ?>
+			</div>
+			<div class="admin-feature-block" data-feature="comment-moderation" data-feature-label="Moderasi Komentar">
+				<?php require __DIR__ . '/components/moderasi-komentar.php'; ?>
 			</div>
 		<?php else: ?>
 			<h1>Login Admin</h1>
@@ -586,6 +634,7 @@ require __DIR__ . '/admin_component/bootstrap.php';
 		<?php endif; ?>
 	</div>
 	<script>
+	(function () {
 		const archiveButtons = document.querySelectorAll('.archive-day');
 		archiveButtons.forEach(btn => {
 			btn.addEventListener('click', () => {
@@ -620,6 +669,7 @@ require __DIR__ . '/admin_component/bootstrap.php';
 			setTimeout(restore, 120);
 			setTimeout(restore, 260);
 			sessionStorage.removeItem(SCROLL_KEY);
+			window.__ADMIN_SAVED_SCROLL__ = null;
 		}
 
 		document.querySelectorAll('form').forEach(form => {
@@ -844,6 +894,8 @@ require __DIR__ . '/admin_component/bootstrap.php';
 				});
 			});
 		})();
+	})();
 	</script>
+	<?php require __DIR__ . '/components/soft-save.php'; ?>
 </body>
 </html>

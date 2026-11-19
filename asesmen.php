@@ -17,6 +17,8 @@ $slug = isset($_GET['slug']) ? trim((string) $_GET['slug']) : '';
 $result = null;
 $needReset = false;
 $error = '';
+$submitToken = trim((string) ($_POST['submission_token'] ?? ''));
+$formToken = bin2hex(random_bytes(8));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $a = $id !== '' ? assessment_find($id) : null;
@@ -52,16 +54,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (isset($_POST['answers_json'])) {
                 $ans = json_decode((string) $_POST['answers_json'], true);
                 if (!is_array($ans)) $ans = [];
+                $formulas = json_decode((string) ($_POST['formulas_json'] ?? ''), true);
+                if (!is_array($formulas)) $formulas = [];
                 $mode = $attempts === 0 ? 'pretest' : 'posttest';
-                $total = count($cells);
+                $total = 0;
                 $score = 0;
+                $manualCount = 0;
+                $manualList = [];
                 $stored = [];
+                $details = [];
                 foreach ($cells as $c) {
                     $addr = (string) ($c['addr'] ?? '');
                     if ($addr === '') continue;
-                    $val = isset($ans[$addr]) ? trim((string) $ans[$addr]) : '';
-                    $stored[$addr] = $val;
-                    if (norm_eq($val, $c['key'] ?? '')) $score++;
+                    $total++;
+                    $sheet = (string) ($c['s'] ?? '');
+                    $mapKey = $sheet . '|' . $addr;
+                    $label = ($sheet !== '' ? $sheet . '!' : '') . $addr;
+                    $raw = $ans[$mapKey] ?? ($ans[$addr] ?? '');
+                    $val = trim((string) $raw);
+                    $stored[$mapKey] = $val;
+                    $key = (string) ($c['key'] ?? '');
+                    $ok = norm_eq($val, $key);
+                    if ($ok) $score++;
+                    $hasFormula = !empty($formulas[$mapKey]) || !empty($formulas[$addr]);
+                    $manual = ($val !== '' && is_numeric($val) && !$hasFormula);
+                    if ($manual) {
+                        $manualCount++;
+                        $manualList[] = $label;
+                    }
+                    $details[] = [
+                        'label' => $label,
+                        'given' => $val,
+                        'ok' => $ok,
+                        'manual' => $manual,
+                    ];
                 }
                 $auto = (($a['grading'] ?? 'auto') === 'auto');
                 $resp = [
@@ -74,15 +100,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'auto_score' => $score,
                     'audited' => false,
                     'audit_score' => null,
+                    'manual_count' => $manualCount,
+                    'manual_answers' => $manualList,
+                    'token' => $submitToken,
                     'submitted_at' => date('c'),
                 ];
-                assessments_update($id, function ($x) use ($resp) {
+                $appended = false;
+                assessments_update($id, function ($x) use ($resp, $submitToken, &$appended) {
                     if (!isset($x['responses']) || !is_array($x['responses'])) $x['responses'] = [];
+                    if ($submitToken !== '') {
+                        foreach ($x['responses'] as $er) {
+                            if ((string) ($er['token'] ?? '') === $submitToken) return $x;
+                        }
+                    }
                     $x['responses'][] = $resp;
+                    $appended = true;
                     return $x;
                 });
                 $a = assessment_find($id);
-                $result = ['mode' => $mode, 'auto' => $auto, 'score' => $score, 'total' => $total];
+                if (!$appended && $submitToken !== '') {
+                    foreach (($a['responses'] ?? []) as $er) {
+                        if ((string) ($er['token'] ?? '') === $submitToken) {
+                            $mode = (string) ($er['mode'] ?? $mode);
+                            $score = (int) ($er['auto_score'] ?? $score);
+                            break;
+                        }
+                    }
+                }
+                $result = ['mode' => $mode, 'auto' => $auto, 'score' => $score, 'total' => $total, 'details' => $details, 'manual' => $manualCount];
             } else {
                 $error = 'File jawaban tidak terkirim. Coba unggah ulang.';
             }
@@ -92,12 +137,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $acells = is_array($a['answer_cells'] ?? null) ? $a['answer_cells'] : [];
             $answers = [];
             $score = 0;
+            $details = [];
             if (!empty($acells)) {
                 $total = count($acells);
                 foreach ($acells as $i => $cell) {
                     $v = trim((string) ($_POST['f' . $i] ?? ''));
                     $answers[$i] = $v;
-                    if (strcasecmp($v, trim((string) ($cell['key'] ?? ''))) === 0) $score++;
+                    $key = trim((string) ($cell['key'] ?? ''));
+                    $ok = strcasecmp($v, $key) === 0;
+                    if ($ok) $score++;
+                    $details[] = ['label' => 'Isian ' . ((int) $i + 1), 'given' => $v, 'ok' => $ok];
                 }
             } else {
                 $total = count($qs);
@@ -105,7 +154,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $answers[$i] = isset($_POST['q' . $i]) ? (int) $_POST['q' . $i] : -1;
                 }
                 foreach ($qs as $i => $q) {
-                    if (($answers[$i] ?? -1) === (int) ($q['correct'] ?? -2)) $score++;
+                    $given = (int) ($answers[$i] ?? -1);
+                    $correct = (int) ($q['correct'] ?? -2);
+                    $opts = is_array($q['options'] ?? null) ? $q['options'] : [];
+                    $ok = $given === $correct;
+                    if ($ok) $score++;
+                    $details[] = [
+                        'label' => (string) ($q['q'] ?? ('Soal ' . ((int) $i + 1))),
+                        'given' => isset($opts[$given]) ? (string) $opts[$given] : '',
+                        'ok' => $ok,
+                    ];
                 }
             }
             $auto = (($a['grading'] ?? 'auto') === 'auto');
@@ -118,14 +176,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'auto_score' => $score,
                 'audited' => false,
                 'audit_score' => null,
+                'token' => $submitToken,
                 'submitted_at' => date('c'),
             ];
-            assessments_update($id, function ($x) use ($resp) {
+            assessments_update($id, function ($x) use ($resp, $submitToken) {
                 if (!isset($x['responses']) || !is_array($x['responses'])) $x['responses'] = [];
+                if ($submitToken !== '') {
+                    foreach ($x['responses'] as $er) {
+                        if ((string) ($er['token'] ?? '') === $submitToken) return $x;
+                    }
+                }
                 $x['responses'][] = $resp;
                 return $x;
             });
-            $result = ['mode' => 'pretest', 'auto' => $auto, 'score' => $score, 'total' => $total];
+            $result = ['mode' => 'pretest', 'auto' => $auto, 'score' => $score, 'total' => $total, 'details' => $details];
         }
     }
 }
@@ -138,9 +202,10 @@ $isFileMode = $assessment && !empty($assessment['key_cells']);
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?php echo h($assessment['title'] ?? 'Asesmen'); ?> – UKMI Polmed</title>
+<title><?php echo h($assessment['title'] ?? 'Asesmen'); ?> – UKMI POLMED</title>
 <meta name="robots" content="noindex, follow">
 <link rel="icon" type="image/png" href="/logo-ukmi.png">
+<script src="/components/ui-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
 :root{--bg:#0b1120;--card:#111a2e;--text:#e5e7eb;--muted:#94a3b8;--stroke:rgba(148,163,184,.2);--accent:#38bdf8;--ok:#4ade80}
@@ -158,11 +223,16 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
 .btn.danger{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4)}
 .q{margin:14px 0;padding:12px;border:1px solid var(--stroke);border-radius:10px}
 .ok{color:var(--ok)} .err{color:#f87171}
+.review-title{font-size:15px;margin:18px 0 6px}
+ul.review{margin:6px 0 0;padding-left:18px}
+ul.review li{margin:4px 0;font-size:14px}
+.tag-manual{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.45);color:#fca5a5}
 </style>
 </head>
 <body>
+<?php require __DIR__ . '/components/loading-overlay.php'; ?>
 <div class="wrap">
-  <div><a class="muted" href="/blog.php">← Blog</a></div>
+  <div><a class="muted" href="/blog">← Blog</a></div>
 
   <?php if ($needReset): ?>
     <div class="card">
@@ -183,6 +253,35 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
       <p class="muted">Mode: <strong><?php echo h($result['mode']); ?></strong></p>
       <?php if ($result['auto']): ?>
         <p class="ok">Skor: <strong><?php echo (int) $result['score']; ?>/<?php echo (int) $result['total']; ?></strong></p>
+        <?php $details = is_array($result['details'] ?? null) ? $result['details'] : []; ?>
+        <?php $wrongCount = count(array_filter($details, fn($d) => empty($d['ok']))); ?>
+        <?php $manualCount = (int) ($result['manual'] ?? 0); ?>
+        <?php if (!empty($details)): ?>
+          <h2 class="review-title">Rincian jawaban</h2>
+          <?php if ($wrongCount === 0 && $manualCount === 0): ?>
+            <p class="ok">Semua jawaban benar.</p>
+          <?php else: ?>
+            <?php if ($wrongCount > 0): ?>
+              <p class="muted">Ada <strong><?php echo $wrongCount; ?></strong> jawaban yang masih salah:</p>
+            <?php endif; ?>
+            <?php if ($manualCount > 0): ?>
+              <p class="err">Terdeteksi <strong><?php echo $manualCount; ?></strong> jawaban berupa angka yang diketik manual (bukan hasil rumus). Jawaban yang benar tetap dihitung.</p>
+            <?php endif; ?>
+            <ul class="review">
+              <?php foreach ($details as $d): ?>
+                <li class="<?php echo !empty($d['ok']) ? 'ok' : 'err'; ?>">
+                  <strong><?php echo h($d['label']); ?></strong>
+                  <?php if (!empty($d['manual'])): ?><span class="tag-manual">diketik manual</span><?php endif; ?>
+                  <?php if (!empty($d['ok'])): ?>
+                    — benar
+                  <?php else: ?>
+                    — jawabanmu: <em><?php echo h(($d['given'] ?? '') !== '' ? $d['given'] : '(kosong)'); ?></em>
+                  <?php endif; ?>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          <?php endif; ?>
+        <?php endif; ?>
       <?php else: ?>
         <p class="muted">Terkirim. Skor menunggu audit penulis.</p>
       <?php endif; ?>
@@ -208,13 +307,15 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
       <div class="card">
         <p class="muted">Unduh file tugas (bersih), kerjakan di Excel, lalu unggah kembali di bawah.</p>
         <?php if ($fileKey !== ''): ?>
-          <a class="btn" href="/unduh.php?key=<?php echo urlencode($fileKey); ?>">⬇ Download file Excel</a>
+          <a class="btn" href="/unduh?key=<?php echo urlencode($fileKey); ?>">⬇ Download file Excel</a>
         <?php endif; ?>
       </div>
       <form method="post" class="card" id="file-form">
         <input type="hidden" name="a_id" value="<?php echo h($assessment['id']); ?>">
         <input type="hidden" name="action" value="submit">
         <input type="hidden" name="answers_json" id="answers_json" value="">
+        <input type="hidden" name="formulas_json" id="formulas_json" value="">
+        <input type="hidden" name="submission_token" value="<?php echo h($formToken); ?>">
         <label for="r_name">Nama</label>
         <input type="text" id="r_name" name="r_name" required placeholder="Nama Anda">
         <label for="r_ident">Identitas (NIM/kelas/email)</label>
@@ -232,29 +333,41 @@ button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0
         form.addEventListener('submit', async function (e) {
           var inp = document.getElementById('r_file');
           var f = inp && inp.files && inp.files[0];
-          if (!f) { e.preventDefault(); alert('Pilih file Excel jawaban.'); return; }
-          if (typeof ExcelJS === 'undefined') { e.preventDefault(); alert('Library ExcelJS belum termuat.'); return; }
+          if (!f) { e.preventDefault(); uiAlert('Pilih file Excel jawaban.'); return; }
+          if (typeof ExcelJS === 'undefined') { e.preventDefault(); uiAlert('Library ExcelJS belum termuat.'); return; }
           e.preventDefault();
+          if (form.dataset.busy === '1') return;
+          form.dataset.busy = '1';
+          var btn = form.querySelector('button[type=submit]');
+          if (btn) btn.disabled = true;
           try {
             var wb = new ExcelJS.Workbook();
             await wb.xlsx.load(await f.arrayBuffer());
             var out = {};
+            var fout = {};
             cells.forEach(function (kc) {
               var ws = wb.getWorksheet(kc.s) || wb.worksheets[0];
               var c = ws ? ws.getCell(kc.addr) : null;
               var v = c ? c.value : null;
-              if (v != null && typeof v === 'object') { v = (v.result != null ? v.result : (v.formula ? '=' + v.formula : (v.richText ? v.richText.map(function (t) { return t.text; }).join('') : ''))); }
-              out[kc.addr] = (v == null ? '' : String(v)).trim();
+              var hasFormula = false;
+              if (v != null && typeof v === 'object') {
+                hasFormula = !!(v.formula || v.sharedFormula);
+                v = (v.result != null ? v.result : (v.formula ? '=' + v.formula : (v.sharedFormula ? '=' + v.sharedFormula : (v.richText ? v.richText.map(function (t) { return t.text; }).join('') : ''))));
+              }
+              out[kc.s + '|' + kc.addr] = (v == null ? '' : String(v)).trim();
+              fout[kc.s + '|' + kc.addr] = hasFormula;
             });
             document.getElementById('answers_json').value = JSON.stringify(out);
+            document.getElementById('formulas_json').value = JSON.stringify(fout);
             form.submit();
-          } catch (err) { alert('Gagal membaca file: ' + err); }
+          } catch (err) { form.dataset.busy = ''; if (btn) btn.disabled = false; uiAlert('Gagal membaca file: ' + err); }
         });
       })();
       </script>
     <?php else: ?>
-      <form method="post" class="card">
+      <form method="post" class="card" onsubmit="var b=this.querySelector('button[type=submit]');if(b){if(b.disabled)return false;b.disabled=true;}">
         <input type="hidden" name="a_id" value="<?php echo h($assessment['id']); ?>">
+        <input type="hidden" name="submission_token" value="<?php echo h($formToken); ?>">
         <input type="hidden" name="r_name" value="<?php echo h($_POST['r_name'] ?? ''); ?>">
         <label for="r_name">Nama</label>
         <input type="text" id="r_name" name="r_name" required>

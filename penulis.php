@@ -5,10 +5,8 @@ $u = isset($_GET['u']) ? trim((string) $_GET['u']) : '';
 $isAdmin = (strcasecmp($u, 'admin') === 0 || $u === '');
 
 $configPath = __DIR__ . '/data.json';
-$config = [];
-if (is_readable($configPath)) {
-    $config = json_decode((string) @file_get_contents($configPath), true) ?: [];
-}
+$config = store_read_json($configPath);
+if (!is_array($config)) $config = [];
 $yelYel = (string) ($config['yel_yel'] ?? '');
 $all = (!empty($config['posts']) && is_array($config['posts'])) ? $config['posts'] : [];
 
@@ -43,7 +41,7 @@ if ($author !== null) {
 
 $host = preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id'));
 $base = ((PHP_SAPI === 'cli-server') ? 'http://' : 'https://') . ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id');
-$title = $author ? ($author['pen_name'] . ' – Penulis Blog UKMI Polmed') : 'Penulis tidak ditemukan';
+$title = $author ? ($author['pen_name'] . ' – Penulis Blog UKMI POLMED') : 'Penulis tidak ditemukan';
 $metaImage = $author ? $author['avatar'] : '/logo-ukmi.png';
 ?><!doctype html>
 <html lang="id">
@@ -77,8 +75,9 @@ h1{margin:0;font-size:22px}
 </style>
 </head>
 <body>
+<?php require __DIR__ . '/components/loading-overlay.php'; ?>
 <div class="wrap">
-  <div class="top"><a href="/">← Beranda</a><span style="color:var(--muted)">·</span><a href="/blog.php">Blog</a></div>
+  <div class="top"><a href="/">← Beranda</a><span style="color:var(--muted)">·</span><a href="/blog">Blog</a></div>
   <?php if ($author === null): ?>
     <div class="card"><h1>Penulis tidak ditemukan</h1><p class="bio">Profil penulis tidak tersedia.</p></div>
   <?php else: ?>

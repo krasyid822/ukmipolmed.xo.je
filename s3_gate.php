@@ -42,6 +42,6 @@ echo json_encode([
     'signed_get_code' => $sg['code'],
     'signed_match' => ($sg['body'] === $body),
     'public_get_code' => $code,
-    'public_note' => 'public GET anonim ditolak Blomp (diharapkan); gambar disajikan via foto.php',
+    'public_note' => 'public GET anonim ditolak Blomp (diharapkan); gambar disajikan via /foto',
     'available' => $available,
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

@@ -11,6 +11,10 @@ RewriteCond %{HTTPS} off
 RewriteCond %{HTTP:CF-Visitor} !{"scheme":"https"}
 RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+# ── Home: /index dan /index.php -> / ──
+RewriteRule ^index\.php$ / [R=301,L]
+RewriteRule ^index/?$ / [R=301,L]
+
 # ── Blog pretty URLs ──
 RewriteRule ^blog/arsip/?$ blog.php?arsip=1 [L,QSA]
 RewriteRule ^blog/([^/]+)/?$ blog.php?slug=$1 [L,QSA]
@@ -21,8 +25,10 @@ RewriteRule ^ /blog/arsip? [R=301,L]
 RewriteCond %{THE_REQUEST} \s/+blog\.php\?slug=([^\s&]+) [NC]
 RewriteRule ^ /blog/%1? [R=301,L]
 
-# Sitemap lama (statis) -> sitemap dinamis
-RewriteRule ^sitemap\.xml$ /sitemap.php [R=301,L]
+# Sitemap dinamis: /sitemap.xml dilayani oleh sitemap.php (canonical XML)
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
+RewriteCond %{THE_REQUEST} \s/+sitemap\.php[\s?] [NC]
+RewriteRule ^ /sitemap.xml [R=301,L]
 
 # Admin pretty URL
 RewriteRule ^admin/?$ admin.php [L,QSA]
@@ -43,6 +49,28 @@ RewriteRule ^asesmen/?$ asesmen.php [L,QSA]
 RewriteRule ^penulis/?$ penulis.php?u=admin [L,QSA]
 RewriteRule ^penulis/([^/]+)/?$ penulis.php?u=$1 [L,QSA]
 
+# ── Hilangkan ekstensi .php di semua URL ──
+# Komponen PHP internal hanya di-include server-side, bukan entry point web.
+RewriteRule ^components/.*\.php$ - [R=404,L]
+RewriteCond %{REQUEST_URI} ^/components/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^components/.*$ - [R=404,L]
+
+# Library internal bukan entry point web; tolak akses langsung.
+RewriteRule ^(store|data_store|assessments_store|s3_helper|s3_gc_helper|hosting_storage_helper|seo_cache|maintenance_guard|authors_helper|assessments_helper|shortcut_migration)(?:\.php)?/?$ - [R=404,L]
+
+# 1) Permintaan GET langsung ke *.php dialihkan permanen ke URL tanpa ekstensi.
+# Hanya GET: redirect 301 mengubah POST menjadi GET dan menghilangkan body form.
+RewriteCond %{REQUEST_METHOD} =GET
+RewriteCond %{THE_REQUEST} \s/+([^?\s]+?)\.php(?:[\s?]|$) [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# 2) URL tanpa ekstensi dipetakan internal ke file .php yang sesuai
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^(.+?)/?$ $1.php [L,QSA]
+
 # ── Security Headers ──
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
@@ -52,6 +80,7 @@ RewriteRule ^penulis/([^/]+)/?$ penulis.php?u=$1 [L,QSA]
 </IfModule>
 
 # ── Cache static assets (Core Web Vitals / PageSpeed) ──
+# Aset statis cukup di-cache browser; tidak perlu menyentuh S3/hosting lagi.
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresByType image/png "access plus 1 month"
@@ -62,6 +91,14 @@ RewriteRule ^penulis/([^/]+)/?$ penulis.php?u=$1 [L,QSA]
     ExpiresByType text/css "access plus 1 week"
     ExpiresByType application/javascript "access plus 1 week"
     ExpiresByType font/woff2 "access plus 1 month"
+</IfModule>
+<IfModule mod_headers.c>
+    <FilesMatch "\.(png|jpe?g|gif|webp|svg|woff2)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
 </IfModule>
 
 # ── Gzip Compression ──
@@ -103,13 +140,25 @@ RewriteRule ^penulis/([^/]+)/?$ penulis.php?u=$1 [L,QSA]
     Require all denied
 </Files>
 
-# info.php exposes phpinfo() — deny all access
-<Files "info.php">
+# .s3_usage.json — cache angka pemakaian S3, jangan diekspos
+<Files ".s3_usage.json">
     Require all denied
 </Files>
 
-# Block access to .backups/ folder (source backups, may contain secrets)
+# .s3_uploads.json — cache pemakaian folder uploads S3, jangan diekspos
+<Files ".s3_uploads.json">
+    Require all denied
+</Files>
+
+# .hosting_usage.json — cache scan pemakaian storage hosting, jangan diekspos
+<Files ".hosting_usage.json">
+    Require all denied
+</Files>
+
+# Block access to cache & backup internal (jangan sampai crawlable)
 RedirectMatch 404 /\.backups(/|$)
+RedirectMatch 404 /\.store(/|$)
+RedirectMatch 404 /seo-cache(/|$)
 
 # Legacy Apache 2.2 fallback
 <IfModule mod_access_compat.c>
@@ -121,7 +170,7 @@ RedirectMatch 404 /\.backups(/|$)
         Order allow,deny
         Deny from all
     </Files>
-    <Files "info.php">
+    <Files ".hosting_usage.json">
         Order allow,deny
         Deny from all
     </Files>

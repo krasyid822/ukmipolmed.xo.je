@@ -1,6 +1,7 @@
 <?php
+require_once __DIR__ . '/store.php';
 // og-image.php — Menyajikan gambar preview social media langsung dari data.json.
-// Mendukung gambar base64 (data URI) tanpa perlu file di folder .uploads/.
+// Mendukung gambar base64 (data URI) dan URL S3/foto tanpa file lokal.
 $slug = isset($_GET['slug']) ? trim((string) $_GET['slug']) : '';
 
 function fallback_logo()
@@ -20,29 +21,30 @@ if ($slug === '') {
     fallback_logo();
 }
 
-$data = null;
-$cfg = __DIR__ . '/data.json';
-if (is_readable($cfg)) {
-    $raw = @file_get_contents($cfg);
-    if ($raw !== false) {
-        $data = json_decode($raw, true);
-    }
-}
-
 $img = '';
-if (is_array($data)) {
-    $lists = [];
-    if (!empty($data['posts']) && is_array($data['posts'])) {
-        $lists[] = $data['posts'];
+if (function_exists('data_store_is_sharded') && data_store_is_sharded()) {
+    foreach (data_store_posts_index_read() as $p) {
+        if (isset($p['slug']) && (string) $p['slug'] === $slug) {
+            $img = trim((string) ($p['image'] ?? ''));
+            break;
+        }
     }
-    if (!empty($data['posts_archived']) && is_array($data['posts_archived'])) {
-        $lists[] = $data['posts_archived'];
-    }
-    foreach ($lists as $list) {
-        foreach ($list as $p) {
-            if (isset($p['slug']) && (string) $p['slug'] === $slug) {
-                $img = trim((string) ($p['image'] ?? ''));
-                break 2;
+} else {
+    $data = store_read_json(__DIR__ . '/data.json');
+    if (is_array($data)) {
+        $lists = [];
+        if (!empty($data['posts']) && is_array($data['posts'])) {
+            $lists[] = $data['posts'];
+        }
+        if (!empty($data['posts_archived']) && is_array($data['posts_archived'])) {
+            $lists[] = $data['posts_archived'];
+        }
+        foreach ($lists as $list) {
+            foreach ($list as $p) {
+                if (isset($p['slug']) && (string) $p['slug'] === $slug) {
+                    $img = trim((string) ($p['image'] ?? ''));
+                    break 2;
+                }
             }
         }
     }
