@@ -5,8 +5,8 @@
   "description": "Formulir pendaftaran peserta Mentoring Agama Islam (MAI) UKMI Politeknik Negeri Medan yang dapat diisi dan dikirim kapan saja meski sedang offline.",
   "lang": "id",
   "dir": "ltr",
-  "start_url": "https://ukmipolmed.my.id/terpadu/mai/mentoring/daftar?source=pwa",
-  "scope": "https://ukmipolmed.my.id/terpadu/mai/mentoring/",
+  "start_url": "https://laporan-mai.krasyid822.workers.dev/pwa/daftar?source=pwa",
+  "scope": "https://laporan-mai.krasyid822.workers.dev/",
   "display": "standalone",
   "display_override": [
     "standalone",
@@ -73,7 +73,7 @@
       "name": "Formulir Pendaftaran",
       "short_name": "Daftar",
       "description": "Buka formulir pendaftaran peserta mentoring",
-      "url": "https://ukmipolmed.my.id/terpadu/mai/mentoring/daftar?source=pwa",
+      "url": "https://laporan-mai.krasyid822.workers.dev/pwa/daftar?source=pwa",
       "icons": [
         {
           "src": "https://laporan-mai.krasyid822.workers.dev/pwa/icon-daftar-192x192.png",

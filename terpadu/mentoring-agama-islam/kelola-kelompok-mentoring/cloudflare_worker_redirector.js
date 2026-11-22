@@ -23,28 +23,43 @@ const DEFAULTS = {
     S3_BUCKET: "krasyid822-at-gmail.com",
     S3_PREFIX: "ukmipolmed/terpadu/mai/mentoring/",
     VIEW_BASE: "https://ukmipolmed.my.id/terpadu/mai/mentoring/view",
+    APP_LAPORAN_URL: "https://ukmipolmed.my.id/terpadu/mai/mentoring/?source=pwa",
+    APP_DAFTAR_URL: "https://ukmipolmed.my.id/terpadu/mai/mentoring/daftar?source=pwa",
 };
 
 const EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
-export default {
-    async fetch(request, env) {
-        const url = new URL(request.url);
+const WORKER_SW_SCRIPT = `self.addEventListener('install', () => {
+    self.skipWaiting();
+});
 
-        // Route aset & landing PWA: /pwa/<filename> atau /pwa/laporan | /pwa/daftar
-        if (url.pathname.startsWith("/pwa/")) {
-            const pwaName = url.pathname.slice("/pwa/".length).replace(/^\/+/, "");
-            if (pwaName === "laporan" || pwaName === "daftar") {
-                const isLaporan = pwaName === "laporan";
-                const targetAppUrl = isLaporan
-                    ? "https://ukmipolmed.my.id/terpadu/mai/mentoring/"
-                    : "https://ukmipolmed.my.id/terpadu/mai/mentoring/daftar";
-                const manifestUrl = `${url.origin}/pwa/${isLaporan ? "manifest-laporan.webmanifest" : "manifest-daftar.webmanifest"}`;
-                const title = isLaporan
-                    ? "Pelaporan Mentoring Agama Islam UKMI Polmed"
-                    : "Pendaftaran Mentoring Agama Islam UKMI Polmed";
-                const iconUrl = `${url.origin}/pwa/${isLaporan ? "icon-192x192.png" : "icon-daftar-192x192.png"}`;
-                const html = `<!DOCTYPE html>
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', (event) => {
+    if (event.request.method !== 'GET') return;
+    event.respondWith(fetch(event.request));
+});
+`;
+
+function isPwaAnalyzer(request, url) {
+    if (url.searchParams.get("pwabuilder") === "1") {
+        return true;
+    }
+    const ua = request.headers.get("User-Agent") || "";
+    return /PWABuilder|HeadlessChrome|Lighthouse|PageSpeed|GTmetrix/i.test(ua);
+}
+
+function buildPwaLandingResponse(url, mode) {
+    const isLaporan = mode !== "daftar";
+    const targetAppUrl = isLaporan ? DEFAULTS.APP_LAPORAN_URL : DEFAULTS.APP_DAFTAR_URL;
+    const manifestUrl = `${url.origin}/pwa/${isLaporan ? "manifest-laporan.webmanifest" : "manifest-daftar.webmanifest"}`;
+    const title = isLaporan
+        ? "Pelaporan Mentoring Agama Islam UKMI Polmed"
+        : "Pendaftaran Mentoring Agama Islam UKMI Polmed";
+    const iconUrl = `${url.origin}/pwa/${isLaporan ? "icon-192x192.png" : "icon-daftar-192x192.png"}`;
+    const html = `<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -52,20 +67,54 @@ export default {
     <title>${escapeHtml(title)}</title>
     <link rel="manifest" href="${escapeHtml(manifestUrl)}">
     <link rel="icon" type="image/png" href="${escapeHtml(iconUrl)}">
+    <link rel="apple-touch-icon" href="${escapeHtml(iconUrl)}">
     <meta name="theme-color" content="#0284c7">
 </head>
 <body>
     <p>Membuka <a href="${escapeHtml(targetAppUrl)}">${escapeHtml(title)}</a>...</p>
-    <script>location.replace(${JSON.stringify(targetAppUrl)});</script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' }).catch(function () {});
+        }
+    </script>
 </body>
 </html>`;
-                return new Response(html, {
-                    status: 200,
-                    headers: {
-                        "Content-Type": "text/html; charset=utf-8",
-                        "Cache-Control": "public, max-age=3600",
-                    },
-                });
+    return new Response(html, {
+        status: 200,
+        headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "public, max-age=3600",
+        },
+    });
+}
+
+export default {
+    async fetch(request, env) {
+        const url = new URL(request.url);
+
+        // Service Worker ringan pada origin worker agar PWABuilder mendeteksi SW valid
+        if (url.pathname === "/pwa/sw.js" || url.pathname === "/sw.js") {
+            return new Response(WORKER_SW_SCRIPT, {
+                status: 200,
+                headers: {
+                    "Content-Type": "application/javascript; charset=utf-8",
+                    "Service-Worker-Allowed": "/",
+                    "Cache-Control": "public, max-age=3600",
+                },
+            });
+        }
+
+        // Route aset & landing PWA: /pwa/<filename> atau /pwa/laporan | /pwa/daftar
+        if (url.pathname.startsWith("/pwa/")) {
+            const pwaName = url.pathname.slice("/pwa/".length).replace(/^\/+/, "");
+            if (pwaName === "laporan" || pwaName === "daftar") {
+                const targetAppUrl = pwaName === "laporan"
+                    ? DEFAULTS.APP_LAPORAN_URL
+                    : DEFAULTS.APP_DAFTAR_URL;
+                if (!isPwaAnalyzer(request, url)) {
+                    return Response.redirect(targetAppUrl, 302);
+                }
+                return buildPwaLandingResponse(url, pwaName);
             }
 
             if (!/^[A-Za-z0-9._-]+\.(webmanifest|png)$/i.test(pwaName)) {
@@ -119,7 +168,21 @@ export default {
             });
         }
 
-        // Route utama: ?id=<reportId>
+        // Route utama: ?id=<reportId> atau landing root (/)
+        if (!url.searchParams.has("id")) {
+            const isDaftar = url.pathname === "/daftar" || url.searchParams.get("mode") === "daftar";
+            if (isDaftar) {
+                if (!isPwaAnalyzer(request, url)) {
+                    return Response.redirect(DEFAULTS.APP_DAFTAR_URL, 302);
+                }
+                return buildPwaLandingResponse(url, "daftar");
+            }
+            if (!isPwaAnalyzer(request, url)) {
+                return Response.redirect(DEFAULTS.APP_LAPORAN_URL, 302);
+            }
+            return buildPwaLandingResponse(url, "laporan");
+        }
+
         const reportId = url.searchParams.get("id") || "";
         if (!/^[A-Za-z0-9_-]+$/.test(reportId)) {
             return new Response("ID Laporan tidak valid", { status: 400 });

@@ -14,10 +14,12 @@ ukmipolmed/
 
 ## PWA
 
-Salin isi cloudflare_worker_redirector.js dan Deploy ke Worker laporan-mai.krasyid822.workers.dev di Cloudflare Dashboard. Setelah itu, di PWABuilder.com Anda bisa memasukkan:            
-  
-- Laporan MAI: https://laporan-mai.krasyid822.workers.dev/pwa/laporan
-- Daftar MAI: https://laporan-mai.krasyid822.workers.dev/pwa/daftar
+Salin isi `cloudflare_worker_redirector.js` dan Deploy ke Worker `laporan-mai.krasyid822.workers.dev` di Cloudflare Dashboard. Setelah itu, di PWABuilder.com Anda bisa memasukkan:
+
+- Laporan MAI: `https://laporan-mai.krasyid822.workers.dev/pwa/laporan`
+- Daftar MAI: `https://laporan-mai.krasyid822.workers.dev/pwa/daftar`
+
+> Catatan: APK yang sudah terlanjur dibuat (yang membuka root `/` pada domain worker) juga otomatis langsung diarahkan ke halaman formulir Laporan Mentoring setelah kode Worker terbaru dideploy.
 
 ## PWABuilder
 

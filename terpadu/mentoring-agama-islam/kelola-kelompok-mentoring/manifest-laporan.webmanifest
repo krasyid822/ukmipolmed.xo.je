@@ -5,8 +5,8 @@
   "description": "Aplikasi resmi input pelaporan kegiatan dan presensi Mentoring Agama Islam (MAI) UKMI Politeknik Negeri Medan dengan dukungan kerja offline & sinkronisasi otomatis.",
   "lang": "id",
   "dir": "ltr",
-  "start_url": "https://ukmipolmed.my.id/terpadu/mai/mentoring/?source=pwa",
-  "scope": "https://ukmipolmed.my.id/terpadu/mai/mentoring/",
+  "start_url": "https://laporan-mai.krasyid822.workers.dev/pwa/laporan?source=pwa",
+  "scope": "https://laporan-mai.krasyid822.workers.dev/",
   "display": "standalone",
   "display_override": [
     "window-controls-overlay",
@@ -118,7 +118,7 @@
       "name": "Buat Laporan Baru",
       "short_name": "Laporan Baru",
       "description": "Buka formulir input laporan mentoring",
-      "url": "https://ukmipolmed.my.id/terpadu/mai/mentoring/?source=pwa",
+      "url": "https://laporan-mai.krasyid822.workers.dev/pwa/laporan?source=pwa",
       "icons": [
         {
           "src": "https://laporan-mai.krasyid822.workers.dev/pwa/icon-96x96.png",
@@ -131,7 +131,7 @@
       "name": "Antrean Offline",
       "short_name": "Antrean",
       "description": "Lihat laporan yang menunggu sinkronisasi",
-      "url": "https://ukmipolmed.my.id/terpadu/mai/mentoring/?source=pwa#offlineQueuePanel",
+      "url": "https://laporan-mai.krasyid822.workers.dev/pwa/laporan?source=pwa#offlineQueuePanel",
       "icons": [
         {
           "src": "https://laporan-mai.krasyid822.workers.dev/pwa/icon-96x96.png",
