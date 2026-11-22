@@ -1,0 +1,783 @@
+:root {
+    --primary: #0284c7;
+    --primary-hover: #0369a1;
+    --bg-page: #0f172a;
+    --card-bg: #1e293b;
+    --card-border: #334155;
+    --input-bg: #0b1120;
+    --input-border: #334155;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent-red: #ef4444;
+    --accent-yellow: #f59e0b;
+    --accent-green: #10b981;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    line-height: 1.5;
+    padding: 20px 12px;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+}
+
+.container {
+    width: 100%;
+    max-width: 840px;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 0 8px;
+}
+
+.page-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+.page-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+}
+
+.card-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #38bdf8;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.form-group.col-span-2 {
+    grid-column: span 2;
+}
+
+label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.form-control {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    -webkit-appearance: none;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+}
+
+/* Field Stack Group (1 Label Header Baris Mewakili Input-Input di Bawahnya) */
+.field-stack-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.field-row-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+/* Searchable Select Dropdown CSS */
+.searchable-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.searchable-select-trigger {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.925rem;
+    color: var(--text-main);
+    user-select: none;
+    min-height: 42px;
+}
+
+.searchable-select-trigger:focus,
+.searchable-select-trigger:hover {
+    border-color: var(--primary);
+}
+
+.trigger-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 8px;
+}
+
+.trigger-arrow {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.searchable-select-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #0b1120;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    z-index: 100;
+    max-height: 260px;
+    flex-direction: column;
+}
+
+.searchable-select-panel.active {
+    display: flex;
+}
+
+.searchable-select-search {
+    background: #1e293b;
+    border: none;
+    border-bottom: 1px solid #334155;
+    padding: 10px 12px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    width: 100%;
+}
+
+.searchable-select-list {
+    overflow-y: auto;
+    max-height: 200px;
+}
+
+.searchable-select-item {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.searchable-select-item:hover {
+    background: rgba(2, 132, 199, 0.2);
+    color: #fff;
+}
+
+.searchable-select-item.selected {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+.searchable-select-empty {
+    padding: 12px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* Tabel Kehadiran Desktop */
+.attendance-desktop {
+    display: block;
+    overflow-x: auto;
+}
+
+.attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+}
+
+.attendance-table th,
+.attendance-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid #334155;
+}
+
+.attendance-table th {
+    background: #0b1120;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.attendance-options {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.radio-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.825rem;
+    color: #fca5a5;
+    cursor: pointer;
+}
+
+.badge-status {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-status.aktif { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.badge-status.peringatan { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.badge-status.tidak_aktif { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+/* Mobile Card Attendance View */
+.attendance-mobile {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.mentee-card-mobile {
+    background: #0b1120;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.mentee-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 8px;
+}
+
+.mentee-card-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.mentee-card-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.attendance-options-mobile {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.radio-btn-pill {
+    position: relative;
+    display: block;
+    cursor: pointer;
+}
+
+.radio-btn-pill input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.radio-btn-pill span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.radio-btn-pill input:checked + span {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+}
+
+/* Image upload preview */
+.preview-box {
+    margin-top: 12px;
+    display: none;
+    border: 2px dashed #334155;
+    border-radius: 10px;
+    padding: 8px;
+    text-align: center;
+    background: #0b1120;
+}
+
+.file-info {
+    font-size: 0.825rem;
+    margin-top: 6px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.submit-btn {
+    background: var(--primary);
+    color: #fff;
+    padding: 14px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    width: 100%;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+}
+
+.submit-btn:hover {
+    background: var(--primary-hover);
+}
+
+.submit-btn:active {
+    transform: scale(0.99);
+}
+
+/* ==============================================================================
+   MASTER SUBPAGES (Tambah Mentor / Tim / Mentee)
+   ============================================================================== */
+.tab-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 14px;
+}
+
+.tab-actions .btn-action {
+    width: auto;
+    padding: 10px 20px;
+}
+
+.btn-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--primary);
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    transition: background 0.2s, transform 0.1s;
+    min-height: 48px;
+}
+
+.btn-action:hover {
+    background: var(--primary-hover);
+}
+
+.btn-action:active {
+    transform: scale(0.99);
+}
+
+.btn-action.secondary {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+}
+
+.btn-action.secondary:hover {
+    background: #273449;
+    color: #fff;
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.form-actions .submit-btn {
+    width: auto;
+    padding: 10px 22px;
+}
+
+.btn-cancel {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.btn-cancel:hover {
+    color: #f1f5f9;
+    border-color: #64748b;
+}
+
+.subpage-back {
+    margin-top: 10px;
+}
+
+.subpage-back a {
+    color: #38bdf8;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+/* Foto Profil (Mentor, Mentee, Kelompok) */
+.photo-upload-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.photo-preview {
+    display: none;
+    width: 120px;
+    height: 120px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    background: #0b1120;
+    flex: 0 0 auto;
+}
+
+.photo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-fields {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.photo-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-top: 6px;
+}
+
+.avatar-form {
+    margin: 0;
+}
+
+.avatar-wrap {
+    position: relative;
+    display: inline-flex;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid var(--card-border);
+    background: #1e293b;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-initial {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.avatar-wrap input[type="file"] {
+    display: none;
+}
+
+.avatar-edit {
+    position: absolute;
+    inset: auto 0 0 0;
+    background: rgba(2, 132, 199, 0.9);
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 2px 0;
+    letter-spacing: 0.03em;
+}
+
+.name-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-section-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin: 18px 0 10px;
+}
+
+@media (max-width: 640px) {
+    .tab-actions {
+        justify-content: stretch;
+    }
+
+    .tab-actions .btn-action {
+        width: 100%;
+    }
+
+    .form-actions .submit-btn {
+        width: 100%;
+    }
+}
+
+/* ==============================================================================
+   MODAL & TOAST COMPONENTS
+   ============================================================================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    padding: 16px;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    transform: scale(0.95);
+    transition: transform 0.2s;
+}
+
+.modal-overlay.active .modal {
+    transform: scale(1);
+}
+
+.modal-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 1.5rem;
+}
+
+.modal-icon.success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.modal-icon.error { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.modal-icon.warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.modal-icon.info { background: rgba(2, 132, 199, 0.2); color: #38bdf8; }
+
+.modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+    color: #f1f5f9;
+}
+
+.modal-message {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.modal-btn {
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    min-width: 100px;
+}
+
+.modal-btn.primary {
+    background: var(--primary);
+    color: #fff;
+}
+.modal-btn.primary:hover { background: var(--primary-hover); }
+
+.modal-btn.secondary {
+    background: #334155;
+    color: #cbd5e1;
+    border: 1px solid #475569;
+}
+.modal-btn.secondary:hover { background: #475569; color: #fff; }
+
+.modal-btn.danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid #7f1d1d;
+}
+.modal-btn.danger:hover { background: rgba(239, 68, 68, 0.3); color: #fecaca; }
+
+.copy-toast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #10b981;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 1000;
+}
+
+/* ==============================================================================
+   RESPONSIVE BREAKPOINTS (Mobile-First Optimization)
+   ============================================================================== */
+@media (max-width: 640px) {
+    body {
+        padding: 14px 8px;
+    }
+
+    .card {
+        padding: 16px 14px;
+        border-radius: 14px;
+    }
+
+    .page-title {
+        font-size: 1.35rem;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .form-group.col-span-2 {
+        grid-column: span 1;
+    }
+
+    .field-row-top {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    /* Sembunyikan tabel lebar di mobile dan tampilkan card presensi yang touch-friendly */
+    .attendance-desktop {
+        display: none;
+    }
+
+    .attendance-mobile {
+        display: flex;
+    }
+
+    .searchable-select-trigger {
+        font-size: 0.9rem;
+    }
+}

@@ -3,6 +3,9 @@ require_once __DIR__ . '/authors_helper.php';
 require_once __DIR__ . '/assessments_helper.php';
 require_once __DIR__ . '/s3_helper.php';
 require_once __DIR__ . '/store.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'upload_sticker') {
+	require __DIR__ . '/components/blog-komentar.php';
+}
 $configPath = __DIR__ . '/data.json';
 $defaultPath = __DIR__ . '/default.json';
 
@@ -535,18 +538,21 @@ if ($filterSlug !== '' && count($posts) === 1) {
 				<button type="button" class="btn ghost js-copy-share" data-url="<?php echo e($shareUrl); ?>" style="min-height:40px;padding:8px 12px;font-size:14px;" data-insight="share_copy">Salin tautan</button>
 			</div>
 			<script>
-			document.addEventListener('click', function (e) {
-				var b = e.target.closest && e.target.closest('.js-copy-share');
-				if (!b) return;
-				e.preventDefault();
-				var u = b.getAttribute('data-url') || location.href;
-				var done = function () { b.textContent = 'Tersalin!'; };
-				if (navigator.clipboard && navigator.clipboard.writeText) {
-					navigator.clipboard.writeText(u).then(done).catch(function () { uiPrompt('Salin tautan:', u); });
-				} else {
-					uiPrompt('Salin tautan:', u);
-				}
-			});
+			if (!window.__ukmiShareCopyBound) {
+				window.__ukmiShareCopyBound = true;
+				document.addEventListener('click', function (e) {
+					var b = e.target.closest && e.target.closest('.js-copy-share');
+					if (!b) return;
+					e.preventDefault();
+					var u = b.getAttribute('data-url') || location.href;
+					var done = function () { b.textContent = 'Tersalin!'; };
+					if (navigator.clipboard && navigator.clipboard.writeText) {
+						navigator.clipboard.writeText(u).then(done).catch(function () { uiPrompt('Salin tautan:', u); });
+					} else {
+						uiPrompt('Salin tautan:', u);
+					}
+				});
+			}
 			</script>
 
 			<?php $__assess = assessments_for_post($posts[0]['slug'] ?? ''); ?>

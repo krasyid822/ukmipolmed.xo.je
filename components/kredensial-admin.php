@@ -172,6 +172,10 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<p class="muted-text" style="margin:0;">Menyimpan akan mengganti user/key, memaksa logout semua sesi, dan tercatat di log.</p>
 		</div>
 	</form>
+	<?php $hasRecoveryKey = function_exists('admin_recovery_key') && admin_recovery_key($defaultData ?? []) !== ''; ?>
+	<p class="muted-text" style="margin:10px 0 0; font-size:12px;">
+		Pemulihan darurat: <?php echo $hasRecoveryKey ? '<span style="color:#38bdf8;">Master Key aktif di <code>default.json</code></span> (telah digunakan <strong>' . (int) ($recoveryCount ?? 0) . ' kali</strong>; dapat dipakai di halaman login &rarr; <em>Lupa kredensial / Pemulihan darurat?</em> untuk reset ke <code>default.json</code>).' : '<span style="color:#f87171;">Master Key belum diatur</span> (tambahkan <code>recovery_key</code> di <code>default.json</code>).'; ?>
+	</p>
 </div>
 
 <div class="section" style="margin-top: 10px;">

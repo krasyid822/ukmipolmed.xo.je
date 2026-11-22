@@ -1,12 +1,7 @@
 	<script>
-		const loadingEl = document.getElementById('page-loading');
 		const blogSlug = <?php echo json_encode($filterSlug, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
 		window.addEventListener('load', () => {
-			if (loadingEl) {
-				loadingEl.classList.add('fade-out');
-				setTimeout(() => loadingEl.remove(), 600);
-			}
 			trackBlogView();
 			loadBlogViews();
 		});

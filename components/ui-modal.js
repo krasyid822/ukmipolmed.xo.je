@@ -9,7 +9,7 @@
   function ensureStyle() {
     if (document.getElementById(STYLE_ID)) return;
     var css =
-      '.uim-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;' +
+      '.uim-overlay{position:fixed;inset:0;z-index:2147483600;display:flex;align-items:center;justify-content:center;padding:20px;' +
       'background:rgba(2,6,23,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);' +
       'opacity:0;transition:opacity .18s ease;}' +
       '.uim-overlay.uim-open{opacity:1;}' +
@@ -177,6 +177,7 @@
   window.uiConfirm = function (event, message, opts) {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     var target = event ? (event.currentTarget || event.target) : null;
+    var submitter = (event && event.submitter) ? event.submitter : ((target && target.closest) ? target.closest('button[type="submit"], input[type="submit"]') : null);
     var form = null;
     if (target && target.closest) form = target.closest('form');
     else if (target && target.tagName === 'FORM') form = target;
@@ -184,6 +185,11 @@
     if (o.danger === undefined) o.danger = true;
     openModal(o).then(function (ok) {
       if (!ok || !form) return;
+      if (typeof window.ukmiSoftSubmit === 'function' && (!form.matches || !form.matches('form[data-comment-form], form.delete-comment-form'))) {
+        window.ukmiSoftSubmit(form, submitter);
+        return;
+      }
+      if (submitter) form.__ukmiLastSubmitter = submitter;
       try {
         HTMLFormElement.prototype.submit.call(form);
       } catch (e) {

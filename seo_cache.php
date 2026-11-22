@@ -125,7 +125,8 @@ function seo_cache_gc($protect = null)
         if ($name === 'store.lock') continue;
         $isCache = substr($name, -11) === '.cache.json'
             || substr($name, -14) === '.cache.json.gz'
-            || substr($name, -10) === '.rate.json';
+            || substr($name, -10) === '.rate.json'
+            || strpos($name, 'sticker-rate-') === 0;
         if (!$isCache && !in_array($name, $knownUsage, true)) continue;
         if ($name === $protect) {
             $total += $size;

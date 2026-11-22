@@ -373,21 +373,16 @@ function comment_append_new(array &$comments, ?string $parentId, array $new): bo
 		return true;
 	}
 	foreach ($comments as &$c) {
+		if (!is_array($c)) continue;
 		if (isset($c['id']) && (string) $c['id'] === $parentId) {
 			if (empty($c['replies']) || !is_array($c['replies'])) $c['replies'] = [];
 			$c['replies'][] = $new;
 			return true;
 		}
-		// juga cek satu level balasan
 		if (!empty($c['replies']) && is_array($c['replies'])) {
-			foreach ($c['replies'] as &$r) {
-				if (isset($r['id']) && (string) $r['id'] === $parentId) {
-					if (empty($r['replies']) || !is_array($r['replies'])) $r['replies'] = [];
-					$r['replies'][] = $new;
-					return true;
-				}
+			if (comment_append_new($c['replies'], $parentId, $new)) {
+				return true;
 			}
-			unset($r);
 		}
 	}
 	unset($c);
@@ -430,6 +425,10 @@ function save_comment(string $slug, string $name, string $body, ?string $parentI
 	$newBytes = $newJson === false ? 0 : strlen($newJson);
 	$limitInfo = comments_storage_limit();
 	$storageLimit = (int) $limitInfo['limit_bytes'];
+	$effectiveRemaining = $storageLimit;
+	if (($limitInfo['limit_mode'] ?? '') === 'fallback_static' && $storageLimit > 0) {
+		$effectiveRemaining = max(0, $storageLimit - comments_used_bytes());
+	}
 	$quotaError = 'Sisa kapasitas penyimpanan tidak cukup untuk komentar baru. Hapus beberapa komentar atau hubungi admin.';
 
 	$lockHandle = store_lock_acquire() ? true : null;
@@ -454,7 +453,7 @@ function save_comment(string $slug, string $name, string $body, ?string $parentI
 			$release();
 			return ['ok' => false, 'error' => 'Gagal membaca komentar dari S3'];
 		}
-		if ($storageLimit > 0 && $newBytes > $storageLimit) {
+		if ($storageLimit > 0 && $newBytes > $effectiveRemaining) {
 			$release();
 			return ['ok' => false, 'error' => $quotaError];
 		}
@@ -475,6 +474,7 @@ function save_comment(string $slug, string $name, string $body, ?string $parentI
 			return ['ok' => false, 'error' => 'Gagal memperbarui index komentar'];
 		}
 		$release();
+		if (function_exists('store_memo_forget')) store_memo_forget($cfgPath);
 		return ['ok' => true, 'id' => $id];
 	}
 
@@ -482,7 +482,7 @@ function save_comment(string $slug, string $name, string $body, ?string $parentI
 	if (!is_array($data)) $data = [];
 	if (empty($data['posts']) || !is_array($data['posts'])) $data['posts'] = [];
 
-	if ($storageLimit > 0 && $newBytes > $storageLimit) {
+	if ($storageLimit > 0 && $newBytes > $effectiveRemaining) {
 		$release();
 		return ['ok' => false, 'error' => $quotaError];
 	}

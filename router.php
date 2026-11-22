@@ -72,6 +72,25 @@ if (is_file($path)) {
     return false;
 }
 
+// Folder modul di subdirektori (mis. /terpadu/.../master/) → index.php.
+if (is_dir($path)) {
+    $index = rtrim($path, '/') . '/index.php';
+    if (is_file($index)) {
+        if (!str_ends_with($uri, '/')) {
+            header('Location: ' . $uri . '/', true, 301);
+            return true;
+        }
+        require $index;
+        return true;
+    }
+}
+
+// URL bersih di subdirektori (mis. /terpadu/.../master/tambah-mentor).
+if (is_file($path . '.php')) {
+    require $path . '.php';
+    return true;
+}
+
 http_response_code(404);
 $_GET['code'] = 'Apekah tak de siape siape (404)';
 require __DIR__ . '/error.php';

@@ -32,15 +32,53 @@ if (!defined('UKMI_SOFT_SAVE')) {
 	var busy = false;
 	var indicator = null;
 
-	function showIndicator() {
+	function resolveActionLabel(form, submitter) {
+		var explicit = (submitter && submitter.getAttribute('data-progress-label')) || (form && form.getAttribute('data-progress-label'));
+		if (explicit) return explicit;
+		if (!form) return 'Menyimpan perubahan...';
+
+		if (form.querySelector('input[name="recover_credentials"]')) return 'Memulihkan kredensial...';
+		if (form.querySelector('input[name="user"]') && form.querySelector('input[name="key"]')) return 'Memproses login...';
+		if (form.querySelector('input[name="unlock_credential_code"], input[name="unlock_division_code"], input[name="unlock_insights_code"]')) return 'Membuka akses superadmin...';
+		if (form.querySelector('input[name="logout_all"]')) return 'Mengeluarkan semua sesi...';
+		if (form.querySelector('input[name="reset_insights"]')) return 'Mengosongkan insight...';
+		if (form.querySelector('input[name="create_author"]')) return 'Membuat akun penulis...';
+		if (form.querySelector('input[name^="delete_"]') || (submitter && submitter.name && submitter.name.indexOf('delete') === 0)) return 'Menghapus data...';
+		if (form.querySelector('input[name^="archive_"]')) return 'Mengarsipkan data...';
+		if (form.querySelector('input[name^="restore_"]')) return 'Memulihkan dari arsip...';
+		if (form.querySelector('input[name="move_idx"]')) return 'Mengubah urutan...';
+		if (form.querySelector('input[name="edit_idx"]') || (form.querySelector('input[name="blog_edit_idx"]') && form.id !== 'blog-form' && !(submitter && submitter.name === 'blog_save'))) return 'Memuat data ke formulir...';
+
+		if (form.querySelector('input[name="comment_moderate"]')) {
+			var actionInput = form.querySelector('input[name="comment_action"]');
+			var act = actionInput ? actionInput.value : '';
+			if (act === 'delete') return 'Menghapus komentar...';
+			if (act === 'suspend') return 'Menangguhkan komentar...';
+			if (act === 'restore') return 'Memulihkan komentar...';
+			if (act === 'edit') return 'Menyimpan edit komentar...';
+		}
+		if (form.hasAttribute('data-comment-form')) return 'Mengirim komentar...';
+
+		var btnText = submitter ? (submitter.textContent || submitter.value || '').trim().toLowerCase() : '';
+		if (btnText.indexOf('hapus') === 0) return 'Menghapus data...';
+		if (btnText.indexOf('arsipkan') === 0) return 'Mengarsipkan data...';
+		if (btnText.indexOf('pulihkan') === 0) return 'Memulihkan data...';
+		if (btnText.indexOf('masuk') === 0) return 'Memproses login...';
+		if (btnText.indexOf('buka') === 0) return 'Membuka akses...';
+		if (btnText.indexOf('reset') === 0) return 'Mereset ke default...';
+
+		return 'Menyimpan perubahan...';
+	}
+
+	function showIndicator(label) {
 		if (!indicator) {
 			indicator = document.createElement('div');
 			indicator.className = 'ukmi-save-indicator';
 			indicator.setAttribute('role', 'status');
 			indicator.setAttribute('aria-live', 'polite');
-			indicator.textContent = 'Menyimpan perubahan...';
 			(document.body || document.documentElement).appendChild(indicator);
 		}
+		indicator.textContent = label || 'Menyimpan perubahan...';
 		requestAnimationFrame(function () { indicator.classList.add('is-on'); });
 	}
 
@@ -79,6 +117,18 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		});
 	}
 
+	function stripFlashParams(rawUrl) {
+		try {
+			var u = new URL(rawUrl || window.location.href, window.location.href);
+			['comment_msg', 'msg', 'saved', 'deleted'].forEach(function (k) {
+				u.searchParams.delete(k);
+			});
+			return u.pathname + u.search + u.hash;
+		} catch (e) {
+			return rawUrl || window.location.href;
+		}
+	}
+
 	function swapBody(html, finalUrl) {
 		var doc = new DOMParser().parseFromString(html, 'text/html');
 		if (!doc || !doc.body) {
@@ -93,8 +143,9 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		var overlay = document.getElementById('ukmi-loading-overlay');
 		if (overlay) overlay.remove();
 		runScripts(document.body);
+		try { sessionStorage.removeItem('admin_scroll_y'); } catch (e) {}
 		if (window.history && window.history.replaceState) {
-			try { window.history.replaceState(null, '', finalUrl || window.location.href); } catch (e) {}
+			try { window.history.replaceState(null, '', stripFlashParams(finalUrl || window.location.href)); } catch (e) {}
 		}
 		window.scrollTo(0, y);
 		document.dispatchEvent(new CustomEvent('ukmi:softswap'));
@@ -118,6 +169,11 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		if (busy) return;
 		busy = true;
 
+		if (!submitter && form.__ukmiLastSubmitter) {
+			submitter = form.__ukmiLastSubmitter;
+		}
+		try { delete form.__ukmiLastSubmitter; } catch (e) { form.__ukmiLastSubmitter = null; }
+
 		// Implicit submit / form.submit() bisa tidak membawa submitter.
 		// Pakai tombol submit default agar field pemicu (mis. save_faqs,
 		// blog_save, save_shortcut_cards) tetap terkirim.
@@ -125,7 +181,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 			submitter = form.querySelector('button[type="submit"]:not([disabled]), input[type="submit"]:not([disabled])');
 		}
 
-		var action = form.getAttribute('action') || window.location.href;
+		var action = form.getAttribute('action') || stripFlashParams(window.location.href);
 		var fd;
 		try {
 			fd = new FormData(form);
@@ -139,7 +195,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		var button = submitter || form.querySelector('button[type="submit"], input[type="submit"]');
 		var wasDisabled = button ? button.disabled : null;
 		if (button) button.disabled = true;
-		showIndicator();
+		showIndicator(resolveActionLabel(form, submitter));
 
 		var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
 		var abortTimer = null;

@@ -1,0 +1,86 @@
+{
+  "id": "mai-daftar-pwa",
+  "name": "Pendaftaran Mentoring Agama Islam UKMI Polmed",
+  "short_name": "Daftar MAI",
+  "description": "Formulir pendaftaran peserta Mentoring Agama Islam (MAI) UKMI Politeknik Negeri Medan yang dapat diisi dan dikirim kapan saja meski sedang offline.",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "https://ukmipolmed.my.id/terpadu/mai/mentoring/daftar?source=pwa",
+  "scope": "https://ukmipolmed.my.id/terpadu/mai/mentoring/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#0284c7",
+  "categories": [
+    "education",
+    "lifestyle"
+  ],
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": [
+      "navigate-existing",
+      "auto"
+    ]
+  },
+  "icons": [
+    {
+      "src": "https://laporan-mai.krasyid822.workers.dev/pwa/icon-daftar-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://laporan-mai.krasyid822.workers.dev/pwa/icon-daftar-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://laporan-mai.krasyid822.workers.dev/pwa/icon-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "https://laporan-mai.krasyid822.workers.dev/pwa/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://laporan-mai.krasyid822.workers.dev/pwa/screenshot-mobile-1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Formulir Pendaftaran Mentoring MAI"
+    },
+    {
+      "src": "https://laporan-mai.krasyid822.workers.dev/pwa/screenshot-desktop-1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Pendaftaran Mentoring Agama Islam UKMI Polmed"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Formulir Pendaftaran",
+      "short_name": "Daftar",
+      "description": "Buka formulir pendaftaran peserta mentoring",
+      "url": "https://ukmipolmed.my.id/terpadu/mai/mentoring/daftar?source=pwa",
+      "icons": [
+        {
+          "src": "https://laporan-mai.krasyid822.workers.dev/pwa/icon-daftar-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

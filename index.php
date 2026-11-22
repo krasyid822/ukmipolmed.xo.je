@@ -296,11 +296,11 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
     <meta property="og:image:height" content="512">
     <meta property="og:image:alt" content="Logo UKMI Politeknik Negeri Medan">
     <meta property="og:site_name" content="Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan">
-    <link rel="icon" type="image/png" sizes="192x192" href="logo-ukmi.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="logo-ukmi.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="logo-ukmi.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="logo-ukmi.png">
-    <link rel="shortcut icon" href="logo-ukmi.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/logo-ukmi.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/logo-ukmi.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/logo-ukmi.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo-ukmi.png">
+    <link rel="shortcut icon" href="/logo-ukmi.png">
     <meta name="theme-color" content="#0f172a">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan – Open Recruitment <?php echo e($divisionYearLabel); ?>">

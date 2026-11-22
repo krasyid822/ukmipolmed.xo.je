@@ -431,6 +431,23 @@ function makeSlug($text)
 	return $text;
 }
 
+function admin_recovery_key(array $defaultData): string
+{
+	return trim((string) ($defaultData['recovery_key'] ?? ''));
+}
+
+$defaultRecoveryCount = isset($defaultData['recovery_count']) ? max(0, (int) $defaultData['recovery_count']) : 0;
+$configRecoveryCount = isset($config['recovery_count']) ? max(0, (int) $config['recovery_count']) : 0;
+$recoveryCount = max($defaultRecoveryCount, $configRecoveryCount);
+if ($recoveryCount !== $defaultRecoveryCount && is_writable($defaultPath)) {
+	$defaultData['recovery_count'] = $recoveryCount;
+	$tmpDefault = $defaultPath . '.tmp';
+	$encodedDefault = json_encode($defaultData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	if ($encodedDefault !== false && @file_put_contents($tmpDefault, $encodedDefault, LOCK_EX) !== false) {
+		@rename($tmpDefault, $defaultPath);
+	}
+}
+
 $error = null;
 $message = null;
 $flash = $_GET['msg'] ?? null;
@@ -439,6 +456,9 @@ if ($flash === 'logout-all') {
 }
 if ($flash === 'cred-updated') {
 	$message = 'User dan key diperbarui. Silakan login ulang dengan kredensial baru.';
+}
+if ($flash === 'cred-recovered') {
+	$message = 'Kredensial admin berhasil dipulihkan ke bawaan (default.json) dan semua sesi aktif telah dikeluarkan. Silakan login.';
 }
 
 if (isset($_GET['logout'])) {
@@ -449,6 +469,43 @@ if (isset($_GET['logout'])) {
 
 require_once __DIR__ . '/../authors_helper.php';
 require_once __DIR__ . '/../s3_helper.php';
+
+if (isset($_POST['recover_credentials'], $_POST['recovery_key'])) {
+	$inputRecoveryKey = trim((string) $_POST['recovery_key']);
+	$masterRecoveryKey = admin_recovery_key($defaultData);
+
+	if ($masterRecoveryKey === '') {
+		$error = 'Kunci pemulihan belum dikonfigurasi di default.json.';
+	} elseif ($inputRecoveryKey === '' || !hash_equals($masterRecoveryKey, $inputRecoveryKey)) {
+		appendLog($config, $configPath, 'auth-recovery-fail', $maxLogs, $archiveLimitDays);
+		$error = 'Kunci pemulihan master salah.';
+	} elseif ($defaults['user'] === '' || $defaults['key'] === '') {
+		$error = 'Kredensial bawaan di default.json tidak lengkap.';
+	} else {
+		$recoveryCount++;
+		$config['user'] = $defaults['user'];
+		$config['key'] = $defaults['key'];
+		$sessionVersion++;
+		$config['session_version'] = $sessionVersion;
+		$config['recovery_count'] = $recoveryCount;
+
+		if (!store_save_json($configPath, $config)) {
+			$error = 'Gagal menyimpan pemulihan kredensial ke penyimpanan.';
+		} else {
+			$defaultData['recovery_count'] = $recoveryCount;
+			$tmpDefault = $defaultPath . '.tmp';
+			$encodedDefault = json_encode($defaultData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if ($encodedDefault !== false && @file_put_contents($tmpDefault, $encodedDefault, LOCK_EX) !== false) {
+				@rename($tmpDefault, $defaultPath);
+			}
+			appendLog($config, $configPath, 'auth-recovered', $maxLogs, $archiveLimitDays);
+			session_destroy();
+			$_SESSION = [];
+			header('Location: /admin?msg=cred-recovered');
+			exit;
+		}
+	}
+}
 
 if (isset($_POST['user'], $_POST['key'])) {
 	$user = (string) $_POST['user'];

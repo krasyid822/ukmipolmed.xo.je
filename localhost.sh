@@ -16,6 +16,18 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 
+# Matikan server PHP built-in lama di port yang sama agar OPcache
+# (bytecode cache) benar-benar dibersihkan saat restart.
+if command -v lsof >/dev/null 2>&1; then
+    OLD_PID=$(lsof -ti tcp:"${PORT}" 2>/dev/null || true)
+    if [ -n "$OLD_PID" ]; then
+        echo "Menghentikan server lama di port ${PORT} (PID: ${OLD_PID})..."
+        kill "$OLD_PID" 2>/dev/null || true
+        sleep 1
+    fi
+fi
+pkill -f "php -S .*:${PORT}.*router.php" 2>/dev/null || true
+
 # Server bawaan PHP hanya punya satu worker secara default, sehingga satu
 # request lambat (S3/lock) menahan semua request lain — termasuk aset CSS/JS —
 # dan terasa seperti server macet. Aktifkan beberapa worker di Linux/macOS.

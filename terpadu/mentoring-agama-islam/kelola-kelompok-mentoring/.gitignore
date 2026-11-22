@@ -1,0 +1,10 @@
+# Data sensitif & rahasia: jangan pernah ikut commit.
+storage_secure/
+
+# Berkas pengembangan lokal yang tidak boleh ikut deploy/commit.
+.my-idea.txt
+clear-cache.php
+run-local.sh
+router.php
+.deploy_manifest
+.netrc

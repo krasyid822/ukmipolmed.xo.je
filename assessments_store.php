@@ -38,6 +38,9 @@ function assessments_store_cache_clear($rel)
     $name = assessments_store_cache_name($rel);
     @unlink(store_cache_file($name));
     @unlink(store_cache_file_gz($name));
+    if (function_exists('store_memo_forget_key')) {
+        store_memo_forget_key(assessments_store_key($rel));
+    }
 }
 
 function assessments_store_shard_read($rel, $default = null, $ttl = STORE_TTL)
@@ -58,9 +61,13 @@ function assessments_store_shard_delete($rel)
     return $ok;
 }
 
-function assessments_store_manifest_read()
+function assessments_store_manifest_read(bool $reset = false)
 {
     static $m = false;
+    if ($reset) {
+        $m = false;
+        return null;
+    }
     if ($m !== false) return $m;
     $data = assessments_store_shard_read('manifest.json', null);
     return $m = (is_array($data) && (int) ($data['version'] ?? 0) >= 1) ? $data : null;

@@ -37,9 +37,9 @@ $__adminBodyClass = $__adminEarlyLoad
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Halaman Admin</title>
-	<link rel="icon" type="image/png" href="logo-ukmi.png">
-	<link rel="apple-touch-icon" href="logo-ukmi.png">
-	<link rel="shortcut icon" href="logo-ukmi.png">
+	<link rel="icon" type="image/png" href="/logo-ukmi.png">
+	<link rel="apple-touch-icon" href="/logo-ukmi.png">
+	<link rel="shortcut icon" href="/logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
 	<script src="/components/ui-modal.js"></script>
 	<script>
@@ -65,6 +65,10 @@ $__adminBodyClass = $__adminEarlyLoad
 			--danger: #f87171;
 		}
 
+		*, *::before, *::after {
+			box-sizing: border-box;
+		}
+
 		body {
 			margin: 0;
 			min-height: 100vh;
@@ -79,22 +83,36 @@ $__adminBodyClass = $__adminEarlyLoad
 			padding: 24px;
 		}
 
-		body.is-auth { padding: 32px 32px 40px; }
-
-		.card {
-			background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
-			border: 1px solid rgba(148, 163, 184, 0.2);
-			border-radius: 16px;
-			width: min(100%, 520px);
-			padding: 24px;
-			box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
-			backdrop-filter: blur(10px);
+		body.is-auth {
+			display: block;
+			padding: 20px 24px 40px;
 		}
 
-		body.is-auth .card {
-			width: min(100%, 1240px);
-			max-width: 96vw;
-			padding: 28px 30px;
+		.admin-main {
+			width: min(100%, 460px);
+			margin: 4vh auto 0;
+		}
+
+		body.is-auth .admin-main {
+			width: 100%;
+			max-width: none;
+			margin: 0;
+			padding: 0;
+		}
+
+		.admin-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			flex-wrap: wrap;
+			margin-bottom: 14px;
+		}
+
+		.admin-header-actions {
+			display: flex;
+			align-items: center;
+			gap: 12px;
 		}
 
 		h1 {
@@ -354,7 +372,6 @@ $__adminBodyClass = $__adminEarlyLoad
 		body.is-auth .field-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 
 		@media (min-width: 1280px) {
-			body.is-auth .card { width: min(100%, 1400px); }
 			body.is-auth .field-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 		}
 
@@ -506,7 +523,7 @@ $__adminBodyClass = $__adminEarlyLoad
 		}
 
 		@media (max-width: 480px) {
-			.card { padding: 20px; }
+			body.is-auth { padding: 16px 14px 32px; }
 			h1 { font-size: 20px; }
 		}
 	</style>
@@ -539,16 +556,18 @@ $__adminBodyClass = $__adminEarlyLoad
 		<?php endif; ?>
 	</div>
 	<?php endif; ?>
-	<div class="card">
-		<div style="margin-top:8px; float:right; display:flex; align-items:center; gap:12px;">
-			<?php if ($loggedIn): ?>
-			<a class="button-link" href="?logout=1" style="width:auto; padding:8px 14px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.25);">Keluar</a>
-			<?php endif; ?>
-			<a href="https://github.com/krasyid822/ukmipolmed.xo.je" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; font-size:13px;" title="Sisi belakang aplikasi ini!"><svg aria-hidden="true" focusable="false" class="octicon octicon-mark-github" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom"><path d="M12 1C5.923 1 1 5.923 1 12c0 4.867 3.149 8.979 7.521 10.436.55.096.756-.233.756-.522 0-.262-.013-1.128-.013-2.049-2.764.509-3.479-.674-3.699-1.292-.124-.317-.66-1.293-1.127-1.554-.385-.207-.936-.715-.014-.729.866-.014 1.485.797 1.691 1.128.99 1.663 2.571 1.196 3.204.907.096-.715.385-1.196.701-1.471-2.448-.275-5.005-1.224-5.005-5.432 0-1.196.426-2.186 1.128-2.956-.111-.275-.496-1.402.11-2.915 0 0 .921-.288 3.024 1.128a10.193 10.193 0 0 1 2.75-.371c.936 0 1.871.123 2.75.371 2.104-1.43 3.025-1.128 3.025-1.128.605 1.513.221 2.64.111 2.915.701.77 1.127 1.747 1.127 2.956 0 4.222-2.571 5.157-5.019 5.432.399.344.743 1.004.743 2.035 0 1.471-.014 2.654-.014 3.025 0 .289.206.632.756.522C19.851 20.979 23 16.854 23 12c0-6.077-4.922-11-11-11Z"></path></svg></a>
-		</div>
-		<div class="brand-admin">
-			<img src="logo-ukmi.png" alt="Logo UKMI POLMED">
-			<div class="title">UKMI POLMED · Admin</div>
+	<div class="admin-main">
+		<div class="admin-header">
+			<div class="brand-admin" style="margin-bottom:0;">
+				<img src="/logo-ukmi.png" alt="Logo UKMI POLMED">
+				<div class="title">UKMI POLMED · Admin</div>
+			</div>
+			<div class="admin-header-actions">
+				<?php if ($loggedIn): ?>
+				<a class="button-link" href="?logout=1" style="width:auto; padding:8px 14px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.25);">Keluar</a>
+				<?php endif; ?>
+				<a href="https://github.com/krasyid822/ukmipolmed.xo.je" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; font-size:13px;" title="Sisi belakang aplikasi ini!"><svg aria-hidden="true" focusable="false" class="octicon octicon-mark-github" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom"><path d="M12 1C5.923 1 1 5.923 1 12c0 4.867 3.149 8.979 7.521 10.436.55.096.756-.233.756-.522 0-.262-.013-1.128-.013-2.049-2.764.509-3.479-.674-3.699-1.292-.124-.317-.66-1.293-1.127-1.554-.385-.207-.936-.715-.014-.729.866-.014 1.485.797 1.691 1.128.99 1.663 2.571 1.196 3.204.907.096-.715.385-1.196.701-1.471-2.448-.275-5.005-1.224-5.005-5.432 0-1.196.426-2.186 1.128-2.956-.111-.275-.496-1.402.11-2.915 0 0 .921-.288 3.024 1.128a10.193 10.193 0 0 1 2.75-.371c.936 0 1.871.123 2.75.371 2.104-1.43 3.025-1.128 3.025-1.128.605 1.513.221 2.64.111 2.915.701.77 1.127 1.747 1.127 2.956 0 4.222-2.571 5.157-5.019 5.432.399.344.743 1.004.743 2.035 0 1.471-.014 2.654-.014 3.025 0 .289.206.632.756.522C19.851 20.979 23 16.854 23 12c0-6.077-4.922-11-11-11Z"></path></svg></a>
+			</div>
 		</div>
 		<?php if ($loggedIn): ?>
 			<h1>Panel Admin</h1>
@@ -615,6 +634,9 @@ $__adminBodyClass = $__adminEarlyLoad
 		<?php else: ?>
 			<h1>Login Admin</h1>
 			<p>Masukkan user dan key untuk mengakses halaman admin.</p>
+			<?php if ($message): ?>
+				<div class="success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
+			<?php endif; ?>
 			<?php if ($error): ?>
 				<div class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
 			<?php endif; ?>
@@ -631,6 +653,21 @@ $__adminBodyClass = $__adminEarlyLoad
 					<button type="submit">Masuk</button>
 				</div>
 			</form>
+			<details class="admin-box" style="margin-top: 16px;">
+				<summary style="cursor:pointer; color:var(--accent); font-size:14px; font-weight:600;">Lupa kredensial / Pemulihan darurat?</summary>
+				<p class="muted-text" style="margin:10px 0 8px;">Masukkan <strong>Master Key</strong> (diatur terpusat di <code>default.json</code>) untuk mereset User &amp; Key kembali ke nilai bawaan (<code>default.json</code>) dan mengeluarkan seluruh sesi aktif.</p>
+				<p class="muted-text" style="margin:0 0 12px; font-size:13px;">Status: Master key telah digunakan <strong><?php echo (int) ($recoveryCount ?? 0); ?> kali</strong>.</p>
+				<form method="post">
+					<input type="hidden" name="recover_credentials" value="1">
+					<div>
+						<label for="recovery_key">Recovery Key Master</label>
+						<input type="password" id="recovery_key" name="recovery_key" required autocomplete="off" placeholder="Masukkan recovery key server">
+					</div>
+					<div class="actions">
+						<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Reset Kredensial ke Default</button>
+					</div>
+				</form>
+			</details>
 		<?php endif; ?>
 	</div>
 	<script>

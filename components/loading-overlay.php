@@ -50,7 +50,11 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
 .ukmi-loading-media img.ukmi-loading-logo {
 	position: absolute;
 	width: 38%;
+	height: auto;
 	max-width: 110px;
+	max-height: 110px;
+	aspect-ratio: 1 / 1;
+	object-fit: contain;
 }
 .ukmi-loading-card {
 	width: min(320px, 82vw);
@@ -137,7 +141,7 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
 		done = true;
 		clearTimeout(showTimer);
 		var code = 'Haduh. Koneksi bre melambat! Coba ganti posisi (408)';
-		window.location.replace('/error?code=' + encodeURIComponent(code));
+		window.location.href = '/error?code=' + encodeURIComponent(code);
 	}, 15000);
 	window.ukmiHideLoadingOverlay = hide;
 	if (document.readyState === 'complete') {

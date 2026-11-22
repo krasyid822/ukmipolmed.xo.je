@@ -48,6 +48,9 @@ function data_store_cache_clear($rel)
     $name = data_store_cache_name($rel);
     @unlink(store_cache_file($name));
     @unlink(store_cache_file_gz($name));
+    if (function_exists('store_memo_forget_key')) {
+        store_memo_forget_key(data_store_key($rel));
+    }
 }
 
 function data_store_shard_read($rel, $default = null, $ttl = STORE_TTL)
@@ -68,9 +71,13 @@ function data_store_shard_delete($rel)
     return $ok;
 }
 
-function data_store_manifest_read()
+function data_store_manifest_read(bool $reset = false)
 {
     static $m = false;
+    if ($reset) {
+        $m = false;
+        return null;
+    }
     if ($m !== false) return $m;
     $data = data_store_shard_read('manifest.json', null);
     return $m = (is_array($data) && (int) ($data['version'] ?? 0) >= 1) ? $data : null;
@@ -178,7 +185,9 @@ function data_store_index_update_comments($slug, array $comments, bool $lock = t
     }
     unset($row);
     if (!$found) return false;
-    return data_store_shard_write(DATA_STORE_INDEX_REL, $index, $lock);
+    $ok = data_store_shard_write(DATA_STORE_INDEX_REL, $index, $lock);
+    if ($ok) data_store_index_by_slug(true);
+    return $ok;
 }
 
 function data_store_comments_write($slug, array $comments, bool $lock = true)
@@ -191,9 +200,13 @@ function data_store_comments_write($slug, array $comments, bool $lock = true)
     ], $lock);
 }
 
-function data_store_index_by_slug()
+function data_store_index_by_slug(bool $reset = false)
 {
     static $map = null;
+    if ($reset) {
+        $map = null;
+        return [];
+    }
     if ($map !== null) return $map;
     $map = [];
     foreach (data_store_posts_index_read() as $row) {

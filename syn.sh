@@ -49,8 +49,8 @@ die()  { printf '\033[1;31m ✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
 cd "$REPO_DIR"
 
-RUNTIME_SKIP=( "data.json" "default.json" "insights.json" "authors.json" "assessments.json" "s3_config.php" ".s3_usage.json" ".s3_uploads.json" ".hosting_usage.json" )
-DEV_SKIP=( ".gitignore" "syn.sh" "router.php" "localhost.sh" ".my-idea.txt" "AGENTS.md" "TEMUAN.TXT" "readme.md" "LICENSE" ".syn_manifest" "slimrepo.sh" )
+RUNTIME_SKIP=( "data.json" "insights.json" "authors.json" "assessments.json" "s3_config.php" ".s3_usage.json" ".s3_uploads.json" ".hosting_usage.json" )
+DEV_SKIP=( ".gitignore" "syn.sh" "router.php" "localhost.sh" ".my-idea.txt" "AGENTS.md" "TEMUAN.TXT" "readme.md" "LICENSE" ".syn_manifest" "slimrepo.sh" ".netrc" ".env" )
 in_list() { local n="$1"; shift; local x; for x in "$@"; do [ "$x" = "$n" ] && return 0; done; return 1; }
 
 if command -v sha1sum >/dev/null 2>&1; then SHACMD="sha1sum"; else SHACMD="shasum -a 1"; fi
@@ -92,6 +92,7 @@ gz_fallback() {
   s="$(mktemp)"; gzdir="$(mktemp -d)"
   { echo "set net:timeout 120"; echo "set ftp:passive-mode on"; echo "set net:max-retries 6"; echo "set net:reconnect-interval-base 3"; echo "set xfer:clobber yes"; echo "open $FTP_HOST"; } > "$s"
   for d in "${dirs[@]}"; do printf 'mkdir -p "%s"\n' "$FTP_ROOT/$d" >> "$s"; done
+  echo "set cmd:fail-exit yes" >> "$s"
   for rel in "${rels[@]}"; do
     [ -f "$REPO_DIR/$rel" ] || continue
     name="$(printf '%s' "$rel" | tr '/' '_')"
@@ -160,6 +161,7 @@ do_ftp_push() {
     echo "set net:timeout 300"; echo "set xfer:timeout 300"; echo "set ftp:passive-mode on"
     echo "set net:max-retries 6"; echo "set net:reconnect-interval-base 3"; echo "set xfer:clobber yes"; echo "open $FTP_HOST"
     for d in "${dirs[@]}"; do printf 'mkdir -p "%s"\n' "$FTP_ROOT/$d"; done
+    echo "set cmd:fail-exit yes"
     for rel in "${changed[@]}"; do printf 'put "%s" -o "%s"\n' "$REPO_DIR/$rel" "$FTP_ROOT/$rel$UP"; done
     echo "bye"
   } > "$s1"
@@ -176,7 +178,7 @@ do_ftp_push() {
   while read -r p sz; do [ -n "$p" ] && [ -n "$sz" ] && TS["$p"]="$sz"; done < <(printf '%s\n' "$lsl" | awk 'NF>=9 && $1 ~ /^-/ {print $9, $5}')
 
   local s3; s3="$(mktemp)"; local okc=0 lsz tsz; local failed=(); local renamed=()
-  { echo "set net:timeout 60"; echo "set ftp:passive-mode on"; echo "set net:max-retries 4"; echo "open $FTP_HOST"; } > "$s3"
+  { echo "set net:timeout 60"; echo "set ftp:passive-mode on"; echo "set net:max-retries 4"; echo "open $FTP_HOST"; echo "set cmd:fail-exit yes"; } > "$s3"
   for rel in "${changed[@]}"; do
     lsz="$(stat -c%s "$REPO_DIR/$rel" 2>/dev/null || echo -1)"
     tsz="${TS["$FTP_ROOT/$rel$UP"]:-}"

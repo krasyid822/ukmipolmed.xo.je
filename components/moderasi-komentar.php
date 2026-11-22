@@ -238,7 +238,7 @@ usort($modRows, function ($a, $b) {
 						</form>
 					</div>
 				</div>
-				<form method="post" id="<?php echo htmlspecialchars($editKey, ENT_QUOTES, 'UTF-8'); ?>" style="display:none; margin-top:10px; border-top:1px dashed rgba(148,163,184,0.25); padding-top:10px;">
+				<form method="post" id="<?php echo htmlspecialchars($editKey, ENT_QUOTES, 'UTF-8'); ?>" data-initial-sticker="<?php echo htmlspecialchars($rowSticker, ENT_QUOTES, 'UTF-8'); ?>" data-initial-preview="<?php echo $rowSticker !== '' ? htmlspecialchars(s3_to_relative_url(s3_photo_url($rowSticker)), ENT_QUOTES, 'UTF-8') : ''; ?>" style="display:none; margin-top:10px; border-top:1px dashed rgba(148,163,184,0.25); padding-top:10px;">
 					<input type="hidden" name="comment_moderate" value="1">
 					<input type="hidden" name="comment_csrf" value="<?php echo htmlspecialchars($modCsrf, ENT_QUOTES, 'UTF-8'); ?>">
 					<input type="hidden" name="comment_post_slug" value="<?php echo htmlspecialchars($row['post_slug'], ENT_QUOTES, 'UTF-8'); ?>">
@@ -320,7 +320,26 @@ usort($modRows, function ($a, $b) {
 		document.querySelectorAll('.comment-mod-edit-cancel').forEach(function (btn) {
 			btn.addEventListener('click', function () {
 				var form = document.getElementById(btn.getAttribute('data-target'));
-				if (form) form.style.display = 'none';
+				if (!form) return;
+				form.reset();
+				var initKey = form.getAttribute('data-initial-sticker') || '';
+				var initUrl = form.getAttribute('data-initial-preview') || '';
+				var keyInput = form.querySelector('.comment-mod-sticker-key');
+				var preview = form.querySelector('.comment-mod-sticker-preview');
+				var img = preview ? preview.querySelector('img') : null;
+				var status = form.querySelector('.comment-mod-sticker-status');
+				if (keyInput) keyInput.value = initKey;
+				if (preview && img) {
+					if (initKey && initUrl) {
+						img.src = initUrl;
+						preview.style.display = '';
+					} else {
+						img.removeAttribute('src');
+						preview.style.display = 'none';
+					}
+				}
+				if (status) status.textContent = 'Maksimal 2 MB (GIF/PNG/WebP/JPEG).';
+				form.style.display = 'none';
 			});
 		});
 		document.querySelectorAll('.comment-mod-sticker-file').forEach(function (input) {

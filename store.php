@@ -108,6 +108,24 @@ function store_memo_forget($path)
 {
     $memo = &store_memo();
     unset($memo[(string) $path]);
+    if (basename((string) $path) === 'data.json' && function_exists('data_store_prefix')) {
+        $prefix = data_store_prefix();
+        foreach (array_keys($memo) as $k) {
+            if (strpos($k, '@key:' . $prefix) === 0 || strpos($k, '@keyex:' . $prefix) === 0 || strpos($k, '@json:' . $prefix) === 0) {
+                unset($memo[$k]);
+            }
+        }
+        if (function_exists('data_store_index_by_slug')) {
+            data_store_index_by_slug(true);
+        }
+    }
+}
+
+function store_memo_forget_key($key)
+{
+    $memo = &store_memo();
+    $key = (string) $key;
+    unset($memo['@key:' . $key], $memo['@keyex:' . $key], $memo['@json:' . $key]);
 }
 
 function store_decode($raw)
@@ -380,6 +398,7 @@ function store_save_key($name, $key, $data, $lock = true)
     store_cache_write($name, $key, $data);
     $memo = &store_memo();
     $memo['@key:' . $key] = $data;
+    $memo['@keyex:' . $key] = ['data' => $data, 'status' => 'ok', 'cached' => true, 'stale' => false];
     $memo['@json:' . $key] = $json;
 
     if ($handle) store_lock_release();

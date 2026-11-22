@@ -28,9 +28,9 @@ function e($value) {
 	<meta name="description" content="<?php echo e($errorDesc); ?>">
 	<meta name="robots" content="noindex, follow">
 	<link rel="canonical" href="<?php echo e($canonicalUrl); ?>">
-	<link rel="icon" type="image/png" sizes="192x192" href="logo-ukmi.png">
-	<link rel="icon" type="image/png" sizes="32x32" href="logo-ukmi.png">
-	<link rel="apple-touch-icon" sizes="180x180" href="logo-ukmi.png">
+	<link rel="icon" type="image/png" sizes="192x192" href="/logo-ukmi.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/logo-ukmi.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="/logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
 	<meta property="og:locale" content="id_ID">
 	<meta property="og:type" content="website">
@@ -206,8 +206,8 @@ function e($value) {
 	<div class="loading-screen">
 		<div class="media-wrap">
 			<div class="media">
-				<img class="gif-frame" src="palestine.gif" alt="Loading animation" width="420" height="420">
-				<img class="logo" src="logo-ukmi.png" alt="Logo UKMI POLMED" width="170" height="170">
+				<img class="gif-frame" src="/palestine.gif" alt="Loading animation" width="420" height="420">
+				<img class="logo" src="/logo-ukmi.png" alt="Logo UKMI POLMED" width="170" height="170">
 			</div>
 		</div>
 

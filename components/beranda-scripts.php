@@ -1,11 +1,4 @@
     <script>
-        const loadingEl = document.getElementById('page-loading');
-        window.addEventListener('load', () => {
-            if (!loadingEl) return;
-            loadingEl.classList.add('fade-out');
-            setTimeout(() => loadingEl.remove(), 600);
-        });
-
         // Scroll-to-CTA helper, also reused by header.php.
         window.ukmiScrollToCta = function (targetId, sectionId) {
             const target = document.getElementById(targetId);

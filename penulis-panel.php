@@ -204,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
     } elseif (($dupTitle = wp_find_duplicate_cover($cfg['posts'], $imageFp, $editSlug, $aid)) !== null) {
         $err = 'Gambar sampul sudah dipakai pada postingan lain ("' . $dupTitle . '"). Gunakan gambar yang berbeda.';
     } else {
-        $slug = wp_slugify($slugIn !== '' ? $slugIn : $title);
+        $slug = $slugIn !== '' ? wp_slugify($slugIn) : ($editSlug !== '' ? $editSlug : wp_slugify($title));
         // keunikan slug
         $taken = [];
         foreach ($cfg['posts'] as $p) {

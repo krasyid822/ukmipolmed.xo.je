@@ -13,6 +13,8 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<option value="login-success">login-success</option>
 				<option value="login-fail">login-fail</option>
 				<option value="auth-updated">auth-updated</option>
+				<option value="auth-recovered">auth-recovered</option>
+				<option value="auth-recovery-fail">auth-recovery-fail</option>
 				<option value="view-auth">view-auth</option>
 				<option value="view-guest">view-guest</option>
 				<option value="agenda-updated">agenda-updated</option>
