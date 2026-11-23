@@ -15,6 +15,8 @@
 #   ./syn.sh --push           # push eksplisit (default)
 #   ./syn.sh --git-only       # hanya git (add/commit/push)
 #   ./syn.sh --ftp-only       # hanya ftp
+#   ./syn.sh --verify         # wajib verifikasi file di FTP (default: aktif, gagal jika FTP tak terjangkau)
+#   ./syn.sh --no-verify      # lewati pengecekan nlist FTP (mode cepat, hanya manifest)
 #   ./syn.sh --dry-run        # pratinjau (tidak mengubah apa pun)
 #   ./syn.sh -h|--help        # bantuan
 #
@@ -30,8 +32,8 @@ if [ -z "$RESTORE_KEY" ] && [ -f "$REPO_DIR/s3_config.php" ] && command -v php >
   RESTORE_KEY=$(php -r '$c = @include $argv[1]; if (is_array($c) && !empty($c["maintenance_key"])) echo $c["maintenance_key"];' "$REPO_DIR/s3_config.php" 2>/dev/null || true)
 fi
 
-MODE="push"; DO_GIT=1; DO_FTP=1; DRY_RUN=0; INIT_MANIFEST=0
-usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; }
+MODE="push"; DO_GIT=1; DO_FTP=1; DRY_RUN=0; INIT_MANIFEST=0; VERIFY_REMOTE=1; STRICT_VERIFY=0
+usage() { sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; }
 for arg in "$@"; do
   case "$arg" in
     --push) MODE="push" ;;
@@ -39,6 +41,8 @@ for arg in "$@"; do
     --init-manifest) INIT_MANIFEST=1 ;;
     --git-only) DO_FTP=0 ;;
     --ftp-only) DO_GIT=0 ;;
+    --verify|--sync-missing) VERIFY_REMOTE=1; STRICT_VERIFY=1 ;;
+    --no-verify|--fast) VERIFY_REMOTE=0; STRICT_VERIFY=0 ;;
     --dry-run) DRY_RUN=1 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Opsi tidak dikenal: $arg" >&2; usage; exit 1 ;;
@@ -117,7 +121,12 @@ gz_fallback() {
   rm -rf "$gzdir"
   if [ -z "$resp" ]; then
     warn "Endpoint restore tak terjangkau dari sini."
-    warn "Buka manual: $RESTORE_URL?k=$RESTORE_KEY  (targets=$targets)"
+    warn "Buka manual: $RESTORE_URL?k=$RESTORE_KEY&targets=$targets"
+    return 1
+  fi
+  if printf '%s' "$resp" | grep -qiE 'aes\.js|<html'; then
+    warn "Endpoint restore tertahan challenge aes.js InfinityFree (curl diblokir)."
+    warn "Buka manual di browser: $RESTORE_URL?k=$RESTORE_KEY&targets=$targets"
     return 1
   fi
   local okc=0 failc=0 line
@@ -127,6 +136,40 @@ gz_fallback() {
   done <<< "$resp"
   if [ "$failc" -eq 0 ]; then ok "Fallback gz+restore OK ($okc file)"; return 0; fi
   warn "Fallback: $okc OK, $failc gagal"; return 1
+}
+
+fetch_remote_files() {
+  local dirs=("$@")
+  local s; s="$(mktemp)"
+  {
+    lftp_header
+    echo "set net:timeout 60"
+    echo "set ftp:passive-mode on"
+    echo "set net:max-retries 3"
+    echo "open $FTP_HOST"
+    for d in "${dirs[@]}"; do
+      if [ "$d" = "." ]; then
+        printf 'nlist "%s/"\n' "$FTP_ROOT"
+      else
+        printf 'nlist "%s/%s/"\n' "$FTP_ROOT" "$d"
+      fi
+    done
+    echo "bye"
+  } > "$s"
+  local out
+  out="$(timeout 120 lftp -f "$s" 2>/dev/null || true)"
+  rm -f "$s"
+  [ -z "$out" ] && return 1
+  local line rel
+  while IFS= read -r line; do
+    line="${line%$'\r'}"
+    [ -z "$line" ] && continue
+    rel="${line#$FTP_ROOT/}"
+    case "$rel" in
+      .|..|*/.|*/..) continue ;;
+    esac
+    printf '%s\n' "$rel"
+  done <<< "$out"
 }
 
 do_ftp_push() {
@@ -148,15 +191,57 @@ do_ftp_push() {
     while IFS=$'\t' read -r r s; do [ -n "${r:-}" ] && M["$r"]="$s"; done < "$MANIFEST"
   fi
 
-  local changed=()
+  local changed=() missing=()
+  declare -A in_changed=()
   for rel in "${FILES[@]}"; do
-    if [ "${M[$rel]:-}" != "${H[$rel]}" ]; then changed+=("$rel"); fi
+    if [ "${M[$rel]:-}" != "${H[$rel]}" ]; then
+      changed+=("$rel")
+      in_changed["$rel"]=1
+    fi
   done
 
-  if [ "${#changed[@]}" -eq 0 ]; then ok "Semua file sinkron (manifest)"; return; fi
+  if [ "$VERIFY_REMOTE" = 1 ]; then
+    local check_dirs=(); declare -A seen_dir=()
+    local d
+    for rel in "${FILES[@]}"; do
+      d="$(dirname "$rel")"
+      if [ -z "${seen_dir[$d]:-}" ]; then
+        seen_dir["$d"]=1
+        check_dirs+=("$d")
+      fi
+    done
+    log "Verifikasi keberadaan file di FTP (${#check_dirs[@]} direktori) ..."
+    local remote_list
+    if remote_list="$(fetch_remote_files "${check_dirs[@]}")" && [ -n "$remote_list" ]; then
+      declare -A REMOTE=()
+      while IFS= read -r rel; do
+        [ -n "$rel" ] && REMOTE["$rel"]=1
+      done <<< "$remote_list"
+      for rel in "${FILES[@]}"; do
+        if [ -z "${REMOTE[$rel]:-}" ] && [ -z "${in_changed[$rel]:-}" ]; then
+          changed+=("$rel")
+          missing+=("$rel")
+          in_changed["$rel"]=1
+        fi
+      done
+      if [ "${#missing[@]}" -gt 0 ]; then
+        warn "${#missing[@]} file ada di manifest tapi hilang di FTP (akan di-upload ulang):"
+        printf '    %s\n' "${missing[@]}"
+      fi
+    else
+      if [ "$STRICT_VERIFY" = 1 ]; then
+        die "Verifikasi FTP gagal (--verify aktif)"
+      fi
+      warn "Verifikasi FTP gagal/kosong; lanjut dengan manifest lokal saja"
+    fi
+  fi
+
+  if [ "${#changed[@]}" -eq 0 ]; then ok "Semua file sinkron (manifest + FTP)"; return; fi
 
   if [ "$DRY_RUN" = 1 ]; then
-    warn "dry-run: ${#changed[@]} file berubah:"; printf '    %s\n' "${changed[@]}"; return
+    warn "dry-run: ${#changed[@]} file akan di-upload (${#missing[@]} hilang di FTP):"
+    printf '    %s\n' "${changed[@]}"
+    return
   fi
 
   local UP=".synup"
