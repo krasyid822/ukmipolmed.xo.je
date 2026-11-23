@@ -435,6 +435,17 @@ function admin_recovery_key(array $defaultData): string
 	return trim((string) ($defaultData['recovery_key'] ?? ''));
 }
 
+function admin_mentoring_master_url(string $projectRoot): string
+{
+	if (is_dir($projectRoot . '/terpadu/mai/mentoring/master')) {
+		return '/terpadu/mai/mentoring/master/';
+	}
+	if (is_dir($projectRoot . '/terpadu/mentoring-agama-islam/kelola-kelompok-mentoring/master')) {
+		return '/terpadu/mentoring-agama-islam/kelola-kelompok-mentoring/master/';
+	}
+	return '/terpadu/mai/mentoring/master/';
+}
+
 $defaultRecoveryCount = isset($defaultData['recovery_count']) ? max(0, (int) $defaultData['recovery_count']) : 0;
 $configRecoveryCount = isset($config['recovery_count']) ? max(0, (int) $config['recovery_count']) : 0;
 $recoveryCount = max($defaultRecoveryCount, $configRecoveryCount);
@@ -560,7 +571,7 @@ if ($csrfOk && isset($_POST['user'], $_POST['key'])) {
 			$_SESSION['session_version'] = $sessionVersion;
 			$_SESSION['role'] = 'mentoring_' . $__mScope;
 			unset($_SESSION['author_id']);
-			header('Location: /terpadu/mentoring-agama-islam/kelola-kelompok-mentoring/master/');
+			header('Location: ' . admin_mentoring_master_url($projectRoot));
 			exit;
 		}
 	}
@@ -579,7 +590,7 @@ if ($loggedIn && $currentRole === 'writer') {
 }
 
 if ($loggedIn && in_array($currentRole, ['mentoring_ikhwan', 'mentoring_akhwat'], true)) {
-	header('Location: /terpadu/mentoring-agama-islam/kelola-kelompok-mentoring/master/');
+	header('Location: ' . admin_mentoring_master_url($projectRoot));
 	exit;
 }
 
