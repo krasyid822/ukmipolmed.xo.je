@@ -10,6 +10,8 @@ $agendaDefaults = [
     'tag' => 'Agenda terdekat',
     'title' => 'Pelantikan Ketum 2026-2027',
     'detail' => 'Minggu, 25 Februari · Namira School. MUBES, Ihsan Taufiq, dipilih sebagai Ketua Umum UKMI POLMED 2026-2027.',
+    'start_date' => '',
+    'end_date' => '',
 ];
 
 $registrationDefaults = [
@@ -251,7 +253,7 @@ function e($value)
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-$canonicalHost = preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je'));
+$canonicalHost = preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id'));
 $canonicalBase = 'https://' . $canonicalHost;
 $canonicalPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
 if ($canonicalPath === '/index.php' || $canonicalPath === '/index') {
@@ -348,12 +350,25 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
         'name' => 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
         'url' => $homeUrl,
         'description' => 'Website resmi Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan – organisasi kerohanian Islam mahasiswa.',
+        'potentialAction' => [
+            '@type' => 'SearchAction',
+            'target' => $canonicalBase . '/blog?q={search_term_string}',
+            'query-input' => 'required name=search_term_string',
+        ],
         'publisher' => [
             '@type' => 'Organization',
             'name' => 'Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan',
+            'url' => $homeUrl,
             'logo' => [
                 '@type' => 'ImageObject',
                 'url' => $logoAbsoluteUrl,
+            ],
+            'sameAs' => [
+                'https://www.instagram.com/ukmipolmed/',
+                'https://www.youtube.com/c/UKMIPolmedTV',
+                'https://web.facebook.com/ukmipolmedmedan/',
+                'https://x.com/ukmipolmed',
+                'https://www.linkedin.com/company/unit-kegiatan-mahasiswa-islam-ukmi-politeknik-negeri-medan',
             ],
         ],
     ];
@@ -371,6 +386,16 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
     ];
     $eventSchemaItems = [];
     foreach ($agendas as $agendaItem) {
+        $rawStart = trim((string) ($agendaItem['start_date'] ?? ''));
+        $startTs = $rawStart !== '' ? strtotime($rawStart) : false;
+        if ($startTs === false) {
+            continue;
+        }
+        $rawEnd = trim((string) ($agendaItem['end_date'] ?? ''));
+        $endTs = $rawEnd !== '' ? strtotime($rawEnd) : false;
+        if ($endTs === false || $endTs <= $startTs) {
+            $endTs = $startTs + 7200;
+        }
         $eventSchemaItems[] = [
             '@context' => 'https://schema.org',
             '@type' => 'Event',
@@ -389,15 +414,15 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
             'image' => $logoAbsoluteUrl,
             'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
             'eventStatus' => 'https://schema.org/EventScheduled',
-            'startDate' => date('c'),
-            'endDate' => date('c', strtotime('+2 hours')),
+            'startDate' => date('c', $startTs),
+            'endDate' => date('c', $endTs),
             'offers' => [
                 '@type' => 'Offer',
                 'price' => '0',
                 'priceCurrency' => 'IDR',
                 'url' => $registration['url'] ?? $homeUrl,
                 'availability' => 'https://schema.org/InStock',
-                'validFrom' => date('c'),
+                'validFrom' => date('c', $startTs),
             ],
             'location' => [
                 '@type' => 'Place',

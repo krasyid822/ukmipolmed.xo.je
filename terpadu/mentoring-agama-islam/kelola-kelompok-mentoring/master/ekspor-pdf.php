@@ -40,6 +40,10 @@ $laporanGender = (string)($_GET['laporan_gender'] ?? '');
 if (!in_array($laporanGender, ['Ikhwan', 'Akhwat'], true)) {
     $laporanGender = '';
 }
+$roleGenderLabel = AdminAuth::allowedGenderLabel();
+if ($roleGenderLabel !== null) {
+    $laporanGender = $roleGenderLabel;
+}
 $teamGenders = ReportRepository::teamGenderMap();
 
 $summaries = ReportRepository::summaries();

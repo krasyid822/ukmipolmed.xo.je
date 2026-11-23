@@ -8,7 +8,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 	top: 0;
 	left: 0;
 	right: 0;
-	z-index: 2147482000;
+	z-index: 2147482100;
 	padding: 6px 14px;
 	text-align: center;
 	font-size: 12px;
@@ -22,6 +22,15 @@ if (!defined('UKMI_SOFT_SAVE')) {
 	pointer-events: none;
 }
 .ukmi-save-indicator.is-on { transform: translateY(0); }
+.ukmi-save-indicator.is-notify { pointer-events: auto; cursor: pointer; }
+.ukmi-save-indicator.is-success {
+	background: linear-gradient(90deg, #4ade80, #22c55e);
+	color: #052e16;
+}
+.ukmi-save-indicator.is-danger {
+	background: linear-gradient(90deg, #f87171, #ef4444);
+	color: #fff;
+}
 </style>
 <script>
 (function () {
@@ -31,6 +40,48 @@ if (!defined('UKMI_SOFT_SAVE')) {
 	var nativeSubmit = HTMLFormElement.prototype.submit;
 	var busy = false;
 	var indicator = null;
+	var indicatorMode = null;
+	var notifyTimer = null;
+
+	function ensureIndicator() {
+		if (indicator && indicator.isConnected) return indicator;
+		indicator = document.createElement('div');
+		indicator.className = 'ukmi-save-indicator';
+		indicator.setAttribute('role', 'status');
+		indicator.setAttribute('aria-live', 'polite');
+		indicator.addEventListener('click', function () {
+			if (indicatorMode === 'notify') hideIndicator(true);
+		});
+		(document.body || document.documentElement).appendChild(indicator);
+		return indicator;
+	}
+
+	window.ukmiNotify = function (text, kind, duration) {
+		if (!text) return;
+		if (notifyTimer) {
+			clearTimeout(notifyTimer);
+			notifyTimer = null;
+		}
+		indicatorMode = 'notify';
+		var el = ensureIndicator();
+		el.classList.remove('is-success', 'is-danger');
+		el.classList.add('is-notify', kind === 'danger' ? 'is-danger' : 'is-success');
+		el.textContent = String(text);
+		requestAnimationFrame(function () { el.classList.add('is-on'); });
+		notifyTimer = setTimeout(function () {
+			hideIndicator(true);
+		}, typeof duration === 'number' ? duration : 4200);
+	};
+	window.showAdminToast = window.ukmiNotify;
+
+	function consumeNotifyPayload() {
+		var payload = document.getElementById('ukmi-toast-payload');
+		if (!payload) return;
+		var msg = payload.getAttribute('data-message');
+		var kind = payload.getAttribute('data-kind') || 'success';
+		if (payload.parentNode) payload.parentNode.removeChild(payload);
+		if (msg) window.ukmiNotify(msg, kind);
+	}
 
 	function resolveActionLabel(form, submitter) {
 		var explicit = (submitter && submitter.getAttribute('data-progress-label')) || (form && form.getAttribute('data-progress-label'));
@@ -71,23 +122,33 @@ if (!defined('UKMI_SOFT_SAVE')) {
 	}
 
 	function showIndicator(label) {
-		if (!indicator) {
-			indicator = document.createElement('div');
-			indicator.className = 'ukmi-save-indicator';
-			indicator.setAttribute('role', 'status');
-			indicator.setAttribute('aria-live', 'polite');
-			(document.body || document.documentElement).appendChild(indicator);
+		if (notifyTimer) {
+			clearTimeout(notifyTimer);
+			notifyTimer = null;
 		}
-		indicator.textContent = label || 'Menyimpan perubahan...';
-		requestAnimationFrame(function () { indicator.classList.add('is-on'); });
+		indicatorMode = 'progress';
+		var el = ensureIndicator();
+		el.classList.remove('is-success', 'is-danger', 'is-notify');
+		el.textContent = label || 'Menyimpan perubahan...';
+		requestAnimationFrame(function () { el.classList.add('is-on'); });
 	}
 
-	function hideIndicator() {
+	function hideIndicator(force) {
 		if (!indicator) return;
-		indicator.classList.remove('is-on');
+		if (!force && indicatorMode === 'notify') return;
+		if (notifyTimer) {
+			clearTimeout(notifyTimer);
+			notifyTimer = null;
+		}
+		indicatorMode = null;
 		var el = indicator;
-		indicator = null;
-		setTimeout(function () { if (el && el.parentNode) el.parentNode.removeChild(el); }, 220);
+		el.classList.remove('is-on');
+		setTimeout(function () {
+			if (indicator === el && !el.classList.contains('is-on')) {
+				if (el.parentNode) el.parentNode.removeChild(el);
+				indicator = null;
+			}
+		}, 220);
 	}
 
 	function isHtmlResponse(res) {
@@ -139,9 +200,18 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		document.body.className = doc.body.className;
 		if (doc.body.id) document.body.id = doc.body.id;
 		document.body.innerHTML = doc.body.innerHTML;
+		indicator = null;
 		if (doc.title) document.title = doc.title;
+		var newCsrf = doc.querySelector('meta[name="csrf-token"]');
+		if (newCsrf) {
+			var curCsrf = document.querySelector('meta[name="csrf-token"]');
+			if (curCsrf) {
+				curCsrf.setAttribute('content', newCsrf.getAttribute('content') || '');
+			}
+		}
 		var overlay = document.getElementById('ukmi-loading-overlay');
 		if (overlay) overlay.remove();
+		consumeNotifyPayload();
 		runScripts(document.body);
 		try { sessionStorage.removeItem('admin_scroll_y'); } catch (e) {}
 		if (window.history && window.history.replaceState) {
@@ -186,6 +256,12 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		try {
 			fd = new FormData(form);
 			if (submitter && submitter.name) fd.append(submitter.name, submitter.value || '');
+			if (!fd.has('csrf_token')) {
+				var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+				if (csrfMeta && csrfMeta.getAttribute('content')) {
+					fd.append('csrf_token', csrfMeta.getAttribute('content'));
+				}
+			}
 		} catch (e) {
 			busy = false;
 			nativeSubmit.call(form);
@@ -233,9 +309,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 			})
 			.catch(function (err) {
 				if (err && err.name === 'AbortError') {
-					if (window.uiAlert) {
-						window.uiAlert('Waktu simpan habis. Perubahan belum terkonfirmasi; periksa data lalu simpan lagi.');
-					}
+					window.ukmiNotify('Waktu simpan habis. Perubahan belum terkonfirmasi; periksa data lalu simpan lagi.', 'danger', 7000);
 					return;
 				}
 				nativeSubmit.call(form);
@@ -244,7 +318,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 				if (abortTimer) clearTimeout(abortTimer);
 				busy = false;
 				if (button) button.disabled = wasDisabled;
-				hideIndicator();
+				hideIndicator(false);
 			});
 	}
 
@@ -261,7 +335,16 @@ if (!defined('UKMI_SOFT_SAVE')) {
 	};
 
 	window.ukmiSoftSubmit = softSubmit;
+	consumeNotifyPayload();
 })();
 </script>
 	<?php
 }
+$__ukmiErrText = !empty($error) ? (string) $error : (!empty($err) ? (string) $err : '');
+$__ukmiMsgText = !empty($message) ? (string) $message : (!empty($msg) ? (string) $msg : '');
+$__ukmiNotifyText = $__ukmiErrText !== '' ? $__ukmiErrText : $__ukmiMsgText;
+$__ukmiNotifyKind = $__ukmiErrText !== '' ? 'danger' : 'success';
+if ($__ukmiNotifyText !== ''):
+?>
+<div id="ukmi-toast-payload" hidden data-message="<?php echo htmlspecialchars($__ukmiNotifyText, ENT_QUOTES, 'UTF-8'); ?>" data-kind="<?php echo $__ukmiNotifyKind; ?>"></div>
+<?php endif; ?>

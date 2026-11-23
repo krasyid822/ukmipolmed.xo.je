@@ -15,7 +15,7 @@ use Mentoring\AdminAuth;
 use Mentoring\BackupService;
 use Mentoring\MasterData;
 
-AdminAuth::guard();
+AdminAuth::guardSuperAdmin();
 
 $basePath = mentoring_base_path(__DIR__);
 $appBase = mentoring_base_path(dirname(__DIR__));
@@ -48,7 +48,10 @@ $maxUploadBytes = $uploadLimits === [] ? 50 * 1024 * 1024 : min($uploadLimits);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
 
-    try {
+    if (!AdminAuth::verifyCsrfToken()) {
+        $error = 'Sesi formulir tidak valid atau kedaluwarsa. Muat ulang halaman lalu coba lagi.';
+    } else {
+        try {
         @set_time_limit(0);
 
         if ($action === 'rollback') {
@@ -99,9 +102,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Aksi tidak dikenali.';
         }
-    } catch (\Throwable $e) {
-        error_log('Restore master gagal: ' . $e->getMessage());
-        $error = 'Pemulihan gagal: ' . $e->getMessage();
+        } catch (\Throwable $e) {
+            error_log('Restore master gagal: ' . $e->getMessage());
+            $error = 'Pemulihan gagal: ' . $e->getMessage();
+        }
     }
 }
 
@@ -184,6 +188,7 @@ $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
             checksum dan didekripsi terlebih dahulu; bila gagal, data aktif tidak disentuh.
         </p>
         <form method="POST" enctype="multipart/form-data" style="margin-top: 14px;">
+            <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="action" value="restore">
             <div class="form-group">
                 <label>Berkas Backup:</label>
@@ -241,6 +246,7 @@ $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
                                 <td style="padding: 8px 6px; white-space: nowrap;">
                                     <?php if ($revision !== '' && !$isCurrent): ?>
                                         <form method="POST" data-confirm="Kembalikan data master ke versi ini? Versi saat ini tetap tersimpan." data-confirm-title="Rollback Data Master" style="margin: 0;">
+                                            <?= AdminAuth::csrfField() ?>
                                             <input type="hidden" name="action" value="rollback">
                                             <input type="hidden" name="revision" value="<?= $h($revision) ?>">
                                             <button type="submit" class="btn-cancel">Rollback</button>

@@ -48,7 +48,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 	<div class="admin-box" style="margin-top:10px;">
 		<h3 style="margin:0 0 8px; font-size:15px;">Kartu slide tambahan</h3>
 		<p class="muted-text" style="margin:0 0 10px;">Setiap kartu bisa berisi beberapa slide yang berganti otomatis dengan animasi membalik. Tambahkan kartu sebanyak yang dibutuhkan (maksimal 8 kartu, 8 slide per kartu).</p>
-	<form method="post" id="shortcut-cards-form">
+	<form method="post" id="shortcut-cards-form"><?php echo ukmi_csrf_field(); ?>
 		<div id="shortcut-card-list" class="stack-sm">
 			<?php foreach ($shortcutCards as $cardIdx => $shortcutCard): ?>
 			<div class="shortcut-card-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">

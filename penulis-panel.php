@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/security_helper.php';
+ukmi_session_start();
 require_once __DIR__ . '/authors_helper.php';
 require_once __DIR__ . '/assessments_helper.php';
 require_once __DIR__ . '/s3_helper.php';
@@ -131,9 +132,13 @@ function wp_find_duplicate_cover($posts, $fp, $editSlug, $aid)
 
 $msg = '';
 $err = '';
+$csrfOk = ($_SERVER['REQUEST_METHOD'] !== 'POST') || ukmi_csrf_valid();
+if (!$csrfOk) {
+    $err = 'Sesi kedaluwarsa atau token tidak valid. Muat ulang halaman lalu coba lagi.';
+}
 
 // Profil
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $data['authors'][$meIdx]['pen_name'] = trim((string) ($_POST['pen_name'] ?? ''));
     $data['authors'][$meIdx]['bio'] = trim((string) ($_POST['bio'] ?? ''));
     $oldAvatar = (string) ($data['authors'][$meIdx]['avatar'] ?? '');
@@ -144,7 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $socArr = [];
     foreach (preg_split('/\r?\n/', $rawSoc) as $line) {
         $line = trim($line);
-        if ($line !== '') $socArr[] = $line;
+        if ($line !== '' && preg_match('#^https?://#i', $line)) {
+            $socArr[] = $line;
+        }
     }
     $data['authors'][$meIdx]['socials'] = $socArr;
     $data['authors'][$meIdx]['social'] = $socArr[0] ?? '';
@@ -158,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
 }
 
 // Simpan postingan
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
     $cfg = wp_load_config($configPath);
     if (!isset($cfg['posts']) || !is_array($cfg['posts'])) $cfg['posts'] = [];
     $editSlug = trim((string) ($_POST['orig_slug'] ?? ''));
@@ -370,7 +377,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_post'])) {
 }
 
 // Hapus postingan
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_post'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_post'])) {
     $delSlug = trim((string) $_POST['delete_post']);
     $cfg = wp_load_config($configPath);
     $before = count($cfg['posts'] ?? []);
@@ -389,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_post'])) {
 }
 
 // Buat asesmen (pretest/posttest)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment']) && $allowAssessment) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment']) && $allowAssessment) {
     $aTitle = trim((string) ($_POST['a_title'] ?? ''));
     $aType = (($_POST['a_type'] ?? 'pretest') === 'posttest') ? 'posttest' : 'pretest';
     $aGrading = (($_POST['a_grading'] ?? 'auto') === 'manual') ? 'manual' : 'auto';
@@ -496,7 +503,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment']) 
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assessment'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assessment'])) {
     $delAid = trim((string) $_POST['delete_assessment']);
     $as = assessment_find($delAid);
     if ($as && (string) ($as['author_id'] ?? '') === $aid) {
@@ -515,7 +522,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assessment']))
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['audit_aid'], $_POST['audit_rid'])) {
+if ($csrfOk && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['audit_aid'], $_POST['audit_rid'])) {
     $auAid = trim((string) $_POST['audit_aid']);
     $auRid = trim((string) $_POST['audit_rid']);
     $as = assessment_find($auAid);
@@ -563,6 +570,7 @@ $profileView = isset($_GET['profile']);
 ?><!doctype html>
 <html lang="id">
 <head>
+<meta name="csrf-token" content="<?php echo htmlspecialchars(ukmi_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel Penulis – <?php echo htmlspecialchars((string) ($me['pen_name'] ?: $username), ENT_QUOTES, 'UTF-8'); ?></title>
@@ -588,16 +596,13 @@ $profileView = isset($_GET['profile']);
     </div>
   </div>
 
-  <?php if ($msg !== ''): ?><p class="ok"><?php echo htmlspecialchars($msg, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
-  <?php if ($err !== ''): ?><p class="err"><?php echo htmlspecialchars($err, ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
-
   <?php if ($profileView): ?>
     <div class="card">
       <div class="row" style="justify-content:space-between;margin-top:0;">
         <h2 style="font-size:15px;margin:0;">Pengaturan Profil</h2>
         <a class="btn" href="/penulis-panel">Kembali</a>
       </div>
-      <form method="post">
+      <form method="post"><?php echo ukmi_csrf_field(); ?>
         <input type="hidden" name="save_profile" value="1">
         <div class="grid2">
           <div><label for="pen_name">Nama pena</label><input type="text" id="pen_name" name="pen_name" value="<?php echo htmlspecialchars((string) ($me['pen_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div>
@@ -615,7 +620,7 @@ $profileView = isset($_GET['profile']);
   <?php elseif ($showForm): ?>
     <div class="card">
       <h2 style="font-size:15px;margin:0 0 6px;"><?php echo $editing ? 'Edit postingan' : 'Postingan baru'; ?></h2>
-      <form method="post" id="post_form">
+      <form method="post" id="post_form"><?php echo ukmi_csrf_field(); ?>
         <input type="hidden" name="save_post" value="1">
         <input type="hidden" name="orig_slug" value="<?php echo htmlspecialchars((string) ($editing['slug'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
         <label for="title">Judul</label>
@@ -728,7 +733,7 @@ $profileView = isset($_GET['profile']);
               <div style="margin-top:4px;font-size:13px;color:#fca5a5;">⚠ Pelanggaran: <?php echo (int) $r['manual_count']; ?> jawaban angka diketik manual (tanpa rumus)<?php if (!empty($r['manual_answers']) && is_array($r['manual_answers'])): ?> — <?php echo htmlspecialchars(implode(', ', array_map('strval', $r['manual_answers'])), ENT_QUOTES, 'UTF-8'); ?><?php endif; ?></div>
             <?php endif; ?>
             <?php if (($respAs['grading'] ?? 'auto') === 'manual'): ?>
-              <form method="post" class="row" style="margin-top:8px;">
+              <form method="post" class="row" style="margin-top:8px;"><?php echo ukmi_csrf_field(); ?>
                 <input type="hidden" name="audit_aid" value="<?php echo htmlspecialchars((string) $respAs['id'], ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="audit_rid" value="<?php echo htmlspecialchars((string) ($r['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="text" name="audit_score" value="<?php echo $sc === null ? '' : (int) $sc; ?>" placeholder="skor 0-<?php echo (int) $qTotal; ?>" style="max-width:140px;">
@@ -758,7 +763,7 @@ $profileView = isset($_GET['profile']);
           <div class="row" style="margin-top:8px;">
             <a class="btn" href="/blog/<?php echo rawurlencode((string) ($p['slug'] ?? '')); ?>" target="_blank" rel="noopener">Lihat</a>
             <a class="btn" href="?edit=<?php echo rawurlencode((string) ($p['slug'] ?? '')); ?>">Edit</a>
-            <form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus postingan ini?');">
+            <form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus postingan ini?');"><?php echo ukmi_csrf_field(); ?>
               <input type="hidden" name="delete_post" value="<?php echo htmlspecialchars((string) ($p['slug'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
               <button type="submit" class="danger">Hapus</button>
             </form>
@@ -771,7 +776,7 @@ $profileView = isset($_GET['profile']);
               <div class="row" style="margin:4px 0;">
                 <span style="font-size:13px;"><?php echo htmlspecialchars((string) $as['title'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo count($as['key_cells'] ?? []); ?> sel kunci · <?php echo (int) ($as['response_count'] ?? count($as['responses'] ?? [])); ?> responden</span>
                 <a class="btn" href="?responses=<?php echo rawurlencode((string) $as['id']); ?>">Responden</a>
-                <form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus asesmen ini?');">
+                <form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus asesmen ini?');"><?php echo ukmi_csrf_field(); ?>
                   <input type="hidden" name="delete_assessment" value="<?php echo htmlspecialchars((string) $as['id'], ENT_QUOTES, 'UTF-8'); ?>">
                   <button type="submit" class="danger">Hapus</button>
                 </form>

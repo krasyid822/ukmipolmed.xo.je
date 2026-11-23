@@ -116,4 +116,21 @@ class Config {
     public static function mentorShowcasePerPage(): int {
         return max(1, (int)self::get('app.mentor_showcase_per_page', 3));
     }
+
+    /**
+     * Ambil konfigurasi rate-limit terpusat dari default.json (`rate_limit.<scope>`).
+     *
+     * @return array{enabled:bool,max_attempts:int,window_seconds:int}
+     */
+    public static function rateLimit(string $scope, int $defaultMax = 5, int $defaultWindow = 900): array {
+        $cfg = self::get('rate_limit.' . $scope, []);
+        if (!is_array($cfg)) {
+            $cfg = [];
+        }
+        return [
+            'enabled' => array_key_exists('enabled', $cfg) ? (bool)$cfg['enabled'] : true,
+            'max_attempts' => max(1, (int)($cfg['max_attempts'] ?? $defaultMax)),
+            'window_seconds' => max(1, (int)($cfg['window_seconds'] ?? $defaultWindow)),
+        ];
+    }
 }

@@ -64,10 +64,13 @@ if (!Biometric::isTeamAllowedForEntity((string)($verified['entity_type'] ?? ''),
 }
 
 $tanggal = trim($_POST['tanggal'] ?? date('Y-m-d'));
-$jamMulai = trim($_POST['jam_mulai'] ?? '16:00');
-$jamSelesai = trim($_POST['jam_selesai'] ?? '17:30');
-$tempat = trim($_POST['tempat'] ?? '');
-$tema = trim($_POST['tema'] ?? '');
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal)) {
+    $tanggal = date('Y-m-d');
+}
+$jamMulai = mb_substr(trim($_POST['jam_mulai'] ?? '16:00'), 0, 10);
+$jamSelesai = mb_substr(trim($_POST['jam_selesai'] ?? '17:30'), 0, 10);
+$tempat = mb_substr(trim($_POST['tempat'] ?? ''), 0, 250);
+$tema = mb_substr(trim($_POST['tema'] ?? ''), 0, 500);
 
 if ($tempat === '' || $tema === '') {
     $jsonFail(422, 'wajib', 'Data pertemuan belum lengkap. Isi tempat dan tema terlebih dahulu.');
@@ -201,10 +204,10 @@ $primaryExt = $compressedImages['webp'] !== null ? 'webp' : 'jpg';
 $primaryMime = $primaryExt === 'webp' ? 'image/webp' : 'image/jpeg';
 $primaryBody = $compressedImages['webp'] ?? $compressedImages['jpg'];
 $dokS3Path = $dokFolder . $reportId . '.' . $primaryExt;
-$s3->putObject($dokS3Path, $primaryBody, $primaryMime, false);
+$dokUploaded = $s3->putObject($dokS3Path, $primaryBody, $primaryMime, false);
 
 // Unggah juga salinan .jpg untuk kompatibilitas Cloudflare Worker & crawler lama
-if ($primaryExt === 'webp' && $compressedImages['jpg'] !== '') {
+if ($dokUploaded && $primaryExt === 'webp' && $compressedImages['jpg'] !== '') {
     $s3->putObject($dokFolder . $reportId . '.jpg', $compressedImages['jpg'], 'image/jpeg', false);
 }
 
@@ -217,13 +220,21 @@ $ogMetaPayload = [
     'image' => $dokS3Path,
     'tim' => $namaTim,
 ];
-$s3->putObject($ogMetaS3Path, json_encode($ogMetaPayload, JSON_UNESCAPED_SLASHES), 'application/json', false);
+if ($dokUploaded) {
+    $s3->putObject($ogMetaS3Path, json_encode($ogMetaPayload, JSON_UNESCAPED_SLASHES), 'application/json', false);
+}
 
 // 7. Enkripsi dan Kompresi Data Laporan Privat
 $cryptoResult = Crypto::encryptData($reportPayload);
 $laporanFolder = Config::get('storage.folders.laporan_json', 'laporan_json/');
 $laporanS3Path = $laporanFolder . $reportId . '.enc';
-$s3->putObject($laporanS3Path, $cryptoResult['ciphertext_raw'], 'application/octet-stream', false);
+$laporanUploaded = $dokUploaded && $s3->putObject($laporanS3Path, $cryptoResult['ciphertext_raw'], 'application/octet-stream', false);
+
+if (!$dokUploaded || !$laporanUploaded) {
+    $jsonFail(502, 'storage', 'Gagal mengunggah laporan ke penyimpanan S3. Silakan coba lagi.');
+    header('Location: ./?error=storage');
+    exit;
+}
 
 // 8. Update Local Pointer Registry (pointer_laporan.json)
 Storage::savePointer('laporan', [
@@ -245,30 +256,36 @@ Storage::savePointer('laporan', [
 // 9. Update Status Keaktifan Mentee pada Master Data
 MasterData::updateMenteeAttendance($timId, $attendanceForMaster);
 
-// 10. Kirim Laporan ke WhatsApp Group via Watobot API.
+// 10. Kirim Laporan ke WhatsApp Group via Watobot API (sesuai gender tim).
 //     Kegagalan TIDAK menghentikan proses: pesan masuk antrean dan akan
 //     dicoba ulang otomatis saat API bot kembali tersedia.
+$botChannel = Watobot::resolveChannelForTeam($timId, $namaTim);
 $botMessage = Watobot::buildMessageText($reportPayload);
-$botResult = Watobot::sendReport($botMessage);
-
 $botQueued = false;
-if (empty($botResult['success'])) {
-    BotQueue::enqueue($reportId, $botMessage, [
-        'nama_tim' => $namaTim,
-        'tanggal' => $tanggal,
-    ]);
-    if (!empty($botResult['api_invalid'])) {
-        BotQueue::markApiInvalid(
-            (string)($botResult['failure_reason'] ?? 'API bot kedaluwarsa'),
-            (int)($botResult['http_code'] ?? 0)
-        );
-    } else {
-        BotQueue::markAttemptFailed(
-            (string)($botResult['failure_reason'] ?? 'Gagal mengirim ke API bot'),
-            (int)($botResult['http_code'] ?? 0)
-        );
+if (!Watobot::isEnabled($botChannel)) {
+    $botResult = ['success' => false, 'disabled' => true];
+} else {
+    $botResult = Watobot::sendReport($botMessage, [], $botChannel);
+    if (empty($botResult['success'])) {
+        BotQueue::enqueue($reportId, $botMessage, [
+            'nama_tim' => $namaTim,
+            'tanggal' => $tanggal,
+        ], $botChannel);
+        if (!empty($botResult['api_invalid'])) {
+            BotQueue::markApiInvalid(
+                (string)($botResult['failure_reason'] ?? 'API bot kedaluwarsa'),
+                (int)($botResult['http_code'] ?? 0),
+                $botChannel
+            );
+        } else {
+            BotQueue::markAttemptFailed(
+                (string)($botResult['failure_reason'] ?? 'Gagal mengirim ke API bot'),
+                (int)($botResult['http_code'] ?? 0),
+                $botChannel
+            );
+        }
+        $botQueued = true;
     }
-    $botQueued = true;
 }
 
 // 11. Redirect ke Halaman Laporan Lengkap (view?id=<id_laporan>) atau kembalikan JSON jika AJAX/PWA

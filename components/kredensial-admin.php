@@ -2,12 +2,12 @@
 if (($adminComponentMode ?? '') === 'handle') {
 	if ($loggedIn && isset($_POST['unlock_credential_code'])) {
 		$code = trim((string) $_POST['unlock_credential_code']);
-		if ($code === 'superadmin') {
+		if (ukmi_verify_admin_key((string) ($config['key'] ?? ''), $code)) {
 			$credentialUnlocked = true;
 			$_SESSION['credential_unlocked'] = true;
 			$message = 'Mode superadmin aktif untuk kredensial admin.';
 		} else {
-			$error = 'Kode superadmin salah.';
+			$error = 'Key admin saat ini salah.';
 		}
 	}
 
@@ -24,7 +24,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			$error = 'Konfirmasi key tidak sama.';
 		} else {
 			$config['user'] = $newUser;
-			$config['key'] = $newKey;
+			$config['key'] = password_hash($newKey, PASSWORD_DEFAULT);
 			$sessionVersion++;
 			$config['session_version'] = $sessionVersion;
 			$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
@@ -140,18 +140,72 @@ if (($adminComponentMode ?? '') === 'handle') {
 		}
 	}
 
+	if ($loggedIn && isset($_POST['save_mentoring_account'])) {
+		$scope = strtolower(trim((string) ($_POST['mentoring_scope'] ?? '')));
+		$uname = trim((string) ($_POST['mentoring_username'] ?? ''));
+		$pass = (string) ($_POST['mentoring_password'] ?? '');
+		$accounts = is_array($config['mentoring_accounts'] ?? null) ? $config['mentoring_accounts'] : [];
+		$otherScope = $scope === 'ikhwan' ? 'akhwat' : 'ikhwan';
+		$existing = is_array($accounts[$scope] ?? null) ? $accounts[$scope] : [];
+
+		if (!in_array($scope, ['ikhwan', 'akhwat'], true)) {
+			$error = 'Scope akun mentoring tidak valid.';
+		} elseif ($uname === '') {
+			$error = 'Username akun mentoring wajib diisi.';
+		} elseif (strcasecmp($uname, (string) ($config['user'] ?? '')) === 0) {
+			$error = 'Username tidak boleh sama dengan username admin.';
+		} elseif (!empty($accounts[$otherScope]['username']) && strcasecmp($uname, (string) $accounts[$otherScope]['username']) === 0) {
+			$error = 'Username sudah dipakai oleh akun mentoring ' . $otherScope . '.';
+		} elseif (authors_find_by_username($uname)) {
+			$error = 'Username sudah dipakai oleh akun penulis.';
+		} elseif ($pass === '' && empty($existing['password_hash'])) {
+			$error = 'Password wajib diisi saat membuat akun mentoring baru.';
+		} else {
+			$hash = $pass !== '' ? password_hash($pass, PASSWORD_DEFAULT) : (string) $existing['password_hash'];
+			$accounts[$scope] = [
+				'username' => $uname,
+				'password_hash' => $hash,
+				'updated_at' => date('c'),
+			];
+			$config['mentoring_accounts'] = $accounts;
+			if (!store_save_json($configPath, $config)) {
+				$error = 'Gagal menyimpan kredensial mentoring ' . $scope . '.';
+			} else {
+				appendLog($config, $configPath, 'mentoring-cred-updated-' . $scope, $maxLogs, $archiveLimitDays);
+				$message = 'Kredensial akses mentoring ' . ucfirst($scope) . ' disimpan.';
+			}
+		}
+	}
+
+	if ($loggedIn && isset($_POST['delete_mentoring_account'])) {
+		$scope = strtolower(trim((string) ($_POST['mentoring_scope'] ?? '')));
+		$accounts = is_array($config['mentoring_accounts'] ?? null) ? $config['mentoring_accounts'] : [];
+		if (in_array($scope, ['ikhwan', 'akhwat'], true) && isset($accounts[$scope])) {
+			unset($accounts[$scope]);
+			$config['mentoring_accounts'] = $accounts;
+			if (!store_save_json($configPath, $config)) {
+				$error = 'Gagal menghapus kredensial mentoring ' . $scope . '.';
+			} else {
+				appendLog($config, $configPath, 'mentoring-cred-deleted-' . $scope, $maxLogs, $archiveLimitDays);
+				$message = 'Kredensial akses mentoring ' . ucfirst($scope) . ' dihapus.';
+			}
+		} else {
+			$error = 'Akun mentoring tidak ditemukan.';
+		}
+	}
+
 	return;
 }
 ?>
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:15px;">Kredensial admin</h2>
-	<form method="post" class="stack-sm" style="margin-bottom:10px;">
+	<form method="post" class="stack-sm" style="margin-bottom:10px;"><?php echo ukmi_csrf_field(); ?>
 		<div class="inline-actions" style="align-items:center; gap:10px;">
-			<input type="text" name="unlock_credential_code" placeholder="Ketik superadmin untuk mengubah" style="flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" autocomplete="off">
+			<input type="password" name="unlock_credential_code" placeholder="Masukkan key admin saat ini untuk mengubah" style="flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" autocomplete="current-password">
 			<button type="submit" style="max-width:180px;">Buka</button>
 		</div>
 	</form>
-	<form method="post" class="stack-sm" style="<?php echo $credentialUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
+	<form method="post" class="stack-sm" style="<?php echo $credentialUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?><?php echo ukmi_csrf_field(); ?>">
 		<input type="hidden" name="update_credentials" value="1">
 		<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
 			<div>
@@ -180,7 +234,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:15px;">Yel-yel UKMI (bio admin)</h2>
-	<form method="post" class="stack-sm">
+	<form method="post" class="stack-sm"><?php echo ukmi_csrf_field(); ?>
 		<input type="hidden" name="save_yel_yel" value="1">
 		<textarea name="yel_yel" rows="3" placeholder="Yel-yel / tagline UKMI POLMED" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);"><?php echo htmlspecialchars((string) ($config['yel_yel'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
 		<div class="inline-actions" style="margin-top:6px; align-items:center;">
@@ -192,7 +246,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:15px;">Akun penulis blog</h2>
-	<form method="post" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items:end;">
+	<form method="post" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items:end;"><?php echo ukmi_csrf_field(); ?>
 		<input type="hidden" name="create_author" value="1">
 		<div><label for="author_username">Username</label><input type="text" id="author_username" name="author_username" required placeholder="penulis1" autocomplete="off"></div>
 		<div><label for="author_password">Password</label><input type="text" id="author_password" name="author_password" required placeholder="kata sandi" autocomplete="off"></div>
@@ -212,14 +266,14 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<li style="padding:8px 0; border-top:1px solid rgba(148,163,184,0.15);">
 				<div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
 					<span><?php echo htmlspecialchars((string) (($au['pen_name'] ?? '') !== '' ? $au['pen_name'] : ($au['username'] ?? '')), ENT_QUOTES, 'UTF-8'); ?> <span class="muted-text">@<?php echo htmlspecialchars((string) ($au['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></span>
-					<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus akun penulis ini?');">
+					<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus akun penulis ini?');"><?php echo ukmi_csrf_field(); ?>
 						<input type="hidden" name="delete_author" value="<?php echo htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 						<button type="submit" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
 					</form>
 				</div>
 				<details style="margin-top:6px;">
 					<summary style="cursor:pointer;color:var(--accent);font-size:13px;">Edit</summary>
-					<form method="post" class="stack-sm" style="margin-top:8px;">
+					<form method="post" class="stack-sm" style="margin-top:8px;"><?php echo ukmi_csrf_field(); ?>
 						<input type="hidden" name="edit_author" value="<?php echo htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 						<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr));">
 							<div><label>Username</label><input type="text" name="edit_username" value="<?php echo htmlspecialchars((string) ($au['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required></div>
@@ -238,4 +292,57 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<?php endforeach; ?>
 		</ul>
 	<?php endif; ?>
+</div>
+
+<div class="section" style="margin-top: 10px;">
+	<h2 style="margin:0 0 8px; font-size:15px;">Akses Pengelola Mentoring (Ikhwan &amp; Akhwat)</h2>
+	<p class="muted-text" style="margin:0 0 12px; font-size:12px;">
+		Akun ini login melalui halaman <code>/login</code> yang sama, tetapi hanya dapat mengakses data master mentoring sesuai gendernya dan tidak dapat mengakses panel admin utama, backup, maupun rollback.
+	</p>
+	<?php
+	$mentoringAccounts = is_array($config['mentoring_accounts'] ?? null) ? $config['mentoring_accounts'] : [];
+	$mentoringScopes = [
+		'ikhwan' => ['label' => 'Akses Mentoring Ikhwan', 'hint' => 'Hanya mengelola mentor, tim, mentee, laporan, dan pendaftar Ikhwan (Laki-laki).'],
+		'akhwat' => ['label' => 'Akses Mentoring Akhwat', 'hint' => 'Hanya mengelola mentor, tim, mentee, laporan, dan pendaftar Akhwat (Perempuan).'],
+	];
+	?>
+	<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+		<?php foreach ($mentoringScopes as $mScope => $mMeta): ?>
+			<?php
+			$mAcc = is_array($mentoringAccounts[$mScope] ?? null) ? $mentoringAccounts[$mScope] : null;
+			$mHasAcc = $mAcc !== null && !empty($mAcc['username']) && !empty($mAcc['password_hash']);
+			?>
+			<div style="padding:12px; border-radius:10px; border:1px solid rgba(148,163,184,0.2); background:rgba(15,23,42,0.35);">
+				<div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+					<strong style="font-size:13px;"><?php echo htmlspecialchars($mMeta['label'], ENT_QUOTES, 'UTF-8'); ?></strong>
+					<span style="font-size:11px; padding:2px 8px; border-radius:999px; background:<?php echo $mHasAcc ? 'rgba(16,185,129,0.18)' : 'rgba(148,163,184,0.15)'; ?>; color:<?php echo $mHasAcc ? '#34d399' : '#94a3b8'; ?>;">
+						<?php echo $mHasAcc ? 'Aktif' : 'Belum diatur'; ?>
+					</span>
+				</div>
+				<p class="muted-text" style="margin:0 0 10px; font-size:12px;"><?php echo htmlspecialchars($mMeta['hint'], ENT_QUOTES, 'UTF-8'); ?></p>
+				<form method="post" class="stack-sm"><?php echo ukmi_csrf_field(); ?>
+					<input type="hidden" name="save_mentoring_account" value="1">
+					<input type="hidden" name="mentoring_scope" value="<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>">
+					<div>
+						<label>Username</label>
+						<input type="text" name="mentoring_username" required autocomplete="off" placeholder="mentoring_<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>" value="<?php echo htmlspecialchars((string) ($mAcc['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+					</div>
+					<div>
+						<label>Password <?php echo $mHasAcc ? '(kosongkan jika tetap)' : ''; ?></label>
+						<input type="password" name="mentoring_password" <?php echo $mHasAcc ? '' : 'required'; ?> autocomplete="new-password" placeholder="<?php echo $mHasAcc ? '********' : 'kata sandi'; ?>">
+					</div>
+					<div style="display:flex; gap:8px; align-items:center;">
+						<button type="submit"><?php echo $mHasAcc ? 'Perbarui' : 'Aktifkan'; ?></button>
+					</div>
+				</form>
+				<?php if ($mHasAcc): ?>
+				<form method="post" style="margin-top:8px;" onsubmit="return uiConfirm(event, 'Nonaktifkan dan hapus akun <?php echo htmlspecialchars($mMeta['label'], ENT_QUOTES, 'UTF-8'); ?><?php echo ukmi_csrf_field(); ?>?');">
+					<input type="hidden" name="delete_mentoring_account" value="1">
+					<input type="hidden" name="mentoring_scope" value="<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>">
+					<button type="submit" style="background: rgba(239,68,68,0.12); color: #fca5a5; box-shadow: none; border: 1px solid rgba(239,68,68,0.35);">Hapus Akun</button>
+				</form>
+				<?php endif; ?>
+			</div>
+		<?php endforeach; ?>
+	</div>
 </div>

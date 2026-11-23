@@ -243,7 +243,7 @@ if (empty($faqItems)) {
     }
 }
 
-$canonicalHost = preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je'));
+$canonicalHost = preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id'));
 $canonicalBase = 'https://' . $canonicalHost;
 $indexUrl = $canonicalBase . '/';
 $faqUrl = $canonicalBase . '/faq';
@@ -320,8 +320,10 @@ $pageDescription = 'Cari jawaban resmi seputar UKMI POLMED, termasuk AD/ART, STK
     <title><?php echo e($pageTitle); ?></title>
     <meta name="description" content="<?php echo e($pageDescription); ?>">
     <meta name="keywords" content="FAQ UKMI POLMED, AD/ART UKMI POLMED, STKO UKMI POLMED, GBHK UKMI POLMED, organisasi UKMI, pertanyaan UKMI POLMED">
-    <meta name="robots" content="index,follow">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <link rel="canonical" href="<?php echo e($faqUrl); ?>">
+    <link rel="alternate" hreflang="id" href="<?php echo e($faqUrl); ?>">
+    <link rel="alternate" hreflang="x-default" href="<?php echo e($faqUrl); ?>">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="UKMI POLMED">
     <meta property="og:title" content="<?php echo e($pageTitle); ?>">

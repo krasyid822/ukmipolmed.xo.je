@@ -32,8 +32,16 @@ if ($index === null) {
 }
 
 $team = $master['teams'][$index];
+if (!AdminAuth::canAccessRecord($master, 'tim', $team)) {
+    header('Location: ' . $basePath . '?error=notfound#tab-teams', true, 303);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!AdminAuth::verifyCsrfToken()) {
+        http_response_code(403);
+        die('Token CSRF tidak valid atau sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+    }
     $namaTim = trim($_POST['nama_tim'] ?? '');
     $mentorId = trim($_POST['mentor_id'] ?? '');
 
@@ -56,6 +64,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $team = $master['teams'][$index];
+        if (!AdminAuth::canAccessRecord($master, 'tim', $team)) {
+            throw new MasterDataException('Anda tidak memiliki akses ke tim ini.', 'notfound');
+        }
+        $selectedMentor = null;
+        foreach ($master['mentors'] ?? [] as $mRow) {
+            if ((string)($mRow['id'] ?? '') === $mentorId) {
+                $selectedMentor = $mRow;
+                break;
+            }
+        }
+        if ($selectedMentor === null || !AdminAuth::canAccessGender($selectedMentor['gender'] ?? '')) {
+            throw new MasterDataException('Mentor pendamping tidak ditemukan atau tidak sesuai akses role Anda.', 'notfound');
+        }
         $team['nama_tim'] = $namaTim;
         $team['mentor_id'] = $mentorId;
         $team['status'] = trim($_POST['status'] ?? 'Aktif');
@@ -82,7 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $errorKey = $_GET['error'] ?? '';
 $formError = mentoring_form_error();
 $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
-$mentorIds = array_column($master['mentors'] ?? [], 'nama_lengkap', 'id');
+$filteredMaster = AdminAuth::filterMasterData($master);
+$mentorIds = array_column($filteredMaster['mentors'] ?? [], 'nama_lengkap', 'id');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -120,6 +142,7 @@ $mentorIds = array_column($master['mentors'] ?? [], 'nama_lengkap', 'id');
 
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
+            <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="id" value="<?= $h($teamId) ?>">
 
             <div class="form-grid">

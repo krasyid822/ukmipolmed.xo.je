@@ -20,11 +20,9 @@ function admin_bootstrap_fail(string $message, int $status = 500): void
 	exit;
 }
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
-	session_start();
-}
-
 $projectRoot = dirname(__DIR__);
+require_once $projectRoot . '/security_helper.php';
+ukmi_session_start();
 require_once $projectRoot . '/store.php';
 $configPath = $projectRoot . '/data.json';
 $defaultPath = $projectRoot . '/default.json';
@@ -109,6 +107,7 @@ $config['shortcut_cards'] = is_array($config['shortcut_cards'] ?? null) ? array_
 $config['faqs'] = is_array($config['faqs'] ?? null) ? array_values($config['faqs']) : $defaults['faqs'];
 $config['hero_cards'] = is_array($config['hero_cards'] ?? null) ? array_values($config['hero_cards']) : $defaults['hero_cards'];
 $config['posts'] = is_array($config['posts'] ?? null) ? array_values($config['posts']) : $defaults['posts'];
+$config['mentoring_accounts'] = is_array($config['mentoring_accounts'] ?? null) ? $config['mentoring_accounts'] : [];
 $config['session_version'] = isset($config['session_version']) ? max(1, (int) $config['session_version']) : 1;
 $sessionVersion = (int) $config['session_version'];
 
@@ -470,7 +469,15 @@ if (isset($_GET['logout'])) {
 require_once __DIR__ . '/../authors_helper.php';
 require_once __DIR__ . '/../s3_helper.php';
 
-if (isset($_POST['recover_credentials'], $_POST['recovery_key'])) {
+$csrfOk = ($_SERVER['REQUEST_METHOD'] !== 'POST') || ukmi_csrf_valid();
+if (!$csrfOk) {
+	$error = 'Sesi kedaluwarsa atau token tidak valid. Muat ulang halaman lalu coba lagi.';
+}
+
+if ($csrfOk && isset($_POST['recover_credentials'], $_POST['recovery_key'])) {
+	if (ukmi_rate_limit('auth', 10, 600)) {
+		$error = 'Terlalu banyak percobaan. Coba lagi dalam beberapa menit.';
+	} else {
 	$inputRecoveryKey = trim((string) $_POST['recovery_key']);
 	$masterRecoveryKey = admin_recovery_key($defaultData);
 
@@ -505,13 +512,21 @@ if (isset($_POST['recover_credentials'], $_POST['recovery_key'])) {
 			exit;
 		}
 	}
+	}
 }
 
-if (isset($_POST['user'], $_POST['key'])) {
+if ($csrfOk && isset($_POST['user'], $_POST['key'])) {
+	if (ukmi_rate_limit('auth', 10, 600)) {
+		$error = 'Terlalu banyak percobaan login. Coba lagi dalam beberapa menit.';
+	} else {
 	$user = (string) $_POST['user'];
 	$key = (string) $_POST['key'];
-	if (hash_equals($config['user'], $user) && hash_equals($config['key'], $key)) {
+	if (hash_equals($config['user'], $user) && ukmi_verify_admin_key($config['key'], $key)) {
+		if (!ukmi_is_password_hashed($config['key'])) {
+			$config['key'] = password_hash($key, PASSWORD_DEFAULT);
+		}
 		appendLog($config, $configPath, 'login-success', $maxLogs, $archiveLimitDays);
+		session_regenerate_id(true);
 		$_SESSION['admin_logged_in'] = true;
 		$_SESSION['session_version'] = $sessionVersion;
 		$_SESSION['role'] = 'admin';
@@ -522,6 +537,7 @@ if (isset($_POST['user'], $_POST['key'])) {
 	$writer = authors_find_by_username($user);
 	if ($writer && !empty($writer['password_hash']) && password_verify($key, (string) $writer['password_hash'])) {
 		appendLog($config, $configPath, 'login-success', $maxLogs, $archiveLimitDays);
+		session_regenerate_id(true);
 		$_SESSION['admin_logged_in'] = true;
 		$_SESSION['session_version'] = $sessionVersion;
 		$_SESSION['role'] = 'writer';
@@ -529,8 +545,28 @@ if (isset($_POST['user'], $_POST['key'])) {
 		header('Location: /penulis-panel');
 		exit;
 	}
+	foreach (['ikhwan', 'akhwat'] as $__mScope) {
+		$__mAcc = $config['mentoring_accounts'][$__mScope] ?? null;
+		if (
+			is_array($__mAcc)
+			&& !empty($__mAcc['username'])
+			&& !empty($__mAcc['password_hash'])
+			&& strcasecmp((string) $__mAcc['username'], $user) === 0
+			&& password_verify($key, (string) $__mAcc['password_hash'])
+		) {
+			appendLog($config, $configPath, 'login-success-mentoring-' . $__mScope, $maxLogs, $archiveLimitDays);
+			session_regenerate_id(true);
+			$_SESSION['admin_logged_in'] = true;
+			$_SESSION['session_version'] = $sessionVersion;
+			$_SESSION['role'] = 'mentoring_' . $__mScope;
+			unset($_SESSION['author_id']);
+			header('Location: /terpadu/mentoring-agama-islam/kelola-kelompok-mentoring/master/');
+			exit;
+		}
+	}
 	appendLog($config, $configPath, 'login-fail', $maxLogs, $archiveLimitDays);
 	$error = 'User atau key salah.';
+	}
 }
 
 $loggedIn = !empty($_SESSION['admin_logged_in']) && (($_SESSION['session_version'] ?? 0) === $sessionVersion);
@@ -539,6 +575,11 @@ $currentAuthorId = $loggedIn && $currentRole === 'writer' ? ($_SESSION['author_i
 
 if ($loggedIn && $currentRole === 'writer') {
 	header('Location: /penulis-panel');
+	exit;
+}
+
+if ($loggedIn && in_array($currentRole, ['mentoring_ikhwan', 'mentoring_akhwat'], true)) {
+	header('Location: /terpadu/mentoring-agama-islam/kelola-kelompok-mentoring/master/');
 	exit;
 }
 
@@ -565,6 +606,7 @@ if (!empty($_SESSION['admin_logged_in']) && !$loggedIn) {
 	$_SESSION = [];
 }
 
+if ($csrfOk) {
 $adminComponentMode = 'handle';
 require __DIR__ . '/agenda-terdekat.php';
 require __DIR__ . '/link-pendaftaran.php';
@@ -575,8 +617,10 @@ require __DIR__ . '/kartu-dokumentasi.php';
 require __DIR__ . '/pengelola-faq.php';
 require __DIR__ . '/pengelola-blog.php';
 require __DIR__ . '/moderasi-komentar.php';
+require __DIR__ . '/korektor-seo.php';
 require __DIR__ . '/log.php';
 require __DIR__ . '/penyimpanan-insight.php';
 require __DIR__ . '/sesi.php';
 require __DIR__ . '/kredensial-admin.php';
 unset($adminComponentMode);
+}

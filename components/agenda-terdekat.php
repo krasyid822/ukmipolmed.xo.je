@@ -109,6 +109,8 @@ if (($adminComponentMode ?? '') === 'handle') {
 			'tag' => trim((string) $_POST['agenda_tag']) ?: $defaults['agenda']['tag'],
 			'title' => trim((string) $_POST['agenda_title']) ?: $defaults['agenda']['title'],
 			'detail' => trim((string) $_POST['agenda_detail']) ?: $defaults['agenda']['detail'],
+			'start_date' => trim((string) ($_POST['agenda_start_date'] ?? '')),
+			'end_date' => trim((string) ($_POST['agenda_end_date'] ?? '')),
 		];
 
 		if ($mode === 'new' || empty($agendas)) {
@@ -145,7 +147,7 @@ $agendaArchive = is_array($config['agenda_archive']) ? $config['agenda_archive']
 ?>
 <div class="agenda-admin-section">
 	<h3 style="margin:0 0 8px; font-size:15px;">Kartu utama: Agenda terdekat</h3>
-	<form method="post" class="stack-sm" id="agenda-form" data-autosave-key="agenda">
+	<form method="post" class="stack-sm" id="agenda-form" data-autosave-key="agenda"><?php echo ukmi_csrf_field(); ?>
 		<input type="hidden" name="agenda_edit_idx" value="<?php echo (int) $editingIdx; ?>">
 		<div class="field-grid">
 			<div>
@@ -190,25 +192,25 @@ $agendaArchive = is_array($config['agenda_archive']) ? $config['agenda_archive']
 							<?php if ($idx === 0): ?><br><span style="font-size:12px; color: var(--accent);">(utama)</span><?php endif; ?>
 						</div>
 						<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-							<form method="post" style="margin:0;">
+							<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 								<input type="hidden" name="edit_idx" value="<?php echo $idx; ?>">
 								<button type="submit" style="min-width:80px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Edit</button>
 							</form>
-							<form method="post" style="margin:0;">
+							<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 								<input type="hidden" name="archive_idx" value="<?php echo $idx; ?>">
 								<button type="submit" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Arsipkan</button>
 							</form>
-							<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus agenda ini?');">
+							<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus agenda ini?');"><?php echo ukmi_csrf_field(); ?>
 								<input type="hidden" name="delete_idx" value="<?php echo $idx; ?>">
 								<button type="submit" style="min-width:90px; background: linear-gradient(135deg, #f87171, #ef4444); color: #0b1727; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35); border: none;">Hapus</button>
 							</form>
 							<div style="display:flex; gap:4px;">
-								<form method="post" style="margin:0;">
+								<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 									<input type="hidden" name="move_idx" value="<?php echo $idx; ?>">
 									<input type="hidden" name="move_dir" value="up">
 									<button type="submit" title="Naikkan urutan" style="min-width:40px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);" <?php echo $idx === 0 ? 'disabled' : ''; ?>>↑</button>
 								</form>
-								<form method="post" style="margin:0;">
+								<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 									<input type="hidden" name="move_idx" value="<?php echo $idx; ?>">
 									<input type="hidden" name="move_dir" value="down">
 									<button type="submit" title="Turunkan urutan" style="min-width:40px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);" <?php echo ($idx === count($agendas)-1) ? 'disabled' : ''; ?>>↓</button>
@@ -234,7 +236,7 @@ $agendaArchive = is_array($config['agenda_archive']) ? $config['agenda_archive']
 							<br><span style="color: var(--muted); font-size:12px;">Detail: <?php echo htmlspecialchars($item['detail'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></span>
 							<?php if (!empty($item['archived_at'])): ?><br><span style="font-size:12px; color: var(--muted);">Diarsipkan: <?php echo htmlspecialchars($item['archived_at'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 						</div>
-						<form method="post" style="margin:0;">
+						<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 							<input type="hidden" name="restore_archive_idx" value="<?php echo $idx; ?>">
 							<button type="submit" style="min-width:110px; background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: #0b1727; box-shadow: 0 10px 30px rgba(14, 165, 233, 0.35);">Pulihkan</button>
 						</form>

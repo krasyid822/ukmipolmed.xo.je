@@ -34,6 +34,14 @@ $toArray = static function ($value): array {
 };
 
 $summaries = ReportRepository::summaries();
+$teamGenders = ReportRepository::teamGenderMap();
+$roleGenderLabel = AdminAuth::allowedGenderLabel();
+if ($roleGenderLabel !== null) {
+    $summaries = array_values(array_filter($summaries, static function (array $s) use ($roleGenderLabel, $teamGenders): bool {
+        $gender = $teamGenders['tim:' . $s['tim_id']] ?? $teamGenders['nama:' . $s['nama_tim']] ?? '';
+        return $gender === $roleGenderLabel;
+    }));
+}
 $laporanBulan = array_values(array_filter(
     $toArray($_GET['laporan_bulan'] ?? []),
     static fn(string $ym): bool => (bool)preg_match('/^\d{4}-\d{2}$/', $ym)
@@ -43,7 +51,9 @@ $laporanGender = (string)($_GET['laporan_gender'] ?? '');
 if (!in_array($laporanGender, ['Ikhwan', 'Akhwat'], true)) {
     $laporanGender = '';
 }
-$teamGenders = ReportRepository::teamGenderMap();
+if ($roleGenderLabel !== null) {
+    $laporanGender = $roleGenderLabel;
+}
 
 $filtered = array_values(array_filter($summaries, static function (array $s) use ($laporanBulan, $laporanTim, $laporanGender, $teamGenders): bool {
     $tanggal = $s['tanggal'] !== '' ? $s['tanggal'] : substr($s['created_at'], 0, 10);
@@ -298,9 +308,13 @@ $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
             <div class="filter-field">
                 <label for="laporan-gender">Gender</label>
                 <select name="laporan_gender" id="laporan-gender" data-searchable>
-                    <option value="" <?= $laporanGender === '' ? 'selected' : '' ?>>Gabungan (Semua)</option>
-                    <option value="Ikhwan" <?= $laporanGender === 'Ikhwan' ? 'selected' : '' ?>>Ikhwan</option>
-                    <option value="Akhwat" <?= $laporanGender === 'Akhwat' ? 'selected' : '' ?>>Akhwat</option>
+                    <?php if ($roleGenderLabel === null): ?>
+                        <option value="" <?= $laporanGender === '' ? 'selected' : '' ?>>Gabungan (Semua)</option>
+                        <option value="Ikhwan" <?= $laporanGender === 'Ikhwan' ? 'selected' : '' ?>>Ikhwan</option>
+                        <option value="Akhwat" <?= $laporanGender === 'Akhwat' ? 'selected' : '' ?>>Akhwat</option>
+                    <?php else: ?>
+                        <option value="<?= $h($roleGenderLabel) ?>" selected><?= $h($roleGenderLabel) ?></option>
+                    <?php endif; ?>
                 </select>
             </div>
 

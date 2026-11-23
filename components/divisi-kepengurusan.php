@@ -3,12 +3,12 @@ require_once __DIR__ . '/../s3_gc_helper.php';
 if (($adminComponentMode ?? '') === 'handle') {
 	if ($loggedIn && isset($_POST['unlock_division_code'])) {
 		$code = trim((string) $_POST['unlock_division_code']);
-		if ($code === 'superadmin') {
+		if (ukmi_verify_admin_key((string) ($config['key'] ?? ''), $code)) {
 			$divisionUnlocked = true;
 			$_SESSION['division_unlocked'] = true;
 			$message = 'Mode superadmin aktif untuk divisi.';
 		} else {
-			$error = 'Kode superadmin salah.';
+			$error = 'Key admin saat ini salah.';
 		}
 	}
 
@@ -63,13 +63,13 @@ if (($adminComponentMode ?? '') === 'handle') {
 ?>
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:16px;">Divisi kepengurusan <?php echo htmlspecialchars($divisionYearLabel, ENT_QUOTES, 'UTF-8'); ?></h2>
-	<form method="post" class="stack-sm">
+	<form method="post" class="stack-sm"><?php echo ukmi_csrf_field(); ?>
 		<div class="inline-actions" style="align-items:center;">
-			<input type="text" name="unlock_division_code" placeholder="Ketik superadmin untuk mengubah" style="flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" autocomplete="off">
+			<input type="password" name="unlock_division_code" placeholder="Masukkan key admin saat ini untuk mengubah" style="flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" autocomplete="current-password">
 			<button type="submit" style="max-width:180px;">Buka</button>
 		</div>
 	</form>
-	<form method="post" class="stack-sm" id="divisions-form" data-autosave-key="divisions" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>">
+	<form method="post" class="stack-sm" id="divisions-form" data-autosave-key="divisions" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?><?php echo ukmi_csrf_field(); ?>">
 		<div id="division-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
 			<?php foreach ($divisions as $idx => $div): ?>
 			<div class="division-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">

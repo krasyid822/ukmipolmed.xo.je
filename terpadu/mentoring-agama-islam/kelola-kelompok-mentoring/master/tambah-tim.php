@@ -19,6 +19,10 @@ use Mentoring\ProfilePhoto;
 AdminAuth::guard();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!AdminAuth::verifyCsrfToken()) {
+        http_response_code(403);
+        die('Token CSRF tidak valid atau sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+    }
     $namaTim = trim($_POST['nama_tim'] ?? '');
     $mentorId = trim($_POST['mentor_id'] ?? '');
 
@@ -41,6 +45,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $result = MasterData::transaction(static function (array $master) use ($newId, $namaTim, $mentorId, $preparedLogo): array {
+        $selectedMentor = null;
+        foreach ($master['mentors'] ?? [] as $mRow) {
+            if ((string)($mRow['id'] ?? '') === $mentorId) {
+                $selectedMentor = $mRow;
+                break;
+            }
+        }
+        if ($selectedMentor === null || !AdminAuth::canAccessGender($selectedMentor['gender'] ?? '')) {
+            throw new MasterDataException('Mentor pendamping tidak ditemukan atau tidak sesuai akses role Anda.', 'notfound');
+        }
+
         $fotoPath = null;
         $logoSha = null;
         $logoPhash = null;
@@ -86,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$master = MasterData::loadAll();
+$master = AdminAuth::filterMasterData(MasterData::loadAll());
 $errorWajib = ($_GET['error'] ?? '') === 'wajib';
 $errorFoto = ($_GET['error'] ?? '') === 'foto';
 $errorLogoDuplikat = ($_GET['error'] ?? '') === 'logo_duplikat';
@@ -149,6 +164,7 @@ $formError = mentoring_form_error();
 
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
+            <?= AdminAuth::csrfField() ?>
             <div class="master-form-split">
             <div class="master-form-col">
             <div class="form-section-label">Logo Kelompok</div>

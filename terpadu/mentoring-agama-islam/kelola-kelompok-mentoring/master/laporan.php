@@ -35,6 +35,18 @@ if ($report === null) {
     exit;
 }
 
+$roleGenderLabel = AdminAuth::allowedGenderLabel();
+if ($roleGenderLabel !== null) {
+    $teamGenders = ReportRepository::teamGenderMap();
+    $reportGender = $teamGenders['tim:' . ($report['tim_id'] ?? '')]
+        ?? $teamGenders['nama:' . ($report['nama_tim'] ?? '')]
+        ?? '';
+    if ($reportGender !== $roleGenderLabel) {
+        header('Location: ' . $basePath . '?error=report_notfound&tab=tab-laporan', true, 303);
+        exit;
+    }
+}
+
 /**
  * Cari tim dari master data berdasarkan tim_id laporan, atau nama tim sebagai fallback.
  */
@@ -135,6 +147,10 @@ $detailUrl = static function (string $msg = '', string $error = '') use ($basePa
 };
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!AdminAuth::verifyCsrfToken()) {
+        http_response_code(403);
+        die('Token CSRF tidak valid atau sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+    }
     $action = (string)($_POST['action'] ?? '');
 
     if ($action === 'delete') {
@@ -144,17 +160,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'resend') {
+        $botChannel = Watobot::resolveChannelForTeam((string)($report['tim_id'] ?? ''), (string)($report['nama_tim'] ?? ''));
+        if (!Watobot::isEnabled($botChannel)) {
+            header('Location: ' . $detailUrl('', 'bot_disabled'), true, 303);
+            exit;
+        }
         $message = Watobot::buildMessageText($report);
-        $result = Watobot::sendReport($message);
+        $result = Watobot::sendReport($message, [], $botChannel);
         if (empty($result['success'])) {
             BotQueue::enqueue($reportId, $message, [
                 'nama_tim' => (string)($report['nama_tim'] ?? ''),
                 'tanggal' => (string)($report['tanggal'] ?? ''),
-            ]);
+            ], $botChannel);
             if (!empty($result['api_invalid'])) {
                 BotQueue::markApiInvalid(
                     (string)($result['failure_reason'] ?? 'API bot kedaluwarsa'),
-                    (int)($result['http_code'] ?? 0)
+                    (int)($result['http_code'] ?? 0),
+                    $botChannel
                 );
             }
         }
@@ -217,19 +239,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Kirim ulang ke WhatsApp untuk transparansi setiap kali isi laporan diperbarui
+        // Kirim ulang ke WhatsApp untuk transparansi setiap kali isi laporan diperbarui (jika bot aktif)
+        $botChannel = Watobot::resolveChannelForTeam((string)($report['tim_id'] ?? ''), (string)($report['nama_tim'] ?? ''));
+        if (!Watobot::isEnabled($botChannel)) {
+            header('Location: ' . $detailUrl('updated'), true, 303);
+            exit;
+        }
         $updatedMessage = Watobot::buildMessageText($report);
-        $botResult = Watobot::sendReport($updatedMessage);
+        $botResult = Watobot::sendReport($updatedMessage, [], $botChannel);
 
         if (empty($botResult['success'])) {
             BotQueue::enqueue($reportId, $updatedMessage, [
                 'nama_tim' => (string)($report['nama_tim'] ?? ''),
                 'tanggal' => (string)($report['tanggal'] ?? ''),
-            ]);
+            ], $botChannel);
             if (!empty($botResult['api_invalid'])) {
                 BotQueue::markApiInvalid(
                     (string)($botResult['failure_reason'] ?? 'API bot kedaluwarsa'),
-                    (int)($botResult['http_code'] ?? 0)
+                    (int)($botResult['http_code'] ?? 0),
+                    $botChannel
                 );
             }
         }
@@ -248,6 +276,7 @@ $botText = Watobot::buildMessageText($report);
 
 $messages = [
     'updated' => 'Perubahan laporan berhasil disimpan dan file laporan di storage sudah diperbarui.',
+    'updated' => 'Perubahan laporan berhasil disimpan (bot WhatsApp sedang dimatikan).',
     'updated_sent' => 'Perubahan laporan berhasil disimpan dan dikirim ulang ke grup WhatsApp.',
     'updated_queued' => 'Perubahan laporan berhasil disimpan. Pengiriman ke grup WhatsApp sedang dalam antrean dan akan dicoba ulang otomatis.',
     'sent' => 'Laporan berhasil dikirim ulang ke grup WhatsApp.',
@@ -256,6 +285,7 @@ $messages = [
 $errors = [
     'tanggal' => 'Tanggal laporan tidak valid. Gunakan format tanggal yang benar.',
     'simpan' => 'Laporan gagal disimpan ke storage. Silakan coba lagi.',
+    'bot_disabled' => 'Fitur bot WhatsApp untuk kategori tim ini sedang dimatikan. Aktifkan kembali di tab Kelola Laporan.',
 ];
 
 $message = $messages[(string)($_GET['msg'] ?? '')] ?? '';
@@ -401,6 +431,7 @@ $attendanceRate = ReportRepository::attendanceRate(
             <button type="button" class="btn-link" onclick="copyReport()">Salin Teks</button>
             <a class="btn-link" href="<?= $h($appBase) ?>view?id=<?= urlencode($reportId) ?>" target="_blank" rel="noopener">Lihat Halaman Publik</a>
             <form method="POST" id="formResend">
+            <?= AdminAuth::csrfField() ?>
                 <input type="hidden" name="id" value="<?= $h($reportId) ?>">
                 <input type="hidden" name="action" value="resend">
                 <button type="button" class="btn-link primary" onclick="confirmSubmit(this.closest('form'), 'Kirim ulang laporan ini ke grup WhatsApp?')">Kirim Ulang ke WhatsApp</button>
@@ -414,6 +445,7 @@ $attendanceRate = ReportRepository::attendanceRate(
             Pilih nama petugas dan status kehadiran langsung dari data tim. Tidak perlu mengetik ulang nama.
         </p>
         <form method="POST">
+            <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="id" value="<?= $h($reportId) ?>">
             <input type="hidden" name="action" value="update">
 
@@ -566,6 +598,7 @@ $attendanceRate = ReportRepository::attendanceRate(
             dari storage. Tindakan ini tidak dapat dibatalkan.
         </p>
         <form method="POST">
+            <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="id" value="<?= $h($reportId) ?>">
             <input type="hidden" name="action" value="delete">
             <button type="button" class="btn-link danger" onclick="confirmSubmit(this.closest('form'), 'Hapus laporan ini secara permanen? Tindakan tidak dapat dibatalkan.')">Hapus Laporan Permanen</button>

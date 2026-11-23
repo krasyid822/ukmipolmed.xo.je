@@ -64,8 +64,8 @@ class BotQueue {
     // Status API bot
     // -----------------------------------------------------------------------
 
-    public static function state(): array {
-        $default = [
+    private static function defaultChannelState(): array {
+        return [
             'api_invalid' => false,
             'api_invalid_at' => null,
             'last_error' => null,
@@ -73,36 +73,62 @@ class BotQueue {
             'last_attempt_at' => null,
             'last_success_at' => null,
         ];
-
-        return array_merge($default, self::readJson(self::STATE_FILE, []));
     }
 
-    private static function saveState(array $state): bool {
-        return self::writeJson(self::STATE_FILE, $state);
+    private static function readAllStates(): array {
+        $raw = self::readJson(self::STATE_FILE, []);
+        $channels = is_array($raw['channels'] ?? null) ? $raw['channels'] : [];
+
+        // Migrasi state flat lama ke channels.ikhwan
+        if (!isset($channels['ikhwan']) && (
+            isset($raw['api_invalid']) || isset($raw['last_error']) || isset($raw['last_success_at'])
+        )) {
+            $channels['ikhwan'] = array_merge(self::defaultChannelState(), array_intersect_key($raw, self::defaultChannelState()));
+        }
+
+        return [
+            'ikhwan' => array_merge(self::defaultChannelState(), is_array($channels['ikhwan'] ?? null) ? $channels['ikhwan'] : []),
+            'akhwat' => array_merge(self::defaultChannelState(), is_array($channels['akhwat'] ?? null) ? $channels['akhwat'] : []),
+        ];
+    }
+
+    public static function state(?string $channel = null): array {
+        $ch = Watobot::normalizeChannel($channel ?? 'ikhwan');
+        $all = self::readAllStates();
+        return $all[$ch];
+    }
+
+    private static function saveState(array $state, string $channel = 'ikhwan'): bool {
+        $ch = Watobot::normalizeChannel($channel);
+        $all = self::readAllStates();
+        $all[$ch] = array_merge(self::defaultChannelState(), $state);
+        return self::writeJson(self::STATE_FILE, ['channels' => $all]);
     }
 
     /**
      * Catat bahwa API bot ditolak (kedaluwarsa / tidak valid).
      */
-    public static function markApiInvalid(string $reason, int $httpCode = 0): void {
-        $state = self::state();
+    public static function markApiInvalid(string $reason, int $httpCode = 0, string $channel = 'ikhwan'): void {
+        $ch = Watobot::normalizeChannel($channel);
+        $state = self::state($ch);
         $state['api_invalid'] = true;
         $state['api_invalid_at'] = $state['api_invalid_at'] ?? date('c');
         $state['last_error'] = $reason;
         $state['last_http_code'] = $httpCode;
         $state['last_attempt_at'] = date('c');
-        self::saveState($state);
+        self::saveState($state, $ch);
     }
 
     /**
      * Catat kegagalan koneksi biasa (bukan karena API kedaluwarsa).
      */
-    public static function markAttemptFailed(string $reason, int $httpCode = 0): void {
-        $state = self::state();
+    public static function markAttemptFailed(string $reason, int $httpCode = 0, string $channel = 'ikhwan'): void {
+        $ch = Watobot::normalizeChannel($channel);
+        $state = self::state($ch);
         $state['last_error'] = $reason;
         $state['last_http_code'] = $httpCode;
         $state['last_attempt_at'] = date('c');
-        self::saveState($state);
+        self::saveState($state, $ch);
     }
 
     /**
@@ -110,37 +136,46 @@ class BotQueue {
      * (mis. timeout/jaringan). Status "kedaluwarsa" lama harus dibersihkan,
      * namun galat koneksi tetap dicatat untuk percobaan ulang.
      */
-    public static function markKeyUnverified(string $reason, int $httpCode = 0): void {
-        $state = self::state();
+    public static function markKeyUnverified(string $reason, int $httpCode = 0, string $channel = 'ikhwan'): void {
+        $ch = Watobot::normalizeChannel($channel);
+        $state = self::state($ch);
         $state['api_invalid'] = false;
         $state['api_invalid_at'] = null;
         $state['last_error'] = $reason;
         $state['last_http_code'] = $httpCode;
         $state['last_attempt_at'] = date('c');
-        self::saveState($state);
+        self::saveState($state, $ch);
     }
 
     /**
      * Tandai API sehat kembali (dipanggil setelah kirim sukses / kunci baru).
      */
-    public static function markApiOk(): void {
-        $state = self::state();
+    public static function markApiOk(string $channel = 'ikhwan'): void {
+        $ch = Watobot::normalizeChannel($channel);
+        $state = self::state($ch);
         $state['api_invalid'] = false;
         $state['api_invalid_at'] = null;
         $state['last_error'] = null;
         $state['last_http_code'] = 200;
         $state['last_success_at'] = date('c');
-        self::saveState($state);
+        self::saveState($state, $ch);
     }
 
     // -----------------------------------------------------------------------
     // Antrean pesan
     // -----------------------------------------------------------------------
 
-    public static function items(): array {
+    public static function items(?string $channel = null): array {
         $data = self::readJson(self::QUEUE_FILE, ['items' => []]);
         $items = $data['items'] ?? [];
-        return is_array($items) ? array_values(array_filter($items, 'is_array')) : [];
+        $items = is_array($items) ? array_values(array_filter($items, 'is_array')) : [];
+        if ($channel === null) {
+            return $items;
+        }
+        $target = Watobot::normalizeChannel($channel);
+        return array_values(array_filter($items, static function (array $item) use ($target): bool {
+            return Watobot::normalizeChannel($item['channel'] ?? 'ikhwan') === $target;
+        }));
     }
 
     private static function saveItems(array $items): bool {
@@ -150,8 +185,8 @@ class BotQueue {
         ]);
     }
 
-    public static function pendingCount(): int {
-        return count(self::items());
+    public static function pendingCount(?string $channel = null): int {
+        return count(self::items($channel));
     }
 
     private static function backoffSeconds(int $attempts): int {
@@ -163,12 +198,14 @@ class BotQueue {
      * Masukkan pesan ke antrean. Pesan untuk laporan yang sama akan
      * diperbarui (bukan digandakan) agar tidak dobel saat dikirim ulang.
      */
-    public static function enqueue(string $reportId, string $message, array $meta = []): string {
+    public static function enqueue(string $reportId, string $message, array $meta = [], string $channel = 'ikhwan'): string {
         $items = self::items();
         $now = time();
+        $ch = Watobot::normalizeChannel($channel);
 
         foreach ($items as $idx => $item) {
             if ((string)($item['report_id'] ?? '') === $reportId) {
+                $items[$idx]['channel'] = $ch;
                 $items[$idx]['message'] = $message;
                 $items[$idx]['meta'] = array_merge((array)($item['meta'] ?? []), $meta);
                 $items[$idx]['updated_at'] = date('c');
@@ -184,6 +221,7 @@ class BotQueue {
         $id = 'bot-' . date('Ymd') . '-' . substr(bin2hex(random_bytes(4)), 0, 8);
         $items[] = [
             'id' => $id,
+            'channel' => $ch,
             'report_id' => $reportId,
             'message' => $message,
             'meta' => $meta,
@@ -221,7 +259,7 @@ class BotQueue {
      *                    memasukkan API key baru / tombol "Kirim Sekarang").
      * @return array<int, array<string, mixed>> Hasil per pesan.
      */
-    public static function processDue(int $limit = 3, bool $force = false, array $overrides = []): array {
+    public static function processDue(int $limit = 3, bool $force = false, array $overrides = [], ?string $channel = null): array {
         $items = self::items();
         if ($items === []) {
             return [];
@@ -237,14 +275,27 @@ class BotQueue {
             return [];
         }
 
+        $targetChannel = $channel !== null ? Watobot::normalizeChannel($channel) : null;
         $now = time();
         $results = [];
         $processed = 0;
         $changed = false;
+        $blockedChannels = [];
 
         foreach ($items as $idx => $item) {
             if ($processed >= $limit) {
                 break;
+            }
+
+            $itemChannel = Watobot::normalizeChannel($item['channel'] ?? 'ikhwan');
+            if ($targetChannel !== null && $itemChannel !== $targetChannel) {
+                continue;
+            }
+            if (!empty($blockedChannels[$itemChannel])) {
+                continue;
+            }
+            if (!Watobot::isEnabled($itemChannel) && empty($overrides['ignore_disabled'])) {
+                continue;
             }
 
             $nextAttempt = (int)($item['next_attempt_at'] ?? 0);
@@ -264,24 +315,26 @@ class BotQueue {
                 unset($items[$idx]);
                 $changed = true;
                 $processed++;
-                self::markApiOk();
+                self::markApiOk($itemChannel);
                 $results[] = [
                     'report_id' => $reportId,
+                    'channel' => $itemChannel,
                     'success' => true,
                     'message' => 'Sudah terkirim sebelumnya (duplikat diabaikan)',
                 ];
                 continue;
             }
 
-            $result = Watobot::sendReport((string)($item['message'] ?? ''), $overrides);
+            $result = Watobot::sendReport((string)($item['message'] ?? ''), $overrides, $itemChannel);
             $processed++;
             $changed = true;
 
             if (!empty($result['success'])) {
                 unset($items[$idx]);
-                self::markApiOk();
+                self::markApiOk($itemChannel);
                 $results[] = [
                     'report_id' => $reportId,
+                    'channel' => $itemChannel,
                     'success' => true,
                     'message' => 'Terkirim',
                 ];
@@ -299,13 +352,14 @@ class BotQueue {
             $items[$idx]['last_http_code'] = $httpCode;
 
             if (!empty($result['api_invalid'])) {
-                self::markApiInvalid($reason, $httpCode);
+                self::markApiInvalid($reason, $httpCode, $itemChannel);
             } else {
-                self::markAttemptFailed($reason, $httpCode);
+                self::markAttemptFailed($reason, $httpCode, $itemChannel);
             }
 
             $results[] = [
                 'report_id' => $reportId,
+                'channel' => $itemChannel,
                 'success' => false,
                 'api_invalid' => !empty($result['api_invalid']),
                 'http_code' => $httpCode,
@@ -313,10 +367,10 @@ class BotQueue {
                 'next_attempt_at' => $items[$idx]['next_attempt_at'],
             ];
 
-            // Jangan menghabiskan waktu mencoba sisa antrean bila kuncinya
+            // Jangan menghabiskan waktu mencoba sisa antrean channel ini bila kuncinya
             // jelas ditolak atau koneksi tidak tersedia sama sekali.
             if (!empty($result['api_invalid']) || $httpCode === 0) {
-                break;
+                $blockedChannels[$itemChannel] = true;
             }
         }
 

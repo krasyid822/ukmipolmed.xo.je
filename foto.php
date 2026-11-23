@@ -1,6 +1,7 @@
 <?php
 // foto.php (dilayani sebagai /foto) — proxy gambar dari Blomp S3 (signed GET), karena Blomp menolak GET anonim.
 require_once __DIR__ . '/s3_helper.php';
+require_once __DIR__ . '/security_helper.php';
 
 $key = isset($_GET['key']) ? (string) $_GET['key'] : '';
 $allowedPrefixes = [s3_prefix() . 'uploads/', s3_prefix() . 'assets/'];
@@ -18,9 +19,16 @@ if ($key === '' || strpos($key, '..') !== false || !$allowed || !isset($map[$ext
     exit;
 }
 
+if (ukmi_rate_limit('foto', 120, 60)) {
+    http_response_code(429);
+    header('Retry-After: 60');
+    exit;
+}
+
 $res = s3_get_object($key);
 if (($res['code'] ?? 0) !== 200 || ($res['body'] ?? null) === null) {
     http_response_code(404);
+    header('Cache-Control: public, max-age=120');
     exit;
 }
 $body = $res['body'];

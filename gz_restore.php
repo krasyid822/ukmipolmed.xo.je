@@ -4,9 +4,9 @@
 // dekompres -> tulis ke <target>.tmp -> rename ke <target> (atomik) -> hapus .gz.
 // Aman dari 0-byte: target hanya diganti bila decode+write+rename sukses.
 header('Content-Type: text/plain; charset=utf-8');
+require_once __DIR__ . '/maintenance_guard.php';
 
-$key = defined('GZ_RESTORE_KEY') ? GZ_RESTORE_KEY : 'UKMIrestore2026';
-if (($_REQUEST['k'] ?? '') !== $key) {
+if (!maintenance_authorized()) {
     http_response_code(403);
     echo 'forbidden';
     exit;

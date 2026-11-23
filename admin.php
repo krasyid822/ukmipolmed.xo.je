@@ -1,9 +1,8 @@
 <?php
 define('UKMI_ADMIN_BOOTSTRAP', true);
 
-if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
-	session_start();
-}
+require_once __DIR__ . '/security_helper.php';
+ukmi_session_start();
 
 // Validasi murah sebelum output agar kegagalan konfigurasi awal tidak terjadi
 // setelah header terkirim.
@@ -15,13 +14,14 @@ if (is_readable(__DIR__ . '/default.json')) {
 unset($__adminDefaultRaw);
 
 $__adminSessionRole = (string) ($_SESSION['role'] ?? '');
-$__adminSessionAuth = !empty($_SESSION['admin_logged_in']) && $__adminSessionRole !== 'writer';
+$__adminNonPanelRole = in_array($__adminSessionRole, ['writer', 'mentoring_ikhwan', 'mentoring_akhwat'], true);
+$__adminSessionAuth = !empty($_SESSION['admin_logged_in']) && !$__adminNonPanelRole;
 
 // Tampilkan loader lebih awal untuk GET agar terlihat saat bootstrap S3
-// masih berjalan. Redirect (logout / penulis) tetap diproses sebelum output.
+// masih berjalan. Redirect (logout / penulis / mentoring) tetap diproses sebelum output.
 $__adminEarlyLoad = ($_SERVER['REQUEST_METHOD'] === 'GET')
 	&& empty($_GET['logout'])
-	&& $__adminSessionRole !== 'writer'
+	&& !$__adminNonPanelRole
 	&& $__adminDefaultReady;
 if (!$__adminEarlyLoad) {
 	require __DIR__ . '/components/bootstrap.php';
@@ -36,11 +36,13 @@ $__adminBodyClass = $__adminEarlyLoad
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="robots" content="noindex, nofollow">
 	<title>Halaman Admin</title>
 	<link rel="icon" type="image/png" href="/logo-ukmi.png">
 	<link rel="apple-touch-icon" href="/logo-ukmi.png">
 	<link rel="shortcut icon" href="/logo-ukmi.png">
 	<meta name="theme-color" content="#0f172a">
+	<meta name="csrf-token" content="<?php echo htmlspecialchars(ukmi_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 	<script src="/components/ui-modal.js"></script>
 	<script>
 		(function() {
@@ -215,52 +217,6 @@ $__adminBodyClass = $__adminEarlyLoad
 		a.button-link:hover {
 			transform: translateY(-1px);
 			box-shadow: 0 14px 34px rgba(14, 165, 233, 0.45);
-		}
-
-		.toast-wrap {
-			position: fixed;
-			right: 18px;
-			bottom: 18px;
-			display: flex;
-			flex-direction: column;
-			gap: 8px;
-			max-width: 340px;
-			z-index: 30;
-			pointer-events: none;
-		}
-
-		.toast {
-			pointer-events: auto;
-			padding: 12px 14px;
-			border-radius: 12px;
-			background: rgba(17, 24, 39, 0.95);
-			border: 1px solid rgba(148, 163, 184, 0.35);
-			color: var(--text);
-			box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
-			transform: translateY(10px);
-			opacity: 0;
-			transition: transform 0.25s ease, opacity 0.25s ease;
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			gap: 10px;
-		}
-
-		.toast.show {
-			transform: translateY(0);
-			opacity: 1;
-		}
-
-		.toast.success { border-color: rgba(56, 189, 248, 0.6); }
-		.toast.danger { border-color: rgba(248, 113, 113, 0.7); }
-
-		.toast button.toast-close {
-			background: transparent;
-			color: var(--text);
-			border: none;
-			cursor: pointer;
-			padding: 6px 8px;
-			border-radius: 8px;
 		}
 
 		button:active,
@@ -540,22 +496,6 @@ $__adminBodyClass = $__adminEarlyLoad
 		require __DIR__ . '/components/loading-overlay.php';
 	}
 	?>
-	<?php if ($message || $error): ?>
-	<div class="toast-wrap" id="toast-wrap">
-		<?php if ($message): ?>
-			<div class="toast success" data-kind="success">
-				<span><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></span>
-				<button type="button" class="toast-close" aria-label="Tutup">×</button>
-			</div>
-		<?php endif; ?>
-		<?php if ($error): ?>
-			<div class="toast danger" data-kind="danger">
-				<span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
-				<button type="button" class="toast-close" aria-label="Tutup">×</button>
-			</div>
-		<?php endif; ?>
-	</div>
-	<?php endif; ?>
 	<div class="admin-main">
 		<div class="admin-header">
 			<div class="brand-admin" style="margin-bottom:0;">
@@ -601,12 +541,6 @@ $__adminBodyClass = $__adminEarlyLoad
 			<div class="admin-feature-block" data-feature="log" data-feature-label="Log Akses">
 				<?php require __DIR__ . '/components/log.php'; ?>
 			</div>
-			<?php if ($message): ?>
-				<div class="success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
-			<?php endif; ?>
-			<?php if ($error): ?>
-				<div class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
-			<?php endif; ?>
 			<div class="admin-feature-block" data-feature="registration" data-feature-label="Link Pendaftaran">
 				<?php require __DIR__ . '/components/link-pendaftaran.php'; ?>
 			</div>
@@ -630,17 +564,12 @@ $__adminBodyClass = $__adminEarlyLoad
 			</div>
 			<div class="admin-feature-block" data-feature="comment-moderation" data-feature-label="Moderasi Komentar">
 				<?php require __DIR__ . '/components/moderasi-komentar.php'; ?>
+				<?php require __DIR__ . '/components/korektor-seo.php'; ?>
 			</div>
 		<?php else: ?>
 			<h1>Login Admin</h1>
 			<p>Masukkan user dan key untuk mengakses halaman admin.</p>
-			<?php if ($message): ?>
-				<div class="success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>
-			<?php endif; ?>
-			<?php if ($error): ?>
-				<div class="error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
-			<?php endif; ?>
-			<form method="post">
+			<form method="post"><?php echo ukmi_csrf_field(); ?>
 				<div>
 					<label for="user">User</label>
 					<input type="text" id="user" name="user" required autocomplete="username">
@@ -657,7 +586,7 @@ $__adminBodyClass = $__adminEarlyLoad
 				<summary style="cursor:pointer; color:var(--accent); font-size:14px; font-weight:600;">Lupa kredensial / Pemulihan darurat?</summary>
 				<p class="muted-text" style="margin:10px 0 8px;">Masukkan <strong>Master Key</strong> (diatur terpusat di <code>default.json</code>) untuk mereset User &amp; Key kembali ke nilai bawaan (<code>default.json</code>) dan mengeluarkan seluruh sesi aktif.</p>
 				<p class="muted-text" style="margin:0 0 12px; font-size:13px;">Status: Master key telah digunakan <strong><?php echo (int) ($recoveryCount ?? 0); ?> kali</strong>.</p>
-				<form method="post">
+				<form method="post"><?php echo ukmi_csrf_field(); ?>
 					<input type="hidden" name="recover_credentials" value="1">
 					<div>
 						<label for="recovery_key">Recovery Key Master</label>
@@ -681,21 +610,6 @@ $__adminBodyClass = $__adminEarlyLoad
 				target.classList.toggle('open');
 			});
 		});
-
-		const toastWrap = document.getElementById('toast-wrap');
-		if (toastWrap) {
-			const toasts = Array.from(toastWrap.querySelectorAll('.toast'));
-			toasts.forEach((toast, idx) => {
-				requestAnimationFrame(() => toast.classList.add('show'));
-				const closer = toast.querySelector('.toast-close');
-				const hide = () => {
-					toast.classList.remove('show');
-					setTimeout(() => toast.remove(), 220);
-				};
-				closer?.addEventListener('click', hide);
-				setTimeout(hide, 5200 + (idx * 200));
-			});
-		}
 
 		const SCROLL_KEY = 'admin_scroll_y';
 		const savedScroll = window.__ADMIN_SAVED_SCROLL__;

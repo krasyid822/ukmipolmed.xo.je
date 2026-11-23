@@ -62,6 +62,10 @@ if (stripos($img, 'data:') === 0) {
             header('Content-Type: ' . $mime);
             header('Content-Length: ' . strlen($bin));
             header('Cache-Control: public, max-age=86400');
+            header('X-Content-Type-Options: nosniff');
+            if ($mime === 'image/svg+xml') {
+                header("Content-Security-Policy: sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'");
+            }
             echo $bin;
             exit;
         }
@@ -74,23 +78,35 @@ if (preg_match('#^https?://#i', $img)) {
     exit;
 }
 
-$localPath = $img[0] === '/' ? __DIR__ . $img : __DIR__ . '/' . ltrim($img, './');
-if (is_readable($localPath)) {
-    $mime = 'image/jpeg';
-    if (function_exists('finfo_open')) {
-        $fi = finfo_open(FILEINFO_MIME_TYPE);
-        if ($fi) {
-            $detected = finfo_file($fi, $localPath);
-            finfo_close($fi);
-            if ($detected && strpos($detected, 'image/') === 0) {
-                $mime = $detected;
+if (strpos($img, "\0") === false && strpos($img, '..') === false) {
+    $rootReal = realpath(__DIR__);
+    $candidate = $img[0] === '/' ? __DIR__ . $img : __DIR__ . '/' . ltrim($img, './');
+    $localReal = realpath($candidate);
+    $ext = strtolower((string) pathinfo((string) $localReal, PATHINFO_EXTENSION));
+    $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+    if ($rootReal !== false && $localReal !== false && strpos($localReal, $rootReal . DIRECTORY_SEPARATOR) === 0 && is_readable($localReal) && in_array($ext, $allowedExts, true)) {
+        $mime = $ext === 'svg' ? 'image/svg+xml' : '';
+        if ($mime === '' && function_exists('finfo_open')) {
+            $fi = finfo_open(FILEINFO_MIME_TYPE);
+            if ($fi) {
+                $detected = finfo_file($fi, $localReal);
+                finfo_close($fi);
+                if ($detected && strpos($detected, 'image/') === 0) {
+                    $mime = $detected;
+                }
             }
         }
+        if ($mime !== '') {
+            header('Content-Type: ' . $mime);
+            header('Cache-Control: public, max-age=86400');
+            header('X-Content-Type-Options: nosniff');
+            if ($mime === 'image/svg+xml') {
+                header("Content-Security-Policy: sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'");
+            }
+            readfile($localReal);
+            exit;
+        }
     }
-    header('Content-Type: ' . $mime);
-    header('Cache-Control: public, max-age=86400');
-    readfile($localPath);
-    exit;
 }
 
 fallback_logo();

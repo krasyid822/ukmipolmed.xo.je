@@ -18,6 +18,10 @@ $scope = strtolower(trim((string)($_GET['scope'] ?? 'semua')));
 if (!in_array($scope, ['ikhwan', 'akhwat', 'semua'], true)) {
     $scope = 'semua';
 }
+$forcedScope = AdminAuth::allowedExportScope();
+if ($forcedScope !== null) {
+    $scope = $forcedScope;
+}
 
 try {
     $binary = ExcelExport::buildMenteeWorkbook(MasterData::loadAll(), $scope);

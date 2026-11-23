@@ -3,6 +3,7 @@ require_once __DIR__ . '/authors_helper.php';
 require_once __DIR__ . '/assessments_helper.php';
 require_once __DIR__ . '/s3_helper.php';
 require_once __DIR__ . '/store.php';
+require_once __DIR__ . '/seo_corrector_helper.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'upload_sticker') {
 	require __DIR__ . '/components/blog-komentar.php';
 }
@@ -356,10 +357,33 @@ if (is_array($config) && !empty($config['fb_app_id'])) {
 	$fbAppId = trim((string) $defaults['fb_app_id']);
 }
 
+$isNotFound = ($filterSlug !== '' && empty($posts));
+$isSearch = ($query !== '');
+if ($isNotFound && !headers_sent()) {
+	http_response_code(404);
+}
+$metaRobots = ($isNotFound || $isSearch)
+	? 'noindex, follow'
+	: 'index, follow, max-snippet:-1, max-image-preview:large';
+
+require_once __DIR__ . '/seo_corrector_helper.php';
+$postAuthor = null;
+$postWordCount = 0;
 if ($filterSlug !== '' && count($posts) === 1) {
     $postMeta = $posts[0];
+	$postAuthor = author_display($postMeta['author_id'] ?? '', (string) ($config['yel_yel'] ?? ''));
 	$metaTitle = trim((string) ($postMeta['title'] ?? 'Blog UKMI POLMED'));
-	$metaDesc = trim((string) ($postMeta['summary'] ?? $metaDesc));
+	$cleanBodyText = seo_corrector_strip_markdown(strip_tags((string) ($postMeta['body'] ?? '')));
+	$postWordCount = $cleanBodyText === '' ? 0 : str_word_count($cleanBodyText);
+	if ($postWordCount < 20 || strlen(trim((string) ($postMeta['slug'] ?? ''))) < 3) {
+		$metaRobots = 'noindex, follow';
+	}
+	$rawDesc = trim((string) ($postMeta['summary'] ?? ''));
+	if ($rawDesc === '') {
+		$rawDesc = $cleanBodyText;
+	}
+	$cleanDesc = seo_corrector_strip_markdown(strip_tags($rawDesc));
+	$metaDesc = $cleanDesc !== '' ? seo_corrector_trim_word_boundary($cleanDesc, 155) : $metaDesc;
 	if (!empty($postMeta['image']) && is_string($postMeta['image'])) {
 		$img = trim($postMeta['image']);
 		$imgSlug = trim((string) ($postMeta['slug'] ?? ''));
@@ -374,6 +398,8 @@ if ($filterSlug !== '' && count($posts) === 1) {
 		}
 	}
 	$metaType = 'article';
+} elseif ($isNotFound) {
+	$metaTitle = 'Artikel Tidak Ditemukan – Blog UKMI POLMED';
 }
 
 ?>
@@ -393,7 +419,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 	<script src="/components/ui-modal.js"></script>
 	<meta name="description" content="<?php echo e($metaDesc); ?>">
 	<meta name="keywords" content="blog UKMI POLMED, kegiatan UKMI POLMED, berita dakwah kampus Medan, mentoring Islam POLMED">
-	<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+	<meta name="robots" content="<?php echo e($metaRobots); ?>">
 	<link rel="canonical" href="<?php echo e($metaUrl); ?>">
 	<meta property="og:locale" content="id_ID">
 	<meta property="og:site_name" content="UKMI POLMED">
@@ -420,13 +446,28 @@ if ($filterSlug !== '' && count($posts) === 1) {
 		'@context' => 'https://schema.org',
 		'@type' => 'Article',
 		'headline' => $posts[0]['title'] ?? 'Blog UKMI POLMED',
-		'description' => $posts[0]['summary'] ?? $metaDesc,
+		'description' => $metaDesc,
 		'image' => $metaImage,
+		'inLanguage' => 'id-ID',
+		'wordCount' => $postWordCount,
 		'datePublished' => $posts[0]['created_at'] ?? '',
 		'dateModified' => $posts[0]['updated_at'] ?? $posts[0]['created_at'] ?? '',
-		'author' => ['@type' => 'Organization', 'name' => 'UKMI POLMED', 'url' => 'https://ukmipolmed.my.id/'],
+		'author' => (($posts[0]['author_id'] ?? '') !== '' && is_array($postAuthor))
+			? ['@type' => 'Person', 'name' => $postAuthor['pen_name'], 'url' => $publicBase . $postAuthor['url']]
+			: ['@type' => 'Organization', 'name' => $postAuthor['pen_name'] ?? 'UKMI POLMED', 'url' => $publicBase . '/penulis/admin'],
 		'publisher' => ['@type' => 'Organization', 'name' => 'UKMI POLMED', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://ukmipolmed.my.id/logo-ukmi.png']],
 		'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $metaUrl],
+	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT); ?>
+	</script>
+	<script type="application/ld+json">
+	<?php echo json_encode([
+		'@context' => 'https://schema.org',
+		'@type' => 'BreadcrumbList',
+		'itemListElement' => [
+			['@type' => 'ListItem', 'position' => 1, 'name' => 'Beranda', 'item' => $publicBase . '/'],
+			['@type' => 'ListItem', 'position' => 2, 'name' => 'Blog', 'item' => $publicBase . '/blog'],
+			['@type' => 'ListItem', 'position' => 3, 'name' => $posts[0]['title'] ?? 'Artikel', 'item' => $metaUrl],
+		],
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT); ?>
 	</script>
 	<?php else: ?>
@@ -436,7 +477,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 		'@type' => 'Blog',
 		'name' => 'Blog UKMI POLMED',
 		'description' => 'Catatan kegiatan, berita rilis, dan tulisan terbaru UKMI Politeknik Negeri Medan.',
-		'url' => $baseUrl . '/blog',
+		'url' => $publicBase . '/blog',
 		'publisher' => ['@type' => 'Organization', 'name' => 'UKMI POLMED', 'logo' => ['@type' => 'ImageObject', 'url' => 'https://ukmipolmed.my.id/logo-ukmi.png']],
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT); ?>
 	</script>
@@ -447,7 +488,11 @@ if ($filterSlug !== '' && count($posts) === 1) {
 	<?php require __DIR__ . '/components/loading-overlay.php'; ?>
 		<?php include __DIR__ . '/header.php'; ?>
 	<div class="container">
-		<h1><a href="/blog">Blog UKMI POLMED</a></h1>
+		<?php if ($filterSlug !== '' && count($posts) === 1): ?>
+			<p class="blog-brand" style="font-size:1.1rem;font-weight:700;margin:0 0 6px;"><a href="/blog">Blog UKMI POLMED</a></p>
+		<?php else: ?>
+			<h1><a href="/blog">Blog UKMI POLMED</a></h1>
+		<?php endif; ?>
 		<p class="lead">Baca berita, catatan kegiatan, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan.</p>
 		<?php if ($filterSlug === ''): ?>
 			<form method="get" action="/blog" class="search-form" style="margin:12px 0 18px;display:flex;gap:8px;align-items:center;">
@@ -466,7 +511,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 			<?php endif; ?>
 		<?php elseif ($filterSlug !== '' && count($posts) === 1): ?>
 			<div class="article">
-				<h2><?php echo e($posts[0]['title']); ?></h2>
+				<h1><?php echo e($posts[0]['title']); ?></h1>
 					<div class="meta">Dipublikasikan: <?php echo e($posts[0]['created_at'] ?: '-'); ?><?php if (!empty($posts[0]['updated_at'])): ?> · Diubah: <?php echo e($posts[0]['updated_at']); ?><?php endif; ?> · Views: <span id="blog-views-inline">-</span></div>
 				<?php $__author = author_display($posts[0]['author_id'] ?? '', (string) ($config['yel_yel'] ?? '')); ?>
 				<div class="byline" style="display:flex;align-items:center;gap:10px;margin:6px 0 12px;">
@@ -495,7 +540,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 				}
 				$placedE = [];
 				foreach ($embeds as $i => $emb) {
-					$emb = trim((string) $emb);
+					$emb = comment_embed_sanitize(trim((string) $emb));
 					if ($emb === '') continue;
 					$token = '[[EMBED' . $i . ']]';
 					if (strpos($aBody, $token) !== false) {
@@ -512,7 +557,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 					if (strpos($aBody, $token) !== false) { $aBody = str_replace($token, $html, $aBody); $placedG[$j] = true; }
 				}
 				foreach ($embeds as $i => $emb) {
-					$emb = trim((string) $emb);
+					$emb = comment_embed_sanitize(trim((string) $emb));
 					if ($emb === '' || !empty($placedE[$i])) continue;
 					$aBody .= "\n" . '<div class="embed-box' . ($igFix ? ' instagram-embed-wrapper' : '') . '">' . $emb . '</div>';
 				}
@@ -524,6 +569,25 @@ if ($filterSlug !== '' && count($posts) === 1) {
 				$aBody = preg_replace('/\[\[(EMBED|GDRIVE)\d+\]\]/', '', $aBody);
 				?>
 				<div class="body"><?php echo $aBody; ?></div>
+				<?php
+				$relatedPool = $sharded ? data_store_posts_index_read() : $allPosts;
+				$relatedPosts = seo_corrector_related_posts($posts[0], is_array($relatedPool) ? $relatedPool : [], 3);
+				?>
+				<aside class="related-posts" aria-label="Artikel Terkait" style="margin-top:24px;padding:16px;border-radius:14px;border:1px solid var(--stroke);background:rgba(255,255,255,0.025);">
+					<h2 style="margin:0 0 10px;font-size:16px;">Artikel Terkait &amp; Jelajahi UKMI POLMED</h2>
+					<?php if (!empty($relatedPosts)): ?>
+					<ul style="margin:0 0 10px;padding-left:18px;display:flex;flex-direction:column;gap:6px;">
+						<?php foreach ($relatedPosts as $rp): ?>
+						<li><a href="/blog/<?php echo rawurlencode((string) ($rp['slug'] ?? '')); ?>"><?php echo e($rp['title'] ?? 'Artikel UKMI POLMED'); ?></a></li>
+						<?php endforeach; ?>
+					</ul>
+					<?php endif; ?>
+					<div style="font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:12px;">
+						<a href="/faq">FAQ UKMI POLMED</a>
+						<span>·</span>
+						<a href="/">Info &amp; Pendaftaran UKMI POLMED</a>
+					</div>
+				</aside>
 
 			</div>
 
@@ -536,12 +600,24 @@ if ($filterSlug !== '' && count($posts) === 1) {
 			?>
 			<div class="share-bar" style="margin-top:16px;padding:14px 16px;border:1px solid var(--stroke);border-radius:14px;background:rgba(255,255,255,0.03);display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
 				<strong style="font-size:14px;color:var(--muted);">Bagikan:</strong>
-				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://wa.me/?text=<?php echo urlencode($shareText . ' ' . $shareUrl); ?>" data-insight="share_wa">WhatsApp</a>
-				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode($shareUrl); ?>" data-insight="share_fb">Facebook</a>
-				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=<?php echo urlencode($shareText); ?>&amp;url=<?php echo urlencode($shareUrl); ?>" data-insight="share_x">X</a>
-				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://t.me/share/url?url=<?php echo urlencode($shareUrl); ?>&amp;text=<?php echo urlencode($shareText); ?>" data-insight="share_tg">Telegram</a>
-				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo urlencode($shareUrl); ?>" data-insight="share_li">LinkedIn</a>
-				<button type="button" class="btn ghost js-copy-share" data-url="<?php echo e($shareUrl); ?>" style="min-height:40px;padding:8px 12px;font-size:14px;" data-insight="share_copy">Salin tautan</button>
+				<a class="btn ghost share-btn" target="_blank" rel="noopener" href="https://wa.me/?text=<?php echo urlencode($shareText . ' ' . $shareUrl); ?>" data-insight="share_wa" aria-label="Bagikan ke WhatsApp" title="Bagikan ke WhatsApp">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.79 14.01c-.24.68-1.41 1.3-1.95 1.38-.5.07-1.13.1-1.82-.12-.42-.13-.96-.31-1.65-.61-2.9-1.25-4.79-4.17-4.94-4.36-.14-.2-1.18-1.57-1.18-2.99 0-1.42.74-2.12 1.01-2.41.26-.29.58-.36.77-.36.19 0 .39 0 .56.01.18.01.42-.07.66.5.24.58.82 2.01.89 2.15.07.15.12.32.02.51-.1.2-.15.32-.29.49-.15.17-.31.38-.44.51-.14.15-.3.31-.13.6.17.29.75 1.24 1.61 2.01 1.11.99 2.04 1.3 2.33 1.45.29.14.46.12.63-.07.17-.2.73-.85.92-1.14.19-.29.39-.24.65-.15.27.1 1.69.8 1.98.94.29.15.48.22.55.34.07.12.07.7-.17 1.38z"/></svg>
+				</a>
+				<a class="btn ghost share-btn" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode($shareUrl); ?>" data-insight="share_fb" aria-label="Bagikan ke Facebook" title="Bagikan ke Facebook">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 22v-8h2.7l.4-3H13.5V9.1c0-.87.24-1.46 1.5-1.46H16.6V4.9c-.28-.04-1.24-.12-2.36-.12-2.34 0-3.94 1.43-3.94 4.05V11H7.7v3h2.6v8h3.2z"/></svg>
+				</a>
+				<a class="btn ghost share-btn" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=<?php echo urlencode($shareText); ?>&amp;url=<?php echo urlencode($shareUrl); ?>" data-insight="share_x" aria-label="Bagikan ke X" title="Bagikan ke X">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+				</a>
+				<a class="btn ghost share-btn" target="_blank" rel="noopener" href="https://t.me/share/url?url=<?php echo urlencode($shareUrl); ?>&amp;text=<?php echo urlencode($shareText); ?>" data-insight="share_tg" aria-label="Bagikan ke Telegram" title="Bagikan ke Telegram">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+				</a>
+				<a class="btn ghost share-btn" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo urlencode($shareUrl); ?>" data-insight="share_li" aria-label="Bagikan ke LinkedIn" title="Bagikan ke LinkedIn">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/></svg>
+				</a>
+				<button type="button" class="btn ghost share-btn js-copy-share" data-url="<?php echo e($shareUrl); ?>" data-insight="share_copy" aria-label="Salin tautan" title="Salin tautan">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+				</button>
 			</div>
 			<script>
 			if (!window.__ukmiShareCopyBound) {
@@ -551,7 +627,24 @@ if ($filterSlug !== '' && count($posts) === 1) {
 					if (!b) return;
 					e.preventDefault();
 					var u = b.getAttribute('data-url') || location.href;
-					var done = function () { b.textContent = 'Tersalin!'; };
+					var done = function () {
+						if (!b.dataset.origHtml) {
+							b.dataset.origHtml = b.innerHTML;
+							b.dataset.origTitle = b.getAttribute('title') || 'Salin tautan';
+							b.dataset.origLabel = b.getAttribute('aria-label') || 'Salin tautan';
+						}
+						b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+						b.classList.add('is-copied');
+						b.setAttribute('title', 'Tersalin!');
+						b.setAttribute('aria-label', 'Tersalin!');
+						clearTimeout(b._copyTimer);
+						b._copyTimer = setTimeout(function () {
+							b.innerHTML = b.dataset.origHtml;
+							b.classList.remove('is-copied');
+							b.setAttribute('title', b.dataset.origTitle);
+							b.setAttribute('aria-label', b.dataset.origLabel);
+						}, 2000);
+					};
 					if (navigator.clipboard && navigator.clipboard.writeText) {
 						navigator.clipboard.writeText(u).then(done).catch(function () { uiPrompt('Salin tautan:', u); });
 					} else {
@@ -670,7 +763,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 					<a class="card" href="/blog/<?php echo urlencode($post['slug'] ?? ''); ?>" style="text-decoration:none; color:inherit; display:block;">
 						<?php if (!empty($post['image'])): ?>
 							<div style="margin:-6px -6px 10px; overflow:hidden; border-radius:10px; border:1px solid var(--stroke);">
-								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" style="width:100%; height:180px; object-fit:cover; display:block; object-position: <?php echo (int) ($post['focal_x'] ?? 50); ?>% <?php echo (int) ($post['focal_y'] ?? 50); ?>%;">
+								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" loading="lazy" decoding="async" style="width:100%; height:180px; object-fit:cover; display:block; object-position: <?php echo (int) ($post['focal_x'] ?? 50); ?>% <?php echo (int) ($post['focal_y'] ?? 50); ?>%;">
 							</div>
 						<?php endif; ?>
 						<h3><?php echo e($post['title']); ?></h3>
@@ -685,7 +778,7 @@ if ($filterSlug !== '' && count($posts) === 1) {
 					<a class="card" href="/blog/<?php echo urlencode($post['slug'] ?? ''); ?>" style="text-decoration:none; color:inherit; display:block;">
 						<?php if (!empty($post['image'])): ?>
 							<div style="margin:-6px -6px 10px; overflow:hidden; border-radius:10px; border:1px solid var(--stroke);">
-								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" style="width:100%; height:180px; object-fit:cover; display:block; object-position: <?php echo (int) ($post['focal_x'] ?? 50); ?>% <?php echo (int) ($post['focal_y'] ?? 50); ?>%;">
+								<img src="<?php echo e($post['image']); ?>" alt="Gambar <?php echo e($post['title']); ?>" loading="lazy" decoding="async" style="width:100%; height:180px; object-fit:cover; display:block; object-position: <?php echo (int) ($post['focal_x'] ?? 50); ?>% <?php echo (int) ($post['focal_y'] ?? 50); ?>%;">
 							</div>
 						<?php endif; ?>
 						<h3><?php echo e($post['title']); ?></h3>

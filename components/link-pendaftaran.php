@@ -33,7 +33,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 ?>
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:16px;">Link form pendaftaran</h2>
-	<form method="post" class="stack-sm" id="registration-form" data-autosave-key="registration">
+	<form method="post" class="stack-sm" id="registration-form" data-autosave-key="registration"><?php echo ukmi_csrf_field(); ?>
 		<div class="field-grid">
 			<div>
 				<label for="registration_platform">Platform</label>

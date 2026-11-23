@@ -35,8 +35,17 @@ if ($index === null) {
 }
 
 $mentor = $master['mentors'][$index];
+$lockedGender = AdminAuth::allowedGender();
+if (!AdminAuth::canAccessGender($mentor['gender'] ?? '')) {
+    header('Location: ' . $basePath . '?error=notfound#tab-mentors', true, 303);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!AdminAuth::verifyCsrfToken()) {
+        http_response_code(403);
+        die('Token CSRF tidak valid atau sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+    }
     $namaLengkap = trim($_POST['nama_lengkap'] ?? '');
     $nomorWa = trim($_POST['nomor_whatsapp'] ?? '');
 
@@ -45,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $result = MasterData::transaction(static function (array $master) use ($mentorId, $namaLengkap, $nomorWa): array {
+    $result = MasterData::transaction(static function (array $master) use ($mentorId, $namaLengkap, $nomorWa, $lockedGender): array {
         $index = null;
         foreach ($master['mentors'] ?? [] as $i => $mentor) {
             if (($mentor['id'] ?? '') === $mentorId) {
@@ -59,9 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $mentor = $master['mentors'][$index];
+        if (!AdminAuth::canAccessGender($mentor['gender'] ?? '')) {
+            throw new MasterDataException('Anda tidak memiliki akses ke data mentor ini.', 'notfound');
+        }
         $mentor['nama_lengkap'] = $namaLengkap;
         $mentor['nomor_whatsapp'] = $nomorWa;
-        $mentor['gender'] = trim($_POST['gender'] ?? 'Laki-laki');
+        $mentor['gender'] = $lockedGender ?? trim($_POST['gender'] ?? 'Laki-laki');
         $mentor['tempat_lahir'] = MasterSchema::normalizeName((string)($_POST['tempat_lahir'] ?? ''));
         $mentor['tanggal_lahir'] = trim($_POST['tanggal_lahir'] ?? '');
         $mentor['status_kesibukan'] = trim($_POST['status_kesibukan'] ?? 'Kuliah');
@@ -150,6 +162,7 @@ foreach ($menteesOfMentor as $m) {
 
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
+            <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="id" value="<?= $h($mentorId) ?>">
             <div class="master-form-split">
             <div class="master-form-col">
@@ -164,11 +177,16 @@ foreach ($menteesOfMentor as $m) {
                 </div>
                 <div class="form-group">
                     <label>Gender:</label>
-                    <select name="gender" class="form-control">
-                        <?php foreach (['Laki-laki', 'Perempuan'] as $gender): ?>
-                            <option value="<?= $h($gender) ?>" <?= ($mentor['gender'] ?? '') === $gender ? 'selected' : '' ?>><?= $h($gender) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php if ($lockedGender !== null): ?>
+                        <input type="hidden" name="gender" value="<?= $h($lockedGender) ?>">
+                        <input type="text" class="form-control" value="<?= $h($lockedGender) ?>" readonly>
+                    <?php else: ?>
+                        <select name="gender" class="form-control">
+                            <?php foreach (['Laki-laki', 'Perempuan'] as $gender): ?>
+                                <option value="<?= $h($gender) ?>" <?= ($mentor['gender'] ?? '') === $gender ? 'selected' : '' ?>><?= $h($gender) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
                 </div>
                 <div class="form-group">
                     <label>Tempat Lahir:</label>

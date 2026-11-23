@@ -32,7 +32,6 @@ function sitemap_urls($baseUrl = SITEMAP_BASE_URL, $storePath = null)
 
     $urls[] = ['loc' => $baseUrl . '/', 'lastmod' => $today, 'changefreq' => 'daily', 'priority' => '1.0'];
     $urls[] = ['loc' => $baseUrl . '/blog', 'lastmod' => $today, 'changefreq' => 'weekly', 'priority' => '0.8'];
-    $urls[] = ['loc' => $baseUrl . '/blog/arsip', 'lastmod' => $today, 'changefreq' => 'weekly', 'priority' => '0.8'];
 
     $posts = [];
     if (function_exists('data_store_is_sharded') && data_store_is_sharded()) {
@@ -43,15 +42,14 @@ function sitemap_urls($baseUrl = SITEMAP_BASE_URL, $storePath = null)
             $posts = $config['posts'];
         }
     }
+    $activePostCount = 0;
     foreach ($posts as $p) {
         if (!is_array($p)) continue;
         $slug = trim((string) ($p['slug'] ?? ''));
-        if ($slug === '') {
+        if ($slug === '' || strlen($slug) < 3 || !preg_match('/^[a-z0-9-]+$/', $slug) || !empty($p['archived'])) {
             continue;
         }
-        if (!empty($p['archived'])) {
-            continue;
-        }
+        $activePostCount++;
         $urls[] = [
             'loc' => $baseUrl . '/blog/' . $slug,
             'lastmod' => sitemap_lastmod($p),
@@ -59,9 +57,23 @@ function sitemap_urls($baseUrl = SITEMAP_BASE_URL, $storePath = null)
             'priority' => '0.6',
         ];
     }
+    if ($activePostCount > 10) {
+        $urls[] = ['loc' => $baseUrl . '/blog/arsip', 'lastmod' => $today, 'changefreq' => 'weekly', 'priority' => '0.7'];
+    }
 
     $urls[] = ['loc' => $baseUrl . '/faq', 'lastmod' => $today, 'changefreq' => 'monthly', 'priority' => '0.5'];
-    $urls[] = ['loc' => $baseUrl . '/status', 'lastmod' => $today, 'changefreq' => 'daily', 'priority' => '0.3'];
+    $urls[] = ['loc' => $baseUrl . '/penulis/admin', 'lastmod' => $today, 'changefreq' => 'monthly', 'priority' => '0.4'];
+    if (is_readable(__DIR__ . '/authors_helper.php')) {
+        require_once __DIR__ . '/authors_helper.php';
+        if (function_exists('authors_all')) {
+            foreach (authors_all() as $a) {
+                $uname = trim((string) ($a['username'] ?? ''));
+                if ($uname !== '') {
+                    $urls[] = ['loc' => $baseUrl . '/penulis/' . rawurlencode($uname), 'lastmod' => $today, 'changefreq' => 'monthly', 'priority' => '0.4'];
+                }
+            }
+        }
+    }
 
     return $urls;
 }

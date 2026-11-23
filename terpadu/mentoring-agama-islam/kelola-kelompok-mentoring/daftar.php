@@ -15,6 +15,7 @@ require_once __DIR__ . '/bootstrap.php';
 
 use Mentoring\Academic;
 use Mentoring\Config;
+use Mentoring\JsonFile;
 use Mentoring\MasterData;
 use Mentoring\MasterSchema;
 use Mentoring\ProfilePhoto;
@@ -38,31 +39,63 @@ $isAjax = (($_POST['_ajax'] ?? '') === '1')
     || str_contains(strtolower((string)($_SERVER['HTTP_ACCEPT'] ?? '')), 'application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $namaLengkap = MasterSchema::normalizeName((string)($_POST['nama_lengkap'] ?? ''));
+    $rlCfg = Config::rateLimit('daftar', 5, 900);
+    if ($rlCfg['enabled']) {
+        $rlPath = Config::getSecureDir() . '/daftar_ratelimit.json';
+        $rlData = JsonFile::read($rlPath) ?? [];
+        $rlIp = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        $rlKey = hash('sha256', $rlIp);
+        $rlNow = time();
+        $rlWindow = $rlCfg['window_seconds'];
+        $rlMax = $rlCfg['max_attempts'];
+        foreach ($rlData as $k => $v) {
+            if (!is_array($v) || ((int)($v['first_at'] ?? 0) + $rlWindow) <= $rlNow) {
+                unset($rlData[$k]);
+            }
+        }
+        $rlEntry = $rlData[$rlKey] ?? ['first_at' => $rlNow, 'count' => 0];
+        if ((int)$rlEntry['count'] >= $rlMax) {
+            $waitMinutes = (int)ceil($rlWindow / 60);
+            $formError = "Terlalu banyak pengiriman pendaftaran dari perangkat ini. Silakan coba lagi dalam {$waitMinutes} menit.";
+            if ($isAjax) {
+                http_response_code(429);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => $formError]);
+                exit;
+            }
+        } else {
+            $rlEntry['count'] = (int)$rlEntry['count'] + 1;
+            $rlData[$rlKey] = $rlEntry;
+            JsonFile::writeAtomic($rlPath, $rlData, false);
+        }
+    }
+
+    if ($formError === '') {
+    $namaLengkap = mb_substr(MasterSchema::normalizeName((string)($_POST['nama_lengkap'] ?? '')), 0, 150);
     $gender = trim((string)($_POST['gender'] ?? ''));
     $nomorWaRaw = trim((string)($_POST['nomor_whatsapp'] ?? ''));
     $nomorWa = MasterSchema::normalizePhone($nomorWaRaw);
-    $nim = trim((string)($_POST['nim'] ?? ''));
+    $nim = mb_substr(trim((string)($_POST['nim'] ?? '')), 0, 50);
     $kelasRaw = trim((string)($_POST['kelas'] ?? ''));
     $kelas = Academic::normalizeClass($kelasRaw);
     $jadwalKuliah = trim((string)($_POST['jadwal_kuliah'] ?? ''));
     $pengalaman = trim((string)($_POST['pengalaman_mentoring'] ?? ''));
 
     // Field opsional
-    $email = trim((string)($_POST['email'] ?? ''));
-    $mediaLainRaw = trim((string)($_POST['media_komunikasi_lain'] ?? ''));
+    $email = mb_substr(trim((string)($_POST['email'] ?? '')), 0, 150);
+    $mediaLainRaw = mb_substr(trim((string)($_POST['media_komunikasi_lain'] ?? '')), 0, 500);
     $mediaLainList = array_values(array_filter(
         array_map('trim', preg_split('/\r\n|\r|\n/', $mediaLainRaw) ?: []),
         static fn(string $line): bool => $line !== ''
     ));
-    $alasanDaftar = trim((string)($_POST['alasan_daftar'] ?? ''));
+    $alasanDaftar = mb_substr(trim((string)($_POST['alasan_daftar'] ?? '')), 0, 1000);
     $preferredMentorId = trim((string)($_POST['preferred_mentor_id'] ?? ''));
     $preferredMentorNama = $preferredMentorId !== '' ? ($mentorNameById[$preferredMentorId] ?? '') : '';
-    $tempatLahir = MasterSchema::normalizeName((string)($_POST['tempat_lahir'] ?? ''));
+    $tempatLahir = mb_substr(MasterSchema::normalizeName((string)($_POST['tempat_lahir'] ?? '')), 0, 100);
     $tanggalLahir = trim((string)($_POST['tanggal_lahir'] ?? ''));
-    $alamatSekarang = MasterSchema::normalizeName((string)($_POST['alamat_sekarang'] ?? ''));
-    $alamatOrangTua = MasterSchema::normalizeName((string)($_POST['alamat_orang_tua'] ?? ''));
-    $kegiatanUtama = trim((string)($_POST['kegiatan_utama'] ?? ''));
+    $alamatSekarang = mb_substr(MasterSchema::normalizeName((string)($_POST['alamat_sekarang'] ?? '')), 0, 500);
+    $alamatOrangTua = mb_substr(MasterSchema::normalizeName((string)($_POST['alamat_orang_tua'] ?? '')), 0, 500);
+    $kegiatanUtama = mb_substr(trim((string)($_POST['kegiatan_utama'] ?? '')), 0, 500);
 
     if (
         $namaLengkap === ''
@@ -149,6 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $formError = (string)($result['error'] ?? 'Pendaftaran gagal disimpan. Silakan coba lagi.');
         }
+    }
     }
 
     if ($isAjax && $formError !== '') {

@@ -91,31 +91,270 @@ class AdminAuth {
     }
 
     /**
-     * Apakah permintaan saat ini berasal dari admin proyek utama yang sah.
+     * Kembalikan role sesi saat ini: 'admin', 'mentoring_ikhwan', 'mentoring_akhwat', atau ''.
      */
-    public static function isAdmin(): bool {
+    public static function role(): string {
         if (!self::enabled()) {
-            return true;
+            return 'admin';
         }
 
         self::startSession();
 
         if (empty($_SESSION['admin_logged_in'])) {
-            return false;
+            return '';
         }
 
-        // Penulis (writer) hanya boleh mengakses panel penulis, bukan data master.
-        if (($_SESSION['role'] ?? 'admin') === 'writer') {
-            return false;
+        $role = (string)($_SESSION['role'] ?? 'admin');
+        if (!in_array($role, ['admin', 'mentoring_ikhwan', 'mentoring_akhwat'], true)) {
+            return '';
         }
 
         $root = self::mainProjectRoot();
         if ($root === null) {
-            return false;
+            return '';
         }
 
         $sessionVersion = (int)($_SESSION['session_version'] ?? 0);
-        return $sessionVersion === self::expectedSessionVersion($root);
+        if ($sessionVersion !== self::expectedSessionVersion($root)) {
+            return '';
+        }
+
+        return $role;
+    }
+
+    /**
+     * Apakah permintaan saat ini berasal dari akun yang sah mengakses data master
+     * (admin penuh, pengelola ikhwan, atau pengelola akhwat).
+     */
+    public static function isAdmin(): bool {
+        return in_array(self::role(), ['admin', 'mentoring_ikhwan', 'mentoring_akhwat'], true);
+    }
+
+    /**
+     * Apakah permintaan saat ini berasal dari admin penuh (bukan role ikhwan/akhwat).
+     */
+    public static function isSuperAdmin(): bool {
+        return self::role() === 'admin';
+    }
+
+    /**
+     * Gender yang diizinkan untuk role saat ini ('Laki-laki' / 'Perempuan'),
+     * atau null jika bebas (admin penuh).
+     */
+    public static function allowedGender(): ?string {
+        return match (self::role()) {
+            'mentoring_ikhwan' => 'Laki-laki',
+            'mentoring_akhwat' => 'Perempuan',
+            default => null,
+        };
+    }
+
+    /**
+     * Label gender untuk UI/laporan ('Ikhwan' / 'Akhwat'), atau null jika admin penuh.
+     */
+    public static function allowedGenderLabel(): ?string {
+        return match (self::role()) {
+            'mentoring_ikhwan' => 'Ikhwan',
+            'mentoring_akhwat' => 'Akhwat',
+            default => null,
+        };
+    }
+
+    /**
+     * Scope ekspor Excel yang diizinkan ('ikhwan' / 'akhwat'), atau null jika admin penuh.
+     */
+    public static function allowedExportScope(): ?string {
+        return match (self::role()) {
+            'mentoring_ikhwan' => 'ikhwan',
+            'mentoring_akhwat' => 'akhwat',
+            default => null,
+        };
+    }
+
+    /**
+     * Cek apakah gender tertentu boleh diakses oleh role saat ini.
+     */
+    public static function canAccessGender(?string $gender): bool {
+        $allowed = self::allowedGender();
+        if ($allowed === null) {
+            return true;
+        }
+        return trim((string)$gender) === $allowed;
+    }
+
+    /**
+     * Cek apakah satu record (mentor/tim/mentee/registrant) boleh diakses role saat ini.
+     */
+    public static function canAccessRecord(array $master, string $type, array $record): bool {
+        $allowed = self::allowedGender();
+        if ($allowed === null) {
+            return true;
+        }
+
+        if ($type === 'tim' || $type === 'team') {
+            $mentorId = (string)($record['mentor_id'] ?? '');
+            foreach ($master['mentors'] ?? [] as $mentor) {
+                if ((string)($mentor['id'] ?? '') === $mentorId) {
+                    return self::canAccessGender((string)($mentor['gender'] ?? ''));
+                }
+            }
+            $teamId = (string)($record['id'] ?? '');
+            foreach ($master['mentees'] ?? [] as $mentee) {
+                if ((string)($mentee['tim_id'] ?? '') === $teamId) {
+                    return self::canAccessGender((string)($mentee['gender'] ?? ''));
+                }
+            }
+            return false;
+        }
+
+        return self::canAccessGender((string)($record['gender'] ?? ''));
+    }
+
+    /**
+     * Saring seluruh koleksi data master sesuai gender role saat ini.
+     */
+    public static function filterMasterData(array $master): array {
+        $allowed = self::allowedGender();
+        if ($allowed === null) {
+            return $master;
+        }
+
+        $filterByGender = static fn(array $rows): array => array_values(array_filter(
+            $rows,
+            static fn($row): bool => is_array($row) && trim((string)($row['gender'] ?? '')) === $allowed
+        ));
+
+        $mentors = $filterByGender($master['mentors'] ?? []);
+        $mentees = $filterByGender($master['mentees'] ?? []);
+        $archivedMentors = $filterByGender($master['archived_mentors'] ?? []);
+        $archivedMentees = $filterByGender($master['archived_mentees'] ?? []);
+        $registrants = $filterByGender($master['registrants'] ?? []);
+
+        $allowedMentorIds = [];
+        foreach ($mentors as $m) {
+            $allowedMentorIds[(string)($m['id'] ?? '')] = true;
+        }
+        $allowedTeamIdsFromMentees = [];
+        foreach ($mentees as $me) {
+            $tid = (string)($me['tim_id'] ?? '');
+            if ($tid !== '') {
+                $allowedTeamIdsFromMentees[$tid] = true;
+            }
+        }
+
+        $teams = array_values(array_filter(
+            $master['teams'] ?? [],
+            static function ($team) use ($allowedMentorIds, $allowedTeamIdsFromMentees): bool {
+                if (!is_array($team)) {
+                    return false;
+                }
+                $mentorId = (string)($team['mentor_id'] ?? '');
+                if ($mentorId !== '' && isset($allowedMentorIds[$mentorId])) {
+                    return true;
+                }
+                $teamId = (string)($team['id'] ?? '');
+                return $teamId !== '' && isset($allowedTeamIdsFromMentees[$teamId]);
+            }
+        ));
+
+        $master['mentors'] = $mentors;
+        $master['teams'] = $teams;
+        $master['mentees'] = $mentees;
+        $master['archived_mentors'] = $archivedMentors;
+        $master['archived_mentees'] = $archivedMentees;
+        $master['registrants'] = $registrants;
+
+        return $master;
+    }
+
+    /**
+     * Hentikan eksekusi halaman bila bukan admin penuh (untuk fitur sensitif seperti Backup & Rollback).
+     */
+    public static function guardSuperAdmin(): void {
+        self::guard();
+        if (self::isSuperAdmin()) {
+            return;
+        }
+
+        if (!headers_sent()) {
+            http_response_code(403);
+            header('Content-Type: text/html; charset=utf-8');
+        }
+
+        $appBase = \mentoring_base_path(Config::getAppDir());
+        $masterUrl = rtrim($appBase, '/') . '/master/';
+        ?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akses Ditolak — Khusus Admin Penuh</title>
+    <link rel="icon" type="image/jpeg" href="../public/assets/img/favicon.jpeg">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: #0b1120;
+            color: #e2e8f0;
+            font-family: "Segoe UI", Tahoma, sans-serif;
+        }
+        .deny-card {
+            width: 100%;
+            max-width: 520px;
+            padding: 28px;
+            border: 1px solid #ef4444;
+            border-radius: 16px;
+            background: rgba(239, 68, 68, 0.08);
+        }
+        .deny-code {
+            display: inline-block;
+            margin-bottom: 12px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(239, 68, 68, 0.18);
+            color: #fca5a5;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+        h1 { margin: 0 0 10px; font-size: 1.4rem; color: #fecaca; }
+        p { margin: 0 0 12px; line-height: 1.6; font-size: 0.92rem; color: #cbd5e1; }
+        .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+        a.btn {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 9px;
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 600;
+            background: #ef4444;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+<?php \mentoring_loading_overlay(); ?>
+    <div class="deny-card">
+        <span class="deny-code">403 · AKSES TERBATAS</span>
+        <h1>Fitur ini khusus Admin penuh</h1>
+        <p>
+            Fitur Backup Sistem dan Pemulihan / Rollback mempengaruhi seluruh data Ikhwan dan Akhwat,
+            sehingga hanya dapat diakses oleh akun Admin penuh.
+        </p>
+        <div class="actions">
+            <a class="btn" href="<?= htmlspecialchars($masterUrl, ENT_QUOTES) ?>">Kembali ke Data Master</a>
+        </div>
+    </div>
+</body>
+</html>
+        <?php
+        exit;
     }
 
     /**
@@ -131,7 +370,7 @@ class AdminAuth {
             header('Content-Type: text/html; charset=utf-8');
         }
 
-        $loginUrl = '/admin';
+        $loginUrl = '/login';
         $appRoot = \mentoring_base_path(Config::getAppDir());
         ?>
 <!DOCTYPE html>
@@ -219,5 +458,33 @@ class AdminAuth {
         if (session_status() !== PHP_SESSION_ACTIVE && !headers_sent()) {
             session_start();
         }
+    }
+
+    public static function csrfToken(): string {
+        self::startSession();
+        if (empty($_SESSION['admin_csrf_token']) || !is_string($_SESSION['admin_csrf_token'])) {
+            $_SESSION['admin_csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['admin_csrf_token'];
+    }
+
+    public static function csrfField(): string {
+        return '<input type="hidden" name="_csrf" value="' . htmlspecialchars(self::csrfToken(), ENT_QUOTES) . '">';
+    }
+
+    public static function verifyCsrfToken(?string $token = null): bool {
+        if (!self::enabled()) {
+            return true;
+        }
+        self::startSession();
+        $expected = $_SESSION['admin_csrf_token'] ?? '';
+        if (!is_string($expected) || $expected === '') {
+            return false;
+        }
+        $provided = $token ?? ($_POST['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        if (!is_string($provided) || $provided === '') {
+            return false;
+        }
+        return hash_equals($expected, $provided);
     }
 }

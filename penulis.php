@@ -40,19 +40,64 @@ if ($author !== null) {
 }
 
 $host = preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id'));
-$base = ((PHP_SAPI === 'cli-server') ? 'http://' : 'https://') . ($_SERVER['HTTP_HOST'] ?? 'ukmipolmed.my.id');
+$base = (PHP_SAPI === 'cli-server') ? ('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost:8000')) : 'https://ukmipolmed.my.id';
+$canonicalUrl = $base . ($isAdmin ? '/penulis/admin' : '/penulis/' . rawurlencode($u));
 $title = $author ? ($author['pen_name'] . ' – Penulis Blog UKMI POLMED') : 'Penulis tidak ditemukan';
+$metaDesc = $author
+    ? (trim((string) ($author['bio'] ?? '')) !== ''
+        ? mb_substr(preg_replace('/\s+/u', ' ', trim((string) $author['bio'])), 0, 155, 'UTF-8')
+        : 'Profil dan daftar tulisan ' . $author['pen_name'] . ' di Blog UKMI Politeknik Negeri Medan.')
+    : 'Profil penulis tidak tersedia.';
+$metaRobots = $author ? 'index, follow' : 'noindex, follow';
 $metaImage = $author ? $author['avatar'] : '/logo-ukmi.png';
+$absMetaImage = (strpos($metaImage, 'http') === 0) ? $metaImage : ($base . $metaImage);
 ?><!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></title>
-<meta name="robots" content="index, follow">
+<meta name="description" content="<?php echo htmlspecialchars($metaDesc, ENT_QUOTES, 'UTF-8'); ?>">
+<meta name="robots" content="<?php echo $metaRobots; ?>">
+<link rel="canonical" href="<?php echo htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8'); ?>">
+<?php if ($author !== null): ?>
+<link rel="alternate" hreflang="id" href="<?php echo htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8'); ?>">
+<link rel="alternate" hreflang="x-default" href="<?php echo htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8'); ?>">
+<?php endif; ?>
+<meta property="og:locale" content="id_ID">
+<meta property="og:site_name" content="UKMI POLMED">
 <meta property="og:title" content="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>">
+<meta property="og:description" content="<?php echo htmlspecialchars($metaDesc, ENT_QUOTES, 'UTF-8'); ?>">
 <meta property="og:type" content="profile">
-<meta property="og:image" content="<?php echo htmlspecialchars($metaImage, ENT_QUOTES, 'UTF-8'); ?>">
+<meta property="og:url" content="<?php echo htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8'); ?>">
+<meta property="og:image" content="<?php echo htmlspecialchars($absMetaImage, ENT_QUOTES, 'UTF-8'); ?>">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>">
+<meta name="twitter:description" content="<?php echo htmlspecialchars($metaDesc, ENT_QUOTES, 'UTF-8'); ?>">
+<meta name="twitter:image" content="<?php echo htmlspecialchars($absMetaImage, ENT_QUOTES, 'UTF-8'); ?>">
+<?php if ($author !== null): ?>
+<script type="application/ld+json"><?php echo json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'ProfilePage',
+    'mainEntity' => [
+        '@type' => 'Person',
+        'name' => $author['pen_name'],
+        'description' => $metaDesc,
+        'image' => $absMetaImage,
+        'url' => $canonicalUrl,
+        'sameAs' => array_values(array_filter((array) ($author['socials'] ?? []), fn($s) => preg_match('#^https?://#i', (string) $s))),
+    ],
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?></script>
+<script type="application/ld+json"><?php echo json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'BreadcrumbList',
+    'itemListElement' => [
+        ['@type' => 'ListItem', 'position' => 1, 'name' => 'Beranda', 'item' => $base . '/'],
+        ['@type' => 'ListItem', 'position' => 2, 'name' => 'Blog', 'item' => $base . '/blog'],
+        ['@type' => 'ListItem', 'position' => 3, 'name' => $author['pen_name'], 'item' => $canonicalUrl],
+    ],
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?></script>
+<?php endif; ?>
 <link rel="icon" type="image/png" href="/logo-ukmi.png">
 <style>
 :root{--bg:#0b1120;--card:#111a2e;--text:#e5e7eb;--muted:#94a3b8;--stroke:rgba(148,163,184,.2);--accent:#38bdf8}
@@ -89,7 +134,7 @@ h1{margin:0;font-size:22px}
           <?php if (($author['bio'] ?? '') !== ''): ?><p class="bio"><?php echo nl2br(htmlspecialchars($author['bio'], ENT_QUOTES, 'UTF-8')); ?></p><?php endif; ?>
           <?php if (!empty($author['socials'])): ?>
             <div class="social" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-              <?php foreach ($author['socials'] as $s): $pf = social_platform($s); ?>
+              <?php foreach ($author['socials'] as $s): if (!preg_match('#^https?://#i', (string) $s)) continue; $pf = social_platform($s); ?>
                 <a href="<?php echo htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener nofollow" title="<?php echo htmlspecialchars($pf, ENT_QUOTES, 'UTF-8'); ?>" aria-label="<?php echo htmlspecialchars($pf, ENT_QUOTES, 'UTF-8'); ?>" style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;border:1px solid var(--stroke);color:var(--text);text-decoration:none;">
                   <?php echo social_icon_svg($pf); ?>
                 </a>

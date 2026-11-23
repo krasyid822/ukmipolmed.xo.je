@@ -75,12 +75,20 @@ if ($body === null && in_array($ext, ['webp', 'jpg', 'jpeg'], true)) {
 
 if ($body === null) {
     http_response_code(404);
+    if (!str_starts_with($key, 'profil/')) {
+        header('Cache-Control: public, max-age=120');
+    }
     exit;
 }
 
 $isJson = ($servedExt === 'json');
+$isProfile = str_starts_with($key, 'profil/');
 header('Content-Type: ' . $contentTypes[$servedExt]);
 header('Content-Length: ' . strlen($body));
 header('X-Content-Type-Options: nosniff');
-header('Cache-Control: public, max-age=' . ($isJson ? 300 : 2592000));
+if ($isProfile) {
+    header('Cache-Control: private, max-age=3600');
+} else {
+    header('Cache-Control: public, max-age=' . ($isJson ? 300 : 2592000));
+}
 echo $body;

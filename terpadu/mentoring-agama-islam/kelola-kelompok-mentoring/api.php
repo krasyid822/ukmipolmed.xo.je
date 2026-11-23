@@ -12,6 +12,7 @@ use Mentoring\Biometric;
 use Mentoring\Config;
 use Mentoring\AdminAuth;
 use Mentoring\BotQueue;
+use Mentoring\Watobot;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -40,7 +41,8 @@ switch ($action) {
         if ($target) {
             echo json_encode(['success' => true, 'data' => $target]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Tim tidak ditemukan'], 404);
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Tim tidak ditemukan']);
         }
         break;
 
@@ -82,7 +84,8 @@ switch ($action) {
         $entityType = (string)($_GET['entity_type'] ?? '');
         $entityId = (string)($_GET['entity_id'] ?? '');
         if (!in_array($entityType, Biometric::ENTITY_TYPES, true)) {
-            echo json_encode(['success' => false, 'message' => 'Jenis entitas tidak valid'], 400);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Jenis entitas tidak valid']);
             break;
         }
         echo json_encode(['success' => true, 'data' => Biometric::enrollmentStatus($entityType, $entityId)]);
@@ -97,7 +100,8 @@ switch ($action) {
 
     case 'biometric_register': {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => 'Metode tidak valid'], 405);
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Metode tidak valid']);
             break;
         }
         $input = json_decode(file_get_contents('php://input'), true);
@@ -112,7 +116,8 @@ switch ($action) {
             }
         }
         if (!in_array($entityType, Biometric::ENTITY_TYPES, true) || !in_array($method, Biometric::METHODS, true)) {
-            echo json_encode(['success' => false, 'message' => 'Parameter tidak valid'], 400);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Parameter tidak valid']);
             break;
         }
         // Pendaftaran hanya boleh lewat link setup sekali pakai yang valid.
@@ -120,12 +125,14 @@ switch ($action) {
         if ($setupToken === null
             || (string)($setupToken['entity_type'] ?? '') !== $entityType
             || (string)($setupToken['entity_id'] ?? '') !== $entityId) {
-            echo json_encode(['success' => false, 'message' => 'Link pendaftaran tidak valid atau sudah kedaluwarsa'], 403);
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Link pendaftaran tidak valid atau sudah kedaluwarsa']);
             break;
         }
         if ($method === 'webauthn') {
             if (!Biometric::consumeChallenge((string)($input['challenge'] ?? ''))) {
-                echo json_encode(['success' => false, 'message' => 'Challenge tidak valid atau kedaluwarsa'], 400);
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Challenge tidak valid atau kedaluwarsa']);
                 break;
             }
             $pem = null;
@@ -154,7 +161,8 @@ switch ($action) {
                 $pem = Biometric::pemFromAttestationObject((string)$input['attestation_object']);
             }
             if ($pem === null) {
-                echo json_encode(['success' => false, 'message' => 'Public key biometrik tidak valid'], 400);
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Public key biometrik tidak valid']);
                 break;
             }
             $credId = trim((string)($input['credential_id'] ?? '')) ?: null;
@@ -162,7 +170,8 @@ switch ($action) {
         } else {
             $pattern = (string)($input['pattern'] ?? '');
             if (strlen($pattern) < 3) {
-                echo json_encode(['success' => false, 'message' => 'Pola minimal 3 titik'], 400);
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Pola minimal 3 titik']);
                 break;
             }
             $ok = Biometric::setEnrolled($entityType, $entityId, 'pattern', null, null, Biometric::hashPattern($pattern));
@@ -173,7 +182,8 @@ switch ($action) {
 
     case 'biometric_authenticate': {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => 'Metode tidak valid'], 405);
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Metode tidak valid']);
             break;
         }
         $input = json_decode(file_get_contents('php://input'), true);
@@ -188,17 +198,34 @@ switch ($action) {
             }
         }
         if (!in_array($entityType, Biometric::ENTITY_TYPES, true) || !in_array($method, Biometric::METHODS, true)) {
-            echo json_encode(['success' => false, 'message' => 'Parameter tidak valid'], 400);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Parameter tidak valid']);
+            break;
+        }
+        $clientIp = (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        $rateLimit = Biometric::checkRateLimit($entityType, $entityId, $clientIp);
+        if (!$rateLimit['allowed']) {
+            http_response_code(429);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Terlalu banyak percobaan gagal. Coba lagi dalam ' . ceil($rateLimit['retry_after'] / 60) . ' menit.',
+            ]);
             break;
         }
         $ok = false;
         if ($method === 'webauthn') {
             if (!Biometric::consumeChallenge((string)($input['challenge'] ?? ''))) {
-                echo json_encode(['success' => false, 'message' => 'Challenge tidak valid atau kedaluwarsa'], 400);
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Challenge tidak valid atau kedaluwarsa']);
                 break;
             }
-            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $origin = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? '');
+            $baseParsed = parse_url((string)Config::get('app.base_url', ''));
+            if (is_array($baseParsed) && !empty($baseParsed['scheme']) && !empty($baseParsed['host'])) {
+                $origin = $baseParsed['scheme'] . '://' . $baseParsed['host']
+                    . (isset($baseParsed['port']) ? ':' . $baseParsed['port'] : '');
+            } else {
+                $origin = mentoring_request_origin();
+            }
             $ok = Biometric::verifyWebauthnAssertion(
                 $entityType,
                 $entityId,
@@ -211,6 +238,7 @@ switch ($action) {
         } else {
             $ok = Biometric::verifyPattern($entityType, $entityId, (string)($input['pattern'] ?? ''));
         }
+        Biometric::recordAuthAttempt($entityType, $entityId, $clientIp, $ok);
 
         if ($ok) {
             $teamId = (string)($input['team_id'] ?? '');
@@ -250,24 +278,33 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
             break;
         }
-        $state = BotQueue::state();
-        $items = array_map(static function (array $item): array {
-            return [
-                'id' => (string)($item['id'] ?? ''),
-                'report_id' => (string)($item['report_id'] ?? ''),
-                'attempts' => (int)($item['attempts'] ?? 0),
-                'last_error' => (string)($item['last_error'] ?? ''),
-                'next_attempt_at' => (int)($item['next_attempt_at'] ?? 0),
-                'nama_tim' => (string)($item['meta']['nama_tim'] ?? ''),
-            ];
-        }, BotQueue::items());
+        $allowedChannels = AdminAuth::isSuperAdmin()
+            ? ['ikhwan', 'akhwat']
+            : [(AdminAuth::allowedExportScope() === 'akhwat' ? 'akhwat' : 'ikhwan')];
 
+        $channelsData = [];
+        foreach ($allowedChannels as $ch) {
+            $cfg = Watobot::channelConfig($ch);
+            $chItems = BotQueue::items($ch);
+            $channelsData[$ch] = [
+                'channel' => $ch,
+                'label' => $cfg['label'],
+                'enabled' => $cfg['enabled'],
+                'has_api_key' => $cfg['api_key'] !== '',
+                'group_id' => $cfg['group_id'],
+                'state' => BotQueue::state($ch),
+                'pending_count' => count($chItems),
+            ];
+        }
+
+        $primaryCh = $allowedChannels[0];
         echo json_encode([
             'success' => true,
             'data' => [
-                'state' => $state,
-                'pending_count' => count($items),
-                'items' => $items,
+                'allowed_channels' => $allowedChannels,
+                'channels' => $channelsData,
+                'state' => $channelsData[$primaryCh]['state'],
+                'pending_count' => array_sum(array_column($channelsData, 'pending_count')),
             ],
         ]);
         break;
@@ -280,103 +317,195 @@ switch ($action) {
             break;
         }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => 'Metode tidak valid'], 405);
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Metode tidak valid']);
             break;
         }
+
+        $allowedChannels = AdminAuth::isSuperAdmin()
+            ? ['ikhwan', 'akhwat']
+            : [(AdminAuth::allowedExportScope() === 'akhwat' ? 'akhwat' : 'ikhwan')];
 
         $input = json_decode((string)file_get_contents('php://input'), true);
         if (!is_array($input)) {
             $input = $_POST;
         }
-
-        $apiKey = trim((string)($input['api_key'] ?? ''));
-        // Hanya API key yang dapat diubah dari UI. URL API dan ID grup
-        // dikunci dan hanya dapat diubah manual di storage_secure/default.json.
-
-        if ($apiKey === '') {
-            echo json_encode(['success' => false, 'message' => 'API key baru wajib diisi'], 400);
+        if (!AdminAuth::verifyCsrfToken(isset($input['_csrf']) ? (string)$input['_csrf'] : null)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid. Muat ulang halaman lalu coba lagi.']);
             break;
         }
 
-        // Uji kunci baru terhadap antrean yang ada SEBELUM menimpa kunci lama.
-        // Dengan begitu kunci lama yang masih sah tidak hilang karena salah ketik.
-        $pendingBefore = BotQueue::pendingCount();
-        $results = $pendingBefore > 0
-            ? BotQueue::processDue(10, true, ['api_key' => $apiKey])
+        $requestedChannel = trim((string)($input['channel'] ?? $allowedChannels[0]));
+        $channel = Watobot::normalizeChannel($requestedChannel);
+        if (!in_array($channel, $allowedChannels, true)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki akses untuk mengubah bot ' . Watobot::channelLabel($channel)]);
+            break;
+        }
+
+        $apiKey = trim((string)($input['api_key'] ?? ''));
+        $groupIdProvided = array_key_exists('group_id', $input);
+        $groupId = $groupIdProvided ? trim((string)$input['group_id']) : null;
+        $currentCfg = Watobot::channelConfig($channel);
+
+        if ($apiKey === '' && (!$groupIdProvided || $groupId === '')) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Isi API key baru atau ID grup WhatsApp terlebih dahulu']);
+            break;
+        }
+
+        $effectiveApiKey = $apiKey !== '' ? $apiKey : $currentCfg['api_key'];
+        $effectiveGroupId = $groupIdProvided && $groupId !== '' ? $groupId : $currentCfg['group_id'];
+
+        // Uji kunci baru terhadap antrean channel terkait SEBELUM menimpa kunci lama.
+        $pendingBefore = BotQueue::pendingCount($channel);
+        $results = ($apiKey !== '' && $pendingBefore > 0 && $currentCfg['enabled'] && $effectiveGroupId !== '')
+            ? BotQueue::processDue(10, true, ['api_key' => $effectiveApiKey, 'group_id' => $effectiveGroupId], $channel)
             : [];
         $tested = $results !== [];
         $sent = count(array_filter($results, static fn(array $r): bool => !empty($r['success'])));
         $failed = count($results) - $sent;
-        $stateAfterTest = BotQueue::state();
+        $stateAfterTest = BotQueue::state($channel);
 
-        // Kunci hanya ditolak bila SETIAP hasil percobaan menyatakan kunci tidak
-        // sah. Kegagalan jaringan/timeout (api_invalid=false) bukan alasan
-        // menolak kunci yang benar.
         $allRejected = $tested && $sent === 0 && $results !== []
             && count(array_filter($results, static fn(array $r): bool => empty($r['api_invalid']))) === 0;
 
-        // Kunci ditolak: jangan simpan, pertahankan kunci lama yang masih tersimpan.
         if ($allRejected) {
             $httpCode = (int)($stateAfterTest['last_http_code'] ?? 0);
             $reason = (string)($stateAfterTest['last_error'] ?? 'API key ditolak');
             BotQueue::markApiInvalid(
                 'Kunci baru ditolak; kunci lama dipertahankan. ' . $reason,
-                $httpCode
+                $httpCode,
+                $channel
             );
             http_response_code(422);
             echo json_encode([
                 'success' => false,
                 'message' => 'API key baru ditolak oleh server. Kunci lama tetap dipakai — periksa kembali kunci Anda lalu coba lagi.',
                 'data' => [
+                    'channel' => $channel,
                     'key_rejected' => true,
                     'sent' => 0,
                     'failed' => $failed,
-                    'pending_count' => BotQueue::pendingCount(),
-                    'state' => BotQueue::state(),
+                    'pending_count' => BotQueue::pendingCount($channel),
+                    'state' => BotQueue::state($channel),
                     'results' => $results,
                 ],
             ]);
             break;
         }
 
-        if (Config::set('watobot.api_key', $apiKey) === false) {
-            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan konfigurasi. File default.json tidak dapat ditulis.'], 500);
-            break;
+        $savedOk = true;
+        if ($apiKey !== '') {
+            $savedOk = $savedOk && Config::set('watobot.channels.' . $channel . '.api_key', $apiKey);
+            if ($channel === 'ikhwan') {
+                $savedOk = $savedOk && Config::set('watobot.api_key', $apiKey);
+            }
         }
-        if ($sent > 0 || !$tested) {
-            // Kunci terbukti bekerja (ada pesan terkirim) atau belum ada antrean
-            // untuk diuji. Bersihkan status kedaluwarsa.
-            BotQueue::markApiOk();
-        } else {
-            // Kunci belum terbukti salah, tetapi API tidak dapat dihubungi
-            // (timeout/jaringan). Jangan pertahankan status "kedaluwarsa"
-            // yang berasal dari kunci lama.
-            $lastResult = $results[count($results) - 1];
-            BotQueue::markKeyUnverified(
-                (string)($lastResult['message'] ?? 'API bot tidak dapat dihubungi'),
-                (int)($lastResult['http_code'] ?? 0)
-            );
+        if ($groupIdProvided && $groupId !== '') {
+            $savedOk = $savedOk && Config::set('watobot.channels.' . $channel . '.group_id', $groupId);
+            if ($channel === 'ikhwan') {
+                $savedOk = $savedOk && Config::set('watobot.group_id', $groupId);
+            }
         }
 
-        if (!$tested) {
-            $message = 'API key disimpan. Belum ada pesan di antrean untuk menguji kunci ini; kunci akan diverifikasi saat pengiriman berikutnya.';
+        if (!$savedOk) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan konfigurasi. File default.json tidak dapat ditulis.']);
+            break;
+        }
+
+        $label = Watobot::channelLabel($channel);
+        if ($apiKey !== '') {
+            if ($sent > 0 || !$tested) {
+                BotQueue::markApiOk($channel);
+            } else {
+                $lastResult = $results[count($results) - 1];
+                BotQueue::markKeyUnverified(
+                    (string)($lastResult['message'] ?? 'API bot tidak dapat dihubungi'),
+                    (int)($lastResult['http_code'] ?? 0),
+                    $channel
+                );
+            }
+        }
+
+        if ($apiKey === '') {
+            $message = "ID grup WhatsApp bot {$label} berhasil disimpan.";
+        } elseif (!$tested) {
+            $message = "Pengaturan bot {$label} disimpan. Belum ada pesan di antrean untuk menguji kunci ini.";
         } elseif ($sent > 0 && $failed === 0) {
-            $message = "API key disimpan. {$sent} pesan berhasil dikirim.";
+            $message = "Pengaturan bot {$label} disimpan. {$sent} pesan berhasil dikirim.";
         } elseif ($sent > 0) {
-            $message = "API key disimpan. {$sent} pesan terkirim, {$failed} pesan masih menunggu percobaan ulang.";
+            $message = "Pengaturan bot {$label} disimpan. {$sent} pesan terkirim, {$failed} pesan masih menunggu percobaan ulang.";
         } else {
-            $message = 'API key disimpan, tetapi API belum dapat dihubungi saat ini. Antrean akan dicoba ulang otomatis.';
+            $message = "Pengaturan bot {$label} disimpan, tetapi API belum dapat dihubungi saat ini. Antrean akan dicoba ulang otomatis.";
         }
 
         echo json_encode([
             'success' => true,
             'message' => $message,
             'data' => [
+                'channel' => $channel,
                 'sent' => $sent,
                 'failed' => $failed,
-                'pending_count' => BotQueue::pendingCount(),
-                'state' => BotQueue::state(),
+                'pending_count' => BotQueue::pendingCount($channel),
+                'state' => BotQueue::state($channel),
                 'results' => $results,
+            ],
+        ]);
+        break;
+    }
+
+    case 'bot_toggle': {
+        if (!AdminAuth::isAdmin()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
+            break;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Metode tidak valid']);
+            break;
+        }
+
+        $allowedChannels = AdminAuth::isSuperAdmin()
+            ? ['ikhwan', 'akhwat']
+            : [(AdminAuth::allowedExportScope() === 'akhwat' ? 'akhwat' : 'ikhwan')];
+
+        $input = json_decode((string)file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = $_POST;
+        }
+        if (!AdminAuth::verifyCsrfToken(isset($input['_csrf']) ? (string)$input['_csrf'] : null)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid. Muat ulang halaman lalu coba lagi.']);
+            break;
+        }
+
+        $channel = Watobot::normalizeChannel((string)($input['channel'] ?? $allowedChannels[0]));
+        if (!in_array($channel, $allowedChannels, true)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak untuk channel ini']);
+            break;
+        }
+
+        $enabled = !empty($input['enabled']);
+        if (Config::set('watobot.channels.' . $channel . '.enabled', $enabled) === false) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan status bot ke default.json']);
+            break;
+        }
+
+        $label = Watobot::channelLabel($channel);
+        echo json_encode([
+            'success' => true,
+            'message' => $enabled
+                ? "Fitur bot {$label} berhasil diaktifkan."
+                : "Fitur bot {$label} berhasil dimatikan.",
+            'data' => [
+                'channel' => $channel,
+                'enabled' => $enabled,
             ],
         ]);
         break;
@@ -389,12 +518,47 @@ switch ($action) {
             break;
         }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            echo json_encode(['success' => false, 'message' => 'Metode tidak valid'], 405);
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Metode tidak valid']);
             break;
         }
 
-        $results = BotQueue::processDue(10, true);
+        $allowedChannels = AdminAuth::isSuperAdmin()
+            ? ['ikhwan', 'akhwat']
+            : [(AdminAuth::allowedExportScope() === 'akhwat' ? 'akhwat' : 'ikhwan')];
+
+        $input = json_decode((string)file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = $_POST;
+        }
+        if (!AdminAuth::verifyCsrfToken(isset($input['_csrf']) ? (string)$input['_csrf'] : null)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid. Muat ulang halaman lalu coba lagi.']);
+            break;
+        }
+        $requestedChannel = trim((string)($input['channel'] ?? ''));
+        $targetChannels = $requestedChannel !== ''
+            ? [Watobot::normalizeChannel($requestedChannel)]
+            : $allowedChannels;
+
+        $results = [];
+        foreach ($targetChannels as $ch) {
+            if (!in_array($ch, $allowedChannels, true)) {
+                continue;
+            }
+            if (!Watobot::isEnabled($ch)) {
+                continue;
+            }
+            $results = array_merge($results, BotQueue::processDue(10, true, [], $ch));
+        }
+
         $sent = count(array_filter($results, static fn(array $r): bool => !empty($r['success'])));
+        $pendingCount = 0;
+        foreach ($targetChannels as $ch) {
+            if (in_array($ch, $allowedChannels, true)) {
+                $pendingCount += BotQueue::pendingCount($ch);
+            }
+        }
 
         echo json_encode([
             'success' => true,
@@ -402,15 +566,16 @@ switch ($action) {
             'data' => [
                 'sent' => $sent,
                 'results' => $results,
-                'pending_count' => BotQueue::pendingCount(),
-                'state' => BotQueue::state(),
+                'pending_count' => $pendingCount,
+                'state' => BotQueue::state($targetChannels[0] ?? 'ikhwan'),
             ],
         ]);
         break;
     }
 
     default:
-        echo json_encode(['success' => false, 'message' => 'Aksi tidak valid'], 400);
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Aksi tidak valid']);
         break;
 }
 exit;

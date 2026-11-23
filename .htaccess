@@ -57,7 +57,7 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^components/.*$ - [R=404,L]
 
 # Library internal bukan entry point web; tolak akses langsung.
-RewriteRule ^(store|data_store|assessments_store|s3_helper|s3_gc_helper|hosting_storage_helper|seo_cache|maintenance_guard|authors_helper|assessments_helper|shortcut_migration)(?:\.php)?/?$ - [R=404,L]
+RewriteRule ^(store|data_store|assessments_store|s3_helper|s3_gc_helper|hosting_storage_helper|seo_cache|seo_corrector_helper|maintenance_guard|security_helper|authors_helper|assessments_helper|shortcut_migration)(?:\.php)?/?$ - [R=404,L]
 
 # 1) Permintaan GET langsung ke *.php dialihkan permanen ke URL tanpa ekstensi.
 # Hanya GET: redirect 301 mengubah POST menjadi GET dan menghilangkan body form.
@@ -77,6 +77,7 @@ RewriteRule ^(.+?)/?$ $1.php [L,QSA]
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
     Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
 # ── Cache static assets (Core Web Vitals / PageSpeed) ──
@@ -155,10 +156,17 @@ RewriteRule ^(.+?)/?$ $1.php [L,QSA]
     Require all denied
 </Files>
 
-# Block access to cache & backup internal (jangan sampai crawlable)
+# Block access to cache, backup, dotfiles, and internal docs/scripts
 RedirectMatch 404 /\.backups(/|$)
 RedirectMatch 404 /\.store(/|$)
 RedirectMatch 404 /seo-cache(/|$)
+RedirectMatch 404 /(?!\.well-known(?:/|$))\.
+<FilesMatch "(?i)^(AGENTS\.md|TEMUAN\.txt|readme\.md|router\.php)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "\.sh$">
+    Require all denied
+</FilesMatch>
 
 # Legacy Apache 2.2 fallback
 <IfModule mod_access_compat.c>
@@ -185,10 +193,10 @@ RedirectMatch 404 /seo-cache(/|$)
 # BEGIN InfinityFree Managed Code
 # DO NOT EDIT - MANAGED BY THE MEMBERS AREA
 php_value date.timezone Asia/Jakarta
-ErrorDocument 400 https://ukmipolmed.xo.je/error.php?code=Salah%20minta%20nih%20(400)
-ErrorDocument 401 https://ukmipolmed.xo.je/error.php?code=Kita%20ga%20punya%20izin%20bre%20(401)
-ErrorDocument 403 https://ukmipolmed.xo.je/error.php?code=Waduh%20ga%20boleh%20masuk%20(403)
-ErrorDocument 404 https://ukmipolmed.xo.je/error.php?code=Apekah%20tak%20de%20siape%20siape%20(404)
-ErrorDocument 500 https://ukmipolmed.xo.je/error.php?code=Tidak.%20Rumah%20gweh%20(500)
-ErrorDocument 503 https://ukmipolmed.xo.je/error.php?code=Loh%2C%20tadi%20rumah%20saya%20disini%20(503)
+ErrorDocument 400 https://ukmipolmed.my.id/error.php?code=Salah%20minta%20nih%20(400)
+ErrorDocument 401 https://ukmipolmed.my.id/error.php?code=Kita%20ga%20punya%20izin%20bre%20(401)
+ErrorDocument 403 https://ukmipolmed.my.id/error.php?code=Waduh%20ga%20boleh%20masuk%20(403)
+ErrorDocument 404 https://ukmipolmed.my.id/error.php?code=Apekah%20tak%20de%20siape%20siape%20(404)
+ErrorDocument 500 https://ukmipolmed.my.id/error.php?code=Tidak.%20Rumah%20gweh%20(500)
+ErrorDocument 503 https://ukmipolmed.my.id/error.php?code=Loh%2C%20tadi%20rumah%20saya%20disini%20(503)
 # END InfinityFree Managed Code

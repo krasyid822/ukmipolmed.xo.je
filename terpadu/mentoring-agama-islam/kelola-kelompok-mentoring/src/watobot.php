@@ -208,25 +208,111 @@ class Watobot {
         return str_contains(strtolower($response), 'duplicate_message');
     }
 
+    public static function normalizeChannel(?string $channel): string {
+        $val = strtolower(trim((string)$channel));
+        if (in_array($val, ['akhwat', 'perempuan', 'p'], true)) {
+            return 'akhwat';
+        }
+        return 'ikhwan';
+    }
+
+    public static function channelLabel(string $channel): string {
+        return self::normalizeChannel($channel) === 'akhwat' ? 'Akhwat' : 'Ikhwan';
+    }
+
+    public static function resolveChannelForTeam(string $timId, string $namaTim = ''): string {
+        $map = ReportRepository::teamGenderMap();
+        $gender = '';
+        if ($timId !== '' && isset($map['tim:' . $timId])) {
+            $gender = $map['tim:' . $timId];
+        } elseif ($namaTim !== '' && isset($map['nama:' . $namaTim])) {
+            $gender = $map['nama:' . $namaTim];
+        }
+        return self::normalizeChannel($gender);
+    }
+
+    public static function channelConfig(string $channel): array {
+        $ch = self::normalizeChannel($channel);
+        $label = self::channelLabel($ch);
+        $chCfg = Config::get('watobot.channels.' . $ch, []);
+        if (!is_array($chCfg)) {
+            $chCfg = [];
+        }
+
+        $defaultEnabled = false;
+        $enabled = array_key_exists('enabled', $chCfg) ? (bool)$chCfg['enabled'] : $defaultEnabled;
+
+        $apiUrl = trim((string)($chCfg['api_url'] ?? Config::get('watobot.api_url', 'https://api.watobot.xyz/api/message')));
+        if ($apiUrl === '') {
+            $apiUrl = 'https://api.watobot.xyz/api/message';
+        }
+
+        $apiKey = trim((string)($chCfg['api_key'] ?? ($ch === 'ikhwan' ? Config::get('watobot.api_key', '') : '')));
+        $groupId = trim((string)($chCfg['group_id'] ?? ($ch === 'ikhwan' ? Config::get('watobot.group_id', '120363271558091003@g.us') : '')));
+        $timeout = (int)($chCfg['timeout'] ?? Config::get('watobot.timeout', 30));
+
+        return [
+            'channel' => $ch,
+            'label' => $label,
+            'enabled' => $enabled,
+            'api_url' => $apiUrl,
+            'api_key' => $apiKey,
+            'group_id' => $groupId,
+            'timeout' => $timeout > 0 ? $timeout : 30,
+        ];
+    }
+
+    public static function isEnabled(string $channel): bool {
+        return (bool)self::channelConfig($channel)['enabled'];
+    }
+
     /**
      * Mengirim pesan ke grup via Watobot API.
      *
      * Hasil selalu menyertakan `api_invalid` agar pemanggil dapat
      * menjadwalkan ulang pengiriman tanpa menghentikan proses utama.
      */
-    public static function sendReport(string $messageText, array $overrides = []): array {
-        $apiUrl = (string)($overrides['api_url'] ?? Config::get('watobot.api_url', 'https://api.watobot.xyz/api/message'));
-        $apiKey = (string)($overrides['api_key'] ?? Config::get('watobot.api_key', ''));
-        $groupId = (string)($overrides['group_id'] ?? Config::get('watobot.group_id', '120363271558091003@g.us'));
+    public static function sendReport(string $messageText, array $overrides = [], ?string $channel = null): array {
+        $cfg = self::channelConfig($channel ?? 'ikhwan');
+
+        if (!$cfg['enabled'] && empty($overrides['ignore_disabled'])) {
+            return [
+                'success' => false,
+                'disabled' => true,
+                'http_code' => 0,
+                'response' => null,
+                'error' => '',
+                'api_invalid' => false,
+                'duplicate' => false,
+                'failure_reason' => 'Fitur bot ' . $cfg['label'] . ' sedang dimatikan.',
+            ];
+        }
+
+        $apiUrl = (string)($overrides['api_url'] ?? $cfg['api_url']);
+        $apiKey = trim((string)($overrides['api_key'] ?? $cfg['api_key']));
+        $groupId = trim((string)($overrides['group_id'] ?? $cfg['group_id']));
+
+        if ($groupId === '') {
+            return [
+                'success' => false,
+                'http_code' => 0,
+                'response' => null,
+                'error' => 'ID grup WhatsApp bot ' . $cfg['label'] . ' belum diatur',
+                'api_invalid' => false,
+                'duplicate' => false,
+                'failure_reason' => 'ID grup WhatsApp bot ' . $cfg['label'] . ' belum diatur',
+            ];
+        }
 
         if ($apiKey === '') {
             return [
                 'success' => false,
                 'http_code' => 0,
                 'response' => null,
-                'error' => 'API key bot belum diatur',
+                'error' => 'API key bot ' . $cfg['label'] . ' belum diatur',
                 'api_invalid' => true,
-                'failure_reason' => 'API key bot belum diatur',
+                'duplicate' => false,
+                'failure_reason' => 'API key bot ' . $cfg['label'] . ' belum diatur',
             ];
         }
 
@@ -246,7 +332,7 @@ class Watobot {
             CURLOPT_RETURNTRANSFER => true,
             // Pengiriman nyata ke grup bisa memakan >15 detik (cold start /
             // antrean di sisi Watobot), jadi beri ruang lebih longgar.
-            CURLOPT_TIMEOUT => (int)($overrides['timeout'] ?? Config::get('watobot.timeout', 30)),
+            CURLOPT_TIMEOUT => (int)($overrides['timeout'] ?? $cfg['timeout']),
             CURLOPT_CONNECTTIMEOUT => 10,
         ]);
 

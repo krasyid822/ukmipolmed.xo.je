@@ -26,3 +26,12 @@ Salin isi `cloudflare_worker_redirector.js` dan Deploy ke Worker `laporan-mai.kr
 - pkg name: `dev.workers.krasyid822.laporan_mai.twa`
 - sign key: `terpadu/mentoring-agama-islam/kelola-kelompok-mentoring/storage_secure/keystore/mai-mentoring-pwabuilder.keystore`
 - password: `terpadu/mentoring-agama-islam/kelola-kelompok-mentoring/storage_secure/keystore/keystore-info.txt`
+
+## Dokumentasi
+
+### Aplikasi Laporan Mentoring:
+
+- versi APK: `https://github.com/krasyid822/ukmipolmed.xo.je/releases/download/apk/Laporan.MAI.apk`
+- versi WEB: `https://ukmipolmed.my.id/terpadu/mai/mentoring/`
+- Dokumentasi penggunaan: `https://youtube.com/playlist?list=PLeqpLvcNFR7k&si=eAIdMeEUkD3DPhvg`
+- Link Pendaftaran: `https://ukmipolmed.my.id/terpadu/mai/mentoring/daftar`

@@ -37,6 +37,10 @@ if ($regIndex === null) {
 }
 
 $reg = $master['registrants'][$regIndex];
+if (!AdminAuth::canAccessGender($reg['gender'] ?? '')) {
+    header('Location: ' . $basePath . '?error=notfound#tab-pendaftar', true, 303);
+    exit;
+}
 $detailUrl = static function (string $msg = '', string $error = '') use ($basePath, $regId): string {
     $url = $basePath . 'pendaftar?id=' . urlencode($regId);
     if ($msg !== '') {
@@ -49,6 +53,10 @@ $detailUrl = static function (string $msg = '', string $error = '') use ($basePa
 };
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!AdminAuth::verifyCsrfToken()) {
+        http_response_code(403);
+        die('Token CSRF tidak valid atau sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+    }
     $action = (string)($_POST['action'] ?? '');
 
     if ($action === 'delete') {
@@ -209,14 +217,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $mentorId = '';
+            $selectedTeam = null;
             foreach ($master['teams'] ?? [] as $team) {
                 if (($team['id'] ?? '') === $timId) {
+                    $selectedTeam = $team;
                     $mentorId = (string)($team['mentor_id'] ?? '');
                     break;
                 }
             }
-            if ($mentorId === '') {
-                throw new MasterDataException('Tim tujuan tidak ditemukan atau belum memiliki mentor.', 'notfound');
+            if ($mentorId === '' || $selectedTeam === null || !AdminAuth::canAccessRecord($master, 'tim', $selectedTeam)) {
+                throw new MasterDataException('Tim tujuan tidak ditemukan, belum memiliki mentor, atau tidak sesuai akses role Anda.', 'notfound');
             }
 
             $row = $master['registrants'][$idx];
@@ -281,7 +291,8 @@ foreach ($master['mentors'] ?? [] as $m) {
     $mentorNames[$m['id'] ?? ''] = $m['nama_lengkap'] ?? '';
 }
 
-$teams = $master['teams'] ?? [];
+$filteredMaster = AdminAuth::filterMasterData($master);
+$teams = $filteredMaster['teams'] ?? [];
 $assignedMentee = null;
 $assignedTeam = null;
 $assignedMenteeId = trim((string)($reg['assigned_mentee_id'] ?? ''));
@@ -470,6 +481,7 @@ $err = match ((string)($_GET['error'] ?? '')) {
             <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
                 <?php if (($reg['status_pendaftaran'] ?? '') === 'Ditolak'): ?>
                     <form method="POST" style="margin: 0;">
+            <?= AdminAuth::csrfField() ?>
                         <input type="hidden" name="action" value="restore_to_cadangan">
                         <input type="hidden" name="id" value="<?= $h($regId) ?>">
                         <button type="submit" class="btn-action" style="padding: 9px 14px; font-size: 0.83rem;">&#8634; Pulihkan ke Cadangan</button>
@@ -478,6 +490,7 @@ $err = match ((string)($_GET['error'] ?? '')) {
                 <form method="POST" style="margin: 0;"
                       data-confirm="Hapus data pendaftar ini secara permanen?"
                       data-confirm-title="Hapus Data Pendaftar">
+            <?= AdminAuth::csrfField() ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="id" value="<?= $h($regId) ?>">
                     <button type="submit" class="btn-reject-top">&#128465; Hapus Data Pendaftar</button>
@@ -619,6 +632,7 @@ $err = match ((string)($_GET['error'] ?? '')) {
                 Pilih Tim Mentoring tujuan untuk langsung memindahkan pendaftar ini menjadi <b>Mentee Aktif</b> di Daftar Mentee.
             </p>
             <form method="POST">
+            <?= AdminAuth::csrfField() ?>
                 <input type="hidden" name="action" value="promote_to_mentee">
                 <input type="hidden" name="id" value="<?= $h($regId) ?>">
                 <div class="form-group">
@@ -654,6 +668,7 @@ $err = match ((string)($_GET['error'] ?? '')) {
             <?php endif; ?>
         </p>
         <form method="POST">
+            <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="action" value="update">
             <input type="hidden" name="id" value="<?= $h($regId) ?>">
             <div class="form-group">
@@ -670,6 +685,7 @@ $err = match ((string)($_GET['error'] ?? '')) {
         <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #334155; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <?php if (($reg['status_pendaftaran'] ?? '') === 'Ditolak'): ?>
                 <form method="POST" style="margin: 0;">
+            <?= AdminAuth::csrfField() ?>
                     <input type="hidden" name="action" value="restore_to_cadangan">
                     <input type="hidden" name="id" value="<?= $h($regId) ?>">
                     <button type="submit" class="btn-action" style="padding: 9px 16px;">&#8634; Pulihkan ke Status Cadangan</button>
@@ -689,6 +705,7 @@ $err = match ((string)($_GET['error'] ?? '')) {
                 Berikan alasan mengapa pendaftar <b><?= $h($reg['nama_lengkap'] ?? '-') ?></b> ditolak. Status akan berubah menjadi <b>Ditolak</b>.
             </p>
             <form method="POST" id="reject-form">
+            <?= AdminAuth::csrfField() ?>
                 <input type="hidden" name="action" value="reject">
                 <input type="hidden" name="id" value="<?= $h($regId) ?>">
                 <div class="form-group" style="margin-bottom: 0;">

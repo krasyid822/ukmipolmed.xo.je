@@ -83,13 +83,17 @@ $isSingle = $focusId !== '';
 $settingsUrl = $basePath . 'pengaturan?tipe=' . urlencode($tipe)
     . ($isSingle ? '&id=' . urlencode($focusId) : '');
 
-$master = MasterData::loadAll();
+$master = AdminAuth::filterMasterData(MasterData::loadAll());
 $recordIndex = null;
 foreach ($master[$cfg['collection']] ?? [] as $i => $row) {
     if ((string)($row['id'] ?? '') === $focusId) {
         $recordIndex = $i;
         break;
     }
+}
+if ($isSingle && $recordIndex !== null && !AdminAuth::canAccessRecord($master, $tipe, $master[$cfg['collection']][$recordIndex])) {
+    header('Location: ' . $basePath . '?error=notfound#' . urlencode($cfg['tab']), true, 303);
+    exit;
 }
 
 /**
@@ -127,6 +131,10 @@ $findBlocker = static function (array $master, string $tipe, string $id): ?strin
 // Aksi POST: unggah foto, hapus permanen, atau pindahkan ke Arsip Purna
 // ---------------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSingle) {
+    if (!AdminAuth::verifyCsrfToken()) {
+        http_response_code(403);
+        die('Token CSRF tidak valid atau sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+    }
     $action = (string)($_POST['action'] ?? '');
 
     if ($action === 'upload_photo') {
@@ -159,6 +167,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSingle) {
             }
 
             $record = $master[$collection][$index];
+            if (!AdminAuth::canAccessRecord($master, $photoEntity, $record)) {
+                throw new MasterDataException('Anda tidak memiliki akses ke data ini.', 'notfound');
+            }
 
             // Kerangka anti-logo-kembar: hanya berlaku untuk logo kelompok
             if ($photoEntity === 'team') {
@@ -215,12 +226,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSingle) {
                 throw new MasterDataException('Data tidak ditemukan atau sudah dihapus.', 'notfound');
             }
 
+            $record = $master[$collection][$index];
+            if (!AdminAuth::canAccessRecord($master, $tipe, $record)) {
+                throw new MasterDataException('Anda tidak memiliki akses ke data ini.', 'notfound');
+            }
+
             $blocker = $findBlocker($master, $tipe, $focusId);
             if ($blocker !== null) {
                 throw new MasterDataException($blocker, 'relasi');
             }
-
-            $record = $master[$collection][$index];
 
             if ($wasArchived) {
                 // Tempat khusus data yang telah pergi: mentor / mentee dikeluarkan dari UKMI.
@@ -276,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSingle) {
 // ---------------------------------------------------------------------------
 // Data untuk render GET
 // ---------------------------------------------------------------------------
-$master = MasterData::loadAll();
+$master = AdminAuth::filterMasterData(MasterData::loadAll());
 $allRows = $master[$cfg['collection']] ?? [];
 $rows = array_reverse($allRows);
 $record = null;
@@ -688,6 +702,7 @@ if ($record !== null) {
                 <div class="settings-profile-body">
                     <h3 class="card-title"><?= $h($cfg['photo_label']) ?></h3>
                     <form method="post" enctype="multipart/form-data">
+            <?= AdminAuth::csrfField() ?>
                         <input type="hidden" name="action" value="upload_photo">
                         <input type="hidden" name="tipe" value="<?= $h($tipe) ?>">
                         <input type="hidden" name="id" value="<?= $h($focusId) ?>">
@@ -719,6 +734,7 @@ if ($record !== null) {
                 <a class="btn-action" href="<?= $h($basePath . $cfg['edit'] . '?id=' . urlencode($focusId)) ?>">Ubah Biodata</a>
                 <?php if ($cfg['is_person']): ?>
                 <form method="post" style="display:inline;" data-confirm="Pastikan Anda hanya menekan ini karena ingin menambahkan ke daftar penginput laporan. Jika tidak, batalkan tindakan ini segera. Link harus dibagikan kepada pemilik data untuk disiapkan ulang. Lanjutkan?" data-confirm-title="Atur Ulang Biometrik">
+            <?= AdminAuth::csrfField() ?>
                     <input type="hidden" name="action" value="reset_biometric">
                     <input type="hidden" name="tipe" value="<?= $h($tipe) ?>">
                     <input type="hidden" name="id" value="<?= $h($focusId) ?>">
@@ -762,6 +778,7 @@ if ($record !== null) {
                     <form method="post" style="display:inline;"
                           data-confirm="Membatalkan proses pendaftaran akan menghapus link sekali pakai ini. Link yang sudah dibagikan tidak dapat digunakan lagi. Lanjutkan?"
                           data-confirm-title="Hapus Link Pendaftaran">
+            <?= AdminAuth::csrfField() ?>
                         <input type="hidden" name="action" value="cancel_biometric">
                         <input type="hidden" name="tipe" value="<?= $h($tipe) ?>">
                         <input type="hidden" name="id" value="<?= $h($focusId) ?>">
@@ -781,6 +798,7 @@ if ($record !== null) {
                     dibatalkan dari halaman ini.
                 </p>
                 <form method="post" id="delete-form">
+            <?= AdminAuth::csrfField() ?>
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="tipe" value="<?= $h($tipe) ?>">
                     <input type="hidden" name="id" value="<?= $h($focusId) ?>">

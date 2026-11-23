@@ -20,15 +20,52 @@ use Mentoring\BotQueue;
 
 AdminAuth::guard();
 
-// Kesempatan mencoba ulang antrean bot secara otomatis setiap admin
-// membuka halaman master (tidak menunggu cron hosting).
-BotQueue::processDue(1);
-$botState = BotQueue::state();
-$botQueueItems = BotQueue::items();
-$botPendingCount = count($botQueueItems);
-$showBotModal = !empty($botState['api_invalid']);
+$isSuperAdmin = AdminAuth::isSuperAdmin();
+$roleGenderLabel = AdminAuth::allowedGenderLabel();
+$allowedExportScope = AdminAuth::allowedExportScope();
 
-$master = MasterData::loadAll();
+$allowedBotChannels = $isSuperAdmin
+    ? ['ikhwan', 'akhwat']
+    : [($allowedExportScope === 'akhwat' ? 'akhwat' : 'ikhwan')];
+
+// Kesempatan mencoba ulang antrean bot secara otomatis setiap admin
+// membuka halaman master (hanya untuk channel yang aktif & sesuai role).
+$botChannels = [];
+$botQueueItems = [];
+$botPendingCount = 0;
+$botAnyInvalid = false;
+$primaryBotChannel = $allowedBotChannels[0];
+
+foreach ($allowedBotChannels as $ch) {
+    $cfg = Watobot::channelConfig($ch);
+    if ($cfg['enabled']) {
+        BotQueue::processDue(1, false, [], $ch);
+    }
+    $chState = BotQueue::state($ch);
+    $chItems = BotQueue::items($ch);
+    $botChannels[$ch] = [
+        'channel' => $ch,
+        'label' => $cfg['label'],
+        'enabled' => $cfg['enabled'],
+        'group_id' => $cfg['group_id'],
+        'has_api_key' => $cfg['api_key'] !== '',
+        'state' => $chState,
+        'pending_count' => count($chItems),
+    ];
+    if ($cfg['enabled']) {
+        $botQueueItems = array_merge($botQueueItems, $chItems);
+        $botPendingCount += count($chItems);
+        if (!empty($chState['api_invalid'])) {
+            $botAnyInvalid = true;
+            $primaryBotChannel = $ch;
+        }
+    }
+}
+
+$botState = $botChannels[$primaryBotChannel]['state'];
+$showBotModal = $botAnyInvalid;
+
+$master = AdminAuth::filterMasterData(MasterData::loadAll());
 $todayBirthdays = BirthdayReminder::getTodayBirthdays($master);
 $basePath = mentoring_base_path(__DIR__);
 $appBase = mentoring_base_path(dirname(__DIR__));
@@ -96,6 +133,13 @@ if (in_array($requestedTab, ['tab-mentors', 'tab-teams', 'tab-mentees', 'tab-exp
 
 // ---- Data tab Kelola Laporan (daftar + rekap) ----
 $laporanAll = ReportRepository::summaries();
+if ($roleGenderLabel !== null) {
+    $teamGenders = ReportRepository::teamGenderMap();
+    $laporanAll = array_values(array_filter($laporanAll, static function (array $s) use ($roleGenderLabel, $teamGenders): bool {
+        $g = $teamGenders['tim:' . $s['tim_id']] ?? $teamGenders['nama:' . $s['nama_tim']] ?? '';
+        return $g === $roleGenderLabel;
+    }));
+}
 $laporanBulan = (string)($_GET['laporan_bulan'] ?? '');
 $laporanTim = (string)($_GET['laporan_tim'] ?? '');
 if (!preg_match('/^\d{4}-\d{2}$/', $laporanBulan)) {
@@ -330,6 +374,18 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
         }
 
         .recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
+        .bot-stat-box { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+        .bot-stat-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .bot-stat-switches { display: flex; flex-direction: column; gap: 6px; }
+        .bot-switch { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 8px; border-radius: 999px; background: rgba(15, 23, 42, 0.55); border: 1px solid var(--card-border); font-size: 0.76rem; font-weight: 600; color: #cbd5e1; cursor: pointer; user-select: none; }
+        .bot-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .bot-switch-track { position: relative; width: 28px; height: 15px; border-radius: 999px; background: #475569; transition: background 0.18s ease; flex-shrink: 0; }
+        .bot-switch-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: #f8fafc; transition: transform 0.18s ease; }
+        .bot-switch input:checked + .bot-switch-track { background: #10b981; }
+        .bot-switch input:checked + .bot-switch-track::after { transform: translateX(13px); }
+        .bot-switch input:disabled + .bot-switch-track { opacity: 0.6; }
+        .bot-gear-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: rgba(15, 23, 42, 0.65); border: 1px solid var(--card-border); color: #cbd5e1; font-size: 0.85rem; cursor: pointer; transition: border-color 0.15s, color 0.15s; flex-shrink: 0; }
+        .bot-gear-btn:hover { border-color: #38bdf8; color: #38bdf8; }
         .stat-box { background: #0b1120; border: 1px solid #334155; border-radius: 12px; padding: 14px; }
         .stat-box .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
         .stat-box .stat-value { margin-top: 4px; font-size: 1.45rem; font-weight: 700; color: #f1f5f9; line-height: 1.2; }
@@ -653,9 +709,15 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             <p class="page-subtitle">Manajemen Biodata Mentor, Tim Mentoring, dan Mentee</p>
         </div>
         <div class="master-header-links" style="margin-top: 10px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+            <?php if ($roleGenderLabel !== null): ?>
+                <span style="padding: 4px 10px; border-radius: 999px; background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.35); color: #7dd3fc; font-size: 0.78rem; font-weight: 700;">Akses <?= htmlspecialchars($roleGenderLabel) ?></span>
+            <?php endif; ?>
             <a href="<?= htmlspecialchars(mentoring_base_path(dirname(__DIR__))) ?>" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">&larr; Kembali ke Form Pelaporan</a>
-            <a href="<?= htmlspecialchars($basePath) ?>backup" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">Backup Sistem</a>
-            <a href="<?= htmlspecialchars($basePath) ?>restore" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">Pulihkan / Rollback</a>
+            <?php if ($isSuperAdmin): ?>
+                <a href="<?= htmlspecialchars($basePath) ?>backup" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">Backup Sistem</a>
+                <a href="<?= htmlspecialchars($basePath) ?>restore" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">Pulihkan / Rollback</a>
+            <?php endif; ?>
+            <a href="/login?logout=1" style="color: #fca5a5; text-decoration: none; font-size: 0.9rem;">Keluar</a>
         </div>
     </header>
 
@@ -683,18 +745,18 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
         </div>
     <?php endif; ?>
 
-    <?php if ($botPendingCount > 0 || !empty($botState['api_invalid'])): ?>
-        <div class="bot-status-bar <?= !empty($botState['api_invalid']) ? 'invalid' : '' ?>">
+    <?php if ($botPendingCount > 0 || $botAnyInvalid): ?>
+        <div class="bot-status-bar <?= $botAnyInvalid ? 'invalid' : '' ?>">
             <span>
-                <?php if (!empty($botState['api_invalid'])): ?>
-                    <b>API bot kedaluwarsa.</b>
+                <?php if ($botAnyInvalid): ?>
+                    <b>API bot <?= htmlspecialchars($botChannels[$primaryBotChannel]['label']) ?> kedaluwarsa.</b>
                 <?php else: ?>
                     <b>Pengiriman bot tertunda.</b>
                 <?php endif; ?>
                 <?= (int)$botPendingCount ?> pesan menunggu antrean.
             </span>
             <span class="bot-status-actions">
-                <button type="button" class="row-action manage" onclick="openBotModal()">Kelola Bot</button>
+                <button type="button" class="row-action manage" onclick="openBotModal(<?= htmlspecialchars(json_encode($primaryBotChannel), ENT_QUOTES) ?>)">Kelola Bot</button>
             </span>
         </div>
     <?php endif; ?>
@@ -772,9 +834,15 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
                 <button type="button" class="mobile-drawer-close" id="mobile-drawer-close" aria-label="Tutup menu">&times;</button>
             </div>
             <nav class="mobile-drawer-links" aria-label="Navigasi Master">
+                <?php if ($roleGenderLabel !== null): ?>
+                    <div style="padding: 8px 12px; border-radius: 8px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #7dd3fc; font-size: 0.82rem; font-weight: 700;">Mode: Akses <?= htmlspecialchars($roleGenderLabel) ?></div>
+                <?php endif; ?>
                 <a href="<?= htmlspecialchars(mentoring_base_path(dirname(__DIR__))) ?>">&larr; Kembali ke Form Pelaporan</a>
-                <a href="<?= htmlspecialchars($basePath) ?>backup">Backup Sistem</a>
-                <a href="<?= htmlspecialchars($basePath) ?>restore">Pulihkan / Rollback</a>
+                <?php if ($isSuperAdmin): ?>
+                    <a href="<?= htmlspecialchars($basePath) ?>backup">Backup Sistem</a>
+                    <a href="<?= htmlspecialchars($basePath) ?>restore">Pulihkan / Rollback</a>
+                <?php endif; ?>
+                <a href="/login?logout=1" style="color: #fca5a5;">Keluar</a>
             </nav>
         </div>
     </div>
@@ -961,6 +1029,27 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
                     <div class="stat-label">Tingkat Kehadiran</div>
                     <div class="stat-value"><?= htmlspecialchars((string)ReportRepository::attendanceRate((int)$laporanRecap['total_hadir'], (int)$laporanRecap['total_izin'], (int)$laporanRecap['total_absen'])) ?>%</div>
                 </div>
+                <div class="stat-box bot-stat-box" aria-label="Pengaturan Bot WhatsApp">
+                    <div class="stat-label bot-stat-header">
+                        <span>Bot WhatsApp</span>
+                        <button type="button" class="bot-gear-btn" onclick="openBotModal()" title="Pengaturan API &amp; Grup Bot" aria-label="Pengaturan Bot">&#9881;</button>
+                    </div>
+                    <div class="bot-stat-switches">
+                        <?php foreach ($allowedBotChannels as $ch): ?>
+                            <?php
+                            $chInfo = $botChannels[$ch];
+                            $isBotOn = !empty($chInfo['enabled']);
+                            $shortLabel = count($allowedBotChannels) > 1 ? $chInfo['label'] : 'Aktif';
+                            ?>
+                            <label class="bot-switch" title="<?= $isBotOn ? 'Matikan' : 'Aktifkan' ?> Bot <?= htmlspecialchars($chInfo['label']) ?>">
+                                <span><?= htmlspecialchars($shortLabel) ?></span>
+                                <input type="checkbox" <?= $isBotOn ? 'checked' : '' ?>
+                                       onchange="toggleBotFeature(<?= htmlspecialchars(json_encode($ch), ENT_QUOTES) ?>, this.checked, this)">
+                                <span class="bot-switch-track" aria-hidden="true"></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             </div>
 
             <?php
@@ -1050,7 +1139,11 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             <div class="recap-grid" style="margin-bottom: 0;">
                 <div class="stat-box">
                     <div class="stat-label">Total Pendaftar</div>
-                    <div class="stat-value"><?= (int)$regStats['total'] ?> <small>(<?= (int)$regStats['ikhwan'] ?> I / <?= (int)$regStats['akhwat'] ?> A)</small></div>
+                    <?php if ($roleGenderLabel === null): ?>
+                        <div class="stat-value"><?= (int)$regStats['total'] ?> <small>(<?= (int)$regStats['ikhwan'] ?> I / <?= (int)$regStats['akhwat'] ?> A)</small></div>
+                    <?php else: ?>
+                        <div class="stat-value"><?= (int)$regStats['total'] ?> <small>(<?= htmlspecialchars($roleGenderLabel) ?>)</small></div>
+                    <?php endif; ?>
                 </div>
                 <div class="stat-box">
                     <div class="stat-label">Menunggu</div>
@@ -1143,9 +1236,15 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
                 yang berbeda agar mudah dibaca.
             </p>
             <div class="export-actions">
-                <a href="<?= htmlspecialchars($basePath) ?>export?scope=ikhwan" class="btn-action secondary">Ekspor Ikhwan</a>
-                <a href="<?= htmlspecialchars($basePath) ?>export?scope=akhwat" class="btn-action secondary">Ekspor Akhwat</a>
-                <a href="<?= htmlspecialchars($basePath) ?>export?scope=semua" class="btn-action secondary">Ekspor Gabungan</a>
+                <?php if ($isSuperAdmin || $allowedExportScope === 'ikhwan'): ?>
+                    <a href="<?= htmlspecialchars($basePath) ?>export?scope=ikhwan" class="btn-action secondary">Ekspor Ikhwan</a>
+                <?php endif; ?>
+                <?php if ($isSuperAdmin || $allowedExportScope === 'akhwat'): ?>
+                    <a href="<?= htmlspecialchars($basePath) ?>export?scope=akhwat" class="btn-action secondary">Ekspor Akhwat</a>
+                <?php endif; ?>
+                <?php if ($isSuperAdmin): ?>
+                    <a href="<?= htmlspecialchars($basePath) ?>export?scope=semua" class="btn-action secondary">Ekspor Gabungan</a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -1196,13 +1295,46 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
         <div class="bot-form-message" id="bot-form-message"></div>
 
         <form id="bot-api-form" autocomplete="off">
+            <?php if (count($allowedBotChannels) > 1): ?>
+                <div class="form-group">
+                    <label for="bot-channel">Target Bot Gender</label>
+                    <select class="form-control" id="bot-channel" name="channel" onchange="onBotChannelChange()">
+                        <?php foreach ($allowedBotChannels as $ch): ?>
+                            <option value="<?= htmlspecialchars($ch) ?>" <?= $ch === $primaryBotChannel ? 'selected' : '' ?>>
+                                Bot <?= htmlspecialchars($botChannels[$ch]['label']) ?> <?= $botChannels[$ch]['enabled'] ? '(Aktif)' : '(Dimatikan)' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php else: ?>
+                <input type="hidden" id="bot-channel" name="channel" value="<?= htmlspecialchars($primaryBotChannel) ?>">
+                <div class="form-group">
+                    <label>Target Bot Gender</label>
+                    <div class="bot-hint" style="margin-top: 0; color: #7dd3fc; font-weight: 700;">
+                        Bot <?= htmlspecialchars($botChannels[$primaryBotChannel]['label']) ?>
+                        (<?= $botChannels[$primaryBotChannel]['enabled'] ? 'Aktif' : 'Dimatikan' ?>)
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 5px;">
+                    <label for="bot-group-id" style="margin-bottom: 0;">ID Grup WhatsApp</label>
+                    <a href="<?= htmlspecialchars($basePath) ?>panduan-grup-wa" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; font-size: 0.78rem; text-decoration: none;">Cara Ambil ID Grup &nearr;</a>
+                </div>
+                <input type="text" class="form-control" id="bot-group-id" name="group_id"
+                       value="<?= htmlspecialchars((string)$botChannels[$primaryBotChannel]['group_id']) ?>"
+                       placeholder="Contoh: 120363xxxxxxxxxxxx@g.us">
+                <div class="bot-hint">Diperoleh dari daftar grup Watobot untuk nomor pengirim kategori ini.</div>
+            </div>
+
             <div class="form-group">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 5px;">
                     <label for="bot-api-key" style="margin-bottom: 0;">API Key Watobot Baru</label>
                     <a href="https://watobot.xyz/dashboard/" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; font-size: 0.78rem; text-decoration: none;">Buka Dasbor Watobot &nearr;</a>
                 </div>
                 <input type="password" class="form-control" id="bot-api-key" name="api_key"
-                       placeholder="Tempel API key terbaru di sini" required>
+                       placeholder="Tempel API key terbaru di sini (kosongkan jika hanya ubah ID grup)">
                 <div class="bot-hint">API Watobot dapat kedaluwarsa setiap jam. Ambil kunci baru di dasbor Watobot, lalu tempel di sini. Kunci diuji ke antrean terlebih dahulu; bila ditolak, kunci lama tetap dipakai dan pesan tidak hilang.</div>
             </div>
             <div class="modal-actions">
@@ -1210,7 +1342,7 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
                 <?php if ($botPendingCount > 0): ?>
                     <button type="button" class="modal-btn secondary" id="bot-retry-btn" onclick="processBotQueue(this)">Kirim Sekarang</button>
                 <?php endif; ?>
-                <button type="submit" class="modal-btn primary" id="bot-save-btn">Simpan API</button>
+                <button type="submit" class="modal-btn primary" id="bot-save-btn">Simpan Pengaturan</button>
             </div>
         </form>
     </div>
@@ -1220,11 +1352,28 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
 <script src="<?= htmlspecialchars($appBase) ?>public/assets/js/modal.js"></script>
 <script>
 const BOT_API_SAVE_URL = <?= json_encode($appBase . 'api?action=bot_save_api') ?>;
+const BOT_API_TOGGLE_URL = <?= json_encode($appBase . 'api?action=bot_toggle') ?>;
 const BOT_API_PROCESS_URL = <?= json_encode($appBase . 'api?action=bot_process_queue') ?>;
+const BOT_CSRF_TOKEN = <?= json_encode(AdminAuth::csrfToken()) ?>;
+const BOT_CHANNELS_DATA = <?= json_encode($botChannels) ?>;
 
-function openBotModal() {
+function onBotChannelChange() {
+    const channelEl = document.getElementById('bot-channel');
+    const groupEl = document.getElementById('bot-group-id');
+    if (!channelEl || !groupEl) return;
+    const ch = channelEl.value;
+    const info = BOT_CHANNELS_DATA[ch] || {};
+    groupEl.value = info.group_id || '';
+}
+
+function openBotModal(channel) {
     const modal = document.getElementById('bot-modal');
     if (!modal) return;
+    const channelEl = document.getElementById('bot-channel');
+    if (channel && channelEl && BOT_CHANNELS_DATA[channel]) {
+        channelEl.value = channel;
+    }
+    onBotChannelChange();
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
 }
@@ -1255,34 +1404,37 @@ function reloadMaster() {
 
 async function saveBotApi(event) {
     event.preventDefault();
-    const form = event.currentTarget;
+    const channelEl = document.getElementById('bot-channel');
+    const groupEl = document.getElementById('bot-group-id');
     const keyInput = document.getElementById('bot-api-key');
     const saveBtn = document.getElementById('bot-save-btn');
+    const channel = channelEl ? (channelEl.value || 'ikhwan') : 'ikhwan';
+    const groupId = groupEl ? (groupEl.value || '').trim() : '';
     const apiKey = (keyInput.value || '').trim();
 
-    if (!apiKey) {
-        showBotFormMessage('API key baru wajib diisi.', 'error');
+    if (!apiKey && !groupId) {
+        showBotFormMessage('Isi API key baru atau ID grup WhatsApp terlebih dahulu.', 'error');
         keyInput.focus();
         return;
     }
 
     saveBtn.disabled = true;
     saveBtn.textContent = 'Menyimpan...';
-    showBotFormMessage('Menyimpan kunci dan mencoba mengirim antrean...', 'info');
+    showBotFormMessage('Menyimpan pengaturan bot...', 'info');
     if (typeof window.ukmiShowLoadingOverlay === 'function') {
-        window.ukmiShowLoadingOverlay('Menyimpan API key & memproses antrean bot...');
+        window.ukmiShowLoadingOverlay('Menyimpan pengaturan bot...');
     }
 
     try {
         const response = await fetch(BOT_API_SAVE_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ api_key: apiKey })
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': BOT_CSRF_TOKEN },
+            body: JSON.stringify({ channel: channel, api_key: apiKey, group_id: groupId })
         });
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-            showBotFormMessage(data.message || 'Gagal menyimpan API key.', 'error');
+            showBotFormMessage(data.message || 'Gagal menyimpan pengaturan bot.', 'error');
             if (data.data && data.data.key_rejected) {
                 keyInput.select();
             }
@@ -1292,14 +1444,14 @@ async function saveBotApi(event) {
         const state = (data.data && data.data.state) || {};
         const pending = (data.data && data.data.pending_count) || 0;
         if (state.api_invalid) {
-            showBotFormMessage('API key tersimpan, tetapi API masih menolak. ' + pending + ' pesan tetap dalam antrean.', 'error');
+            showBotFormMessage('Pengaturan tersimpan, tetapi API masih menolak. ' + pending + ' pesan tetap dalam antrean.', 'error');
             return;
         }
 
         if (typeof window.Modal !== 'undefined') {
             await window.Modal.success(
-                data.message || ('API key disimpan' + (pending > 0 ? ', ' + pending + ' pesan masih dijadwalkan ulang.' : '.')),
-                'API Bot Diperbarui'
+                data.message || ('Pengaturan bot disimpan' + (pending > 0 ? ', ' + pending + ' pesan masih dijadwalkan ulang.' : '.')),
+                'Pengaturan Bot Diperbarui'
             );
         }
         reloadMaster();
@@ -1310,7 +1462,43 @@ async function saveBotApi(event) {
             window.ukmiHideLoadingOverlay();
         }
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Simpan API';
+        saveBtn.textContent = 'Simpan Pengaturan';
+    }
+}
+
+async function toggleBotFeature(channel, enabled, btn) {
+    if (btn) btn.disabled = true;
+    if (typeof window.ukmiShowLoadingOverlay === 'function') {
+        window.ukmiShowLoadingOverlay(enabled ? 'Mengaktifkan fitur bot...' : 'Mematikan fitur bot...');
+    }
+    try {
+        const response = await fetch(BOT_API_TOGGLE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': BOT_CSRF_TOKEN },
+            body: JSON.stringify({ channel: channel, enabled: !!enabled })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            if (btn && typeof btn.checked === 'boolean') btn.checked = !enabled;
+            if (typeof window.Modal !== 'undefined') {
+                await window.Modal.error(data.message || 'Gagal mengubah status bot.', 'Gagal');
+            }
+            return;
+        }
+        if (typeof window.Modal !== 'undefined') {
+            await window.Modal.success(data.message || 'Status bot diperbarui.', 'Berhasil');
+        }
+        reloadMaster();
+    } catch (error) {
+        if (btn && typeof btn.checked === 'boolean') btn.checked = !enabled;
+        if (typeof window.Modal !== 'undefined') {
+            await window.Modal.error('Tidak dapat menghubungi server.', 'Gagal');
+        }
+    } finally {
+        if (typeof window.ukmiHideLoadingOverlay === 'function') {
+            window.ukmiHideLoadingOverlay();
+        }
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -1325,7 +1513,10 @@ async function processBotQueue(btn) {
     }
 
     try {
-        const response = await fetch(BOT_API_PROCESS_URL, { method: 'POST' });
+        const response = await fetch(BOT_API_PROCESS_URL, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': BOT_CSRF_TOKEN }
+        });
         const data = await response.json();
         if (!response.ok || !data.success) {
             showBotFormMessage(data.message || 'Gagal memproses antrean.', 'error');

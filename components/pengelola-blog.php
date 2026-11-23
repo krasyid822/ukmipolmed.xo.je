@@ -245,7 +245,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 	<h2 style="margin:0 0 8px; font-size:16px;">Blog</h2>
 	<?php $totalCount = count($posts); $activeCount = count(array_filter($posts, function($p){ return empty($p['archived']); })); $blogLimitReached = ($totalCount >= $maxPosts && $blogEditingIdx === -1); ?>
 	<p class="muted-text" style="margin:0 0 10px; <?php echo $blogLimitReached ? 'color:#f87171;' : ''; ?>">Maksimal <?php echo $maxPosts; ?> postingan tersimpan. Saat ini tersimpan: <?php echo $totalCount; ?> (aktif: <?php echo $activeCount; ?>)<?php echo $blogLimitReached ? ' · Hapus posting lama sebelum menambah baru.' : ''; ?></p>
-	<form method="post" class="stack-sm" id="blog-form" data-autosave-key="blog">
+	<form method="post" class="stack-sm" id="blog-form" data-autosave-key="blog"><?php echo ukmi_csrf_field(); ?>
 		<input type="hidden" name="blog_edit_idx" id="blog_edit_idx" value="<?php echo (int) $blogEditingIdx; ?>">
 		<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
 			<div>
@@ -379,22 +379,22 @@ if (($adminComponentMode ?? '') === 'handle') {
 							<?php if (!empty($post['created_at'])): ?><br><span style="color: var(--muted); font-size:12px;">Dibuat: <?php echo htmlspecialchars($post['created_at'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 						</div>
 						<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-							<form method="post" style="margin:0;">
+							<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 								<input type="hidden" name="blog_edit_idx" value="<?php echo $pIdx; ?>">
 								<button type="submit" style="min-width:80px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Edit</button>
 							</form>
 							<?php if (!empty($post['archived'])): ?>
-								<form method="post" style="margin:0;">
+								<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 										<input type="hidden" name="restore_post_idx" value="<?php echo $pIdx; ?>">
 										<button type="submit" style="min-width:90px; background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: #0b1727; box-shadow: 0 10px 30px rgba(14,165,233,0.35); border: none;">Pulihkan</button>
 									</form>
 								<?php else: ?>
-									<form method="post" style="margin:0;">
+									<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 										<input type="hidden" name="archive_blog_idx" value="<?php echo $pIdx; ?>">
 										<button type="submit" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Arsipkan</button>
 									</form>
 								<?php endif; ?>
-							<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus postingan ini?');">
+							<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus postingan ini?');"><?php echo ukmi_csrf_field(); ?>
 								<input type="hidden" name="delete_blog_idx" value="<?php echo $pIdx; ?>">
 								<button type="submit" style="min-width:90px; background: linear-gradient(135deg, #f87171, #ef4444); color: #0b1727; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35); border: none;">Hapus</button>
 							</form>
@@ -421,7 +421,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 							<?php if (!empty($item['slug'])): ?><br><span style="color: var(--muted); font-size:12px;">Slug: <?php echo htmlspecialchars($item['slug'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 							<?php if (!empty($item['archived_at'])): ?><br><span style="font-size:12px; color: var(--muted);">Diarsipkan: <?php echo htmlspecialchars($item['archived_at'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
 						</div>
-						<form method="post" style="margin:0;">
+						<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 							<input type="hidden" name="restore_post_idx" value="<?php echo $idx; ?>">
 							<?php if (!empty($item['slug'])): ?>
 								<input type="hidden" name="restore_post_slug" value="<?php echo htmlspecialchars($item['slug'], ENT_QUOTES, 'UTF-8'); ?>">

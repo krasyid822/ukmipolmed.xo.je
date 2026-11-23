@@ -123,16 +123,19 @@ function seo_cache_gc($protect = null)
         }
 
         if ($name === 'store.lock') continue;
+        $isRateFile = substr($name, -10) === '.rate.json'
+            || strpos($name, 'sticker-rate-') === 0
+            || (strpos($name, 'rate-') === 0 && substr($name, -5) === '.json');
         $isCache = substr($name, -11) === '.cache.json'
             || substr($name, -14) === '.cache.json.gz'
-            || substr($name, -10) === '.rate.json'
-            || strpos($name, 'sticker-rate-') === 0;
+            || $isRateFile;
         if (!$isCache && !in_array($name, $knownUsage, true)) continue;
         if ($name === $protect) {
             $total += $size;
             continue;
         }
-        if ($mtime > 0 && $now - $mtime > $maxAge) {
+        $effectiveMaxAge = $isRateFile ? min($maxAge, 86400) : $maxAge;
+        if ($mtime > 0 && $now - $mtime > $effectiveMaxAge) {
             if (@unlink($info->getPathname())) {
                 $deleted++;
                 $freed += $size;
@@ -146,6 +149,7 @@ function seo_cache_gc($protect = null)
     if (($total > $maxBytes || ($maxFiles > 0 && count($files) > $maxFiles)) && $files) {
         $priority = function ($name) use ($knownUsage) {
             if (in_array($name, $knownUsage, true)) return 0;
+            if (substr($name, -10) === '.rate.json' || strpos($name, 'sticker-rate-') === 0 || (strpos($name, 'rate-') === 0 && substr($name, -5) === '.json')) return 0;
             $base = preg_replace('/\.gz$/', '', $name);
             if ($base === 'insights.cache.json') return 5;
             if ($base === 'data.cache.json') return 6;

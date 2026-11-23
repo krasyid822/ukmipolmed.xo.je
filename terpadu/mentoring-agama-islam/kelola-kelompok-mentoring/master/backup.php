@@ -14,7 +14,7 @@ require_once __DIR__ . '/../bootstrap.php';
 use Mentoring\AdminAuth;
 use Mentoring\BackupService;
 
-AdminAuth::guard();
+AdminAuth::guardSuperAdmin();
 
 $basePath = mentoring_base_path(__DIR__);
 $appBase = mentoring_base_path(dirname(__DIR__));

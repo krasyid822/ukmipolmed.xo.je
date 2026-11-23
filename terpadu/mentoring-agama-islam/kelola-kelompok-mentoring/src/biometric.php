@@ -43,8 +43,7 @@ class Biometric {
     }
 
     public static function saveSetupTokens(array $tokens): bool {
-        $path = self::setupTokensFile();
-        return file_put_contents($path, json_encode($tokens, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) !== false;
+        return JsonFile::writeAtomic(self::setupTokensFile(), $tokens, true);
     }
 
     /**
@@ -240,7 +239,7 @@ class Biometric {
      * Hash pola 3x3 (urutan indeks titik 1-9).
      */
     public static function hashPattern(string $pattern): string {
-        return hash('sha256', $pattern);
+        return password_hash($pattern, PASSWORD_DEFAULT);
     }
 
     /**
@@ -249,8 +248,12 @@ class Biometric {
     public static function verifyPattern(string $entityType, string $entityId, string $pattern): bool {
         $row = self::findEntity($entityType, $entityId);
         $bio = (array)($row['biometric'] ?? []);
-        if (!empty($bio['enrolled']) && $bio['method'] === 'pattern' && !empty($bio['pattern_hash'])) {
-            return hash_equals($bio['pattern_hash'], self::hashPattern($pattern));
+        if (!empty($bio['enrolled']) && ($bio['method'] ?? '') === 'pattern' && !empty($bio['pattern_hash'])) {
+            $stored = (string)$bio['pattern_hash'];
+            if (str_starts_with($stored, '$')) {
+                return password_verify($pattern, $stored);
+            }
+            return hash_equals($stored, hash('sha256', $pattern));
         }
         return false;
     }
@@ -699,10 +702,13 @@ class Biometric {
      * Buat token verifikasi offline yang berlaku 30 hari untuk perangkat ini.
      */
     public static function createOfflineToken(string $entityType, string $entityId, string $teamId = ''): string {
+        $entity = self::findEntity($entityType, $entityId) ?? [];
+        $enrolledAt = (string)($entity['biometric']['enrolled_at'] ?? '');
         $payload = [
             'et' => $entityType,
             'eid' => $entityId,
             'tid' => $teamId,
+            'ea' => $enrolledAt,
             'exp' => time() + (30 * 86400),
         ];
         $encoded = self::b64urlEncode((string)json_encode($payload));
@@ -740,12 +746,85 @@ class Biometric {
         if (!in_array($entityType, self::ENTITY_TYPES, true) || $entityId === '') {
             return null;
         }
+        $entity = self::findEntity($entityType, $entityId);
+        $bio = is_array($entity) ? (array)($entity['biometric'] ?? []) : [];
+        if (empty($bio['enrolled'])) {
+            return null;
+        }
+        $tokenEa = (string)($payload['ea'] ?? '');
+        if ($tokenEa !== '' && !hash_equals((string)($bio['enrolled_at'] ?? ''), $tokenEa)) {
+            return null;
+        }
         return [
             'entity_type' => $entityType,
             'entity_id' => $entityId,
             'team_id' => $storedTeam,
             'offline_token' => true,
         ];
+    }
+
+    /**
+     * Cek rate limit percobaan autentikasi biometrik/pola (maks 5 gagal dalam 15 menit).
+     *
+     * @return array{allowed:bool, retry_after:int}
+     */
+    public static function checkRateLimit(string $entityType, string $entityId, string $ip): array {
+        $cfg = Config::rateLimit('biometric_auth', 5, 900);
+        if (!$cfg['enabled']) {
+            return ['allowed' => true, 'retry_after' => 0];
+        }
+        $path = self::getSecureDir() . '/biometric_ratelimit.json';
+        $data = JsonFile::read($path) ?? [];
+        $key = hash('sha256', $entityType . ':' . $entityId . ':' . $ip);
+        $now = time();
+        $window = $cfg['window_seconds'];
+        $maxAttempts = $cfg['max_attempts'];
+
+        $entry = $data[$key] ?? null;
+        if (!is_array($entry)) {
+            return ['allowed' => true, 'retry_after' => 0];
+        }
+        $firstAt = (int)($entry['first_at'] ?? 0);
+        $count = (int)($entry['count'] ?? 0);
+        if ($firstAt + $window <= $now) {
+            return ['allowed' => true, 'retry_after' => 0];
+        }
+        if ($count >= $maxAttempts) {
+            return ['allowed' => false, 'retry_after' => ($firstAt + $window) - $now];
+        }
+        return ['allowed' => true, 'retry_after' => 0];
+    }
+
+    public static function recordAuthAttempt(string $entityType, string $entityId, string $ip, bool $success): void {
+        $cfg = Config::rateLimit('biometric_auth', 5, 900);
+        if (!$cfg['enabled']) {
+            return;
+        }
+        $path = self::getSecureDir() . '/biometric_ratelimit.json';
+        $data = JsonFile::read($path) ?? [];
+        $key = hash('sha256', $entityType . ':' . $entityId . ':' . $ip);
+        $now = time();
+        $window = $cfg['window_seconds'];
+
+        // Bersihkan entri kedaluwarsa
+        foreach ($data as $k => $v) {
+            if (!is_array($v) || ((int)($v['first_at'] ?? 0) + $window) <= $now) {
+                unset($data[$k]);
+            }
+        }
+
+        if ($success) {
+            unset($data[$key]);
+        } else {
+            $entry = $data[$key] ?? ['first_at' => $now, 'count' => 0];
+            if (((int)($entry['first_at'] ?? 0) + $window) <= $now) {
+                $entry = ['first_at' => $now, 'count' => 0];
+            }
+            $entry['count'] = (int)($entry['count'] ?? 0) + 1;
+            $data[$key] = $entry;
+        }
+
+        JsonFile::writeAtomic($path, $data, false);
     }
 
     /**

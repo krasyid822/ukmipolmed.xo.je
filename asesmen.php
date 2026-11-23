@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/assessments_helper.php';
+require_once __DIR__ . '/security_helper.php';
+ukmi_session_start();
 
 function h($s) { return htmlspecialchars((string) $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 
@@ -21,6 +23,11 @@ $submitToken = trim((string) ($_POST['submission_token'] ?? ''));
 $formToken = bin2hex(random_bytes(8));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!ukmi_csrf_valid()) {
+        $error = 'Sesi kedaluwarsa atau token tidak valid. Muat ulang halaman lalu coba lagi.';
+    } elseif (ukmi_rate_limit('asesmen', 20, 600)) {
+        $error = 'Terlalu banyak pengiriman dalam waktu singkat. Coba lagi beberapa menit lagi.';
+    } else {
     $a = $id !== '' ? assessment_find($id) : null;
     if ($a) {
         $action = $_POST['action'] ?? '';
@@ -33,17 +40,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'reset') {
-            assessments_update($id, function ($x) use ($identity) {
-                $keep = [];
-                foreach (($x['responses'] ?? []) as $r) {
-                    $rid = strtolower(trim((string) ($r['name'] ?? ''))) . '|' . strtolower(trim((string) ($r['ident'] ?? '')));
-                    if ($rid !== $identity) $keep[] = $r;
-                }
-                $x['responses'] = $keep;
-                return $x;
-            });
-            header('Location: /asesmen?id=' . urlencode($id));
-            exit;
+            $isAdminOrWriter = !empty($_SESSION['admin_logged_in']) && in_array((string) ($_SESSION['role'] ?? ''), ['admin', 'writer'], true);
+            $isOwned = !empty($_SESSION['asesmen_owned'][$id][$identity]);
+            if (!$isAdminOrWriter && !$isOwned) {
+                $error = 'Reset hanya dapat dilakukan dari sesi yang sama atau oleh admin/penulis.';
+            } else {
+                assessments_update($id, function ($x) use ($identity) {
+                    $keep = [];
+                    foreach (($x['responses'] ?? []) as $r) {
+                        $rid = strtolower(trim((string) ($r['name'] ?? ''))) . '|' . strtolower(trim((string) ($r['ident'] ?? '')));
+                        if ($rid !== $identity) $keep[] = $r;
+                    }
+                    $x['responses'] = $keep;
+                    return $x;
+                });
+                unset($_SESSION['asesmen_owned'][$id][$identity]);
+                header('Location: /asesmen?id=' . urlencode($id));
+                exit;
+            }
         }
 
         $cells = is_array($a['key_cells'] ?? null) ? $a['key_cells'] : [];
@@ -52,9 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($attempts >= 2) {
                 $needReset = true;
             } elseif (isset($_POST['answers_json'])) {
-                $ans = json_decode((string) $_POST['answers_json'], true);
+                $rawAnswers = (string) $_POST['answers_json'];
+                $rawFormulas = (string) ($_POST['formulas_json'] ?? '');
+                if (strlen($rawAnswers) > 65536 || strlen($rawFormulas) > 65536) {
+                    $error = 'Ukuran data jawaban melebihi batas yang diizinkan.';
+                } else {
+                $ans = json_decode($rawAnswers, true);
                 if (!is_array($ans)) $ans = [];
-                $formulas = json_decode((string) ($_POST['formulas_json'] ?? ''), true);
+                $formulas = json_decode($rawFormulas, true);
                 if (!is_array($formulas)) $formulas = [];
                 $mode = $attempts === 0 ? 'pretest' : 'posttest';
                 $total = 0;
@@ -127,7 +146,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 }
+                $_SESSION['asesmen_owned'][$id][$identity] = true;
                 $result = ['mode' => $mode, 'auto' => $auto, 'score' => $score, 'total' => $total, 'details' => $details, 'manual' => $manualCount];
+                }
             } else {
                 $error = 'File jawaban tidak terkirim. Coba unggah ulang.';
             }
@@ -189,8 +210,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $x['responses'][] = $resp;
                 return $x;
             });
+            $_SESSION['asesmen_owned'][$id][$identity] = true;
             $result = ['mode' => 'pretest', 'auto' => $auto, 'score' => $score, 'total' => $total, 'details' => $details];
         }
+    }
     }
 }
 
@@ -239,6 +262,7 @@ ul.review li{margin:4px 0;font-size:14px}
       <h1>Sudah menyelesaikan posttest</h1>
       <p class="muted">Kamu sudah mengerjakan pretest &amp; posttest. Ingin mengulang dari awal (reset progres) atau batal?</p>
       <form method="post" style="display:inline;">
+        <?php echo ukmi_csrf_field(); ?>
         <input type="hidden" name="a_id" value="<?php echo h($id); ?>">
         <input type="hidden" name="action" value="reset">
         <input type="hidden" name="r_name" value="<?php echo h($_POST['r_name'] ?? ''); ?>">
@@ -311,6 +335,7 @@ ul.review li{margin:4px 0;font-size:14px}
         <?php endif; ?>
       </div>
       <form method="post" class="card" id="file-form">
+        <?php echo ukmi_csrf_field(); ?>
         <input type="hidden" name="a_id" value="<?php echo h($assessment['id']); ?>">
         <input type="hidden" name="action" value="submit">
         <input type="hidden" name="answers_json" id="answers_json" value="">
@@ -366,6 +391,7 @@ ul.review li{margin:4px 0;font-size:14px}
       </script>
     <?php else: ?>
       <form method="post" class="card" onsubmit="var b=this.querySelector('button[type=submit]');if(b){if(b.disabled)return false;b.disabled=true;}">
+        <?php echo ukmi_csrf_field(); ?>
         <input type="hidden" name="a_id" value="<?php echo h($assessment['id']); ?>">
         <input type="hidden" name="submission_token" value="<?php echo h($formToken); ?>">
         <input type="hidden" name="r_name" value="<?php echo h($_POST['r_name'] ?? ''); ?>">

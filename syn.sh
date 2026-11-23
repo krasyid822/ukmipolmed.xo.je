@@ -25,7 +25,10 @@ FTP_ROOT="/ukmipolmed.xo.je/htdocs"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST="$REPO_DIR/.syn_manifest"
 RESTORE_URL="https://ukmipolmed.my.id/gz_restore"
-RESTORE_KEY="UKMIrestore2026"
+RESTORE_KEY="${UKMI_MAINTENANCE_KEY:-}"
+if [ -z "$RESTORE_KEY" ] && [ -f "$REPO_DIR/s3_config.php" ] && command -v php >/dev/null 2>&1; then
+  RESTORE_KEY=$(php -r '$c = @include $argv[1]; if (is_array($c) && !empty($c["maintenance_key"])) echo $c["maintenance_key"];' "$REPO_DIR/s3_config.php" 2>/dev/null || true)
+fi
 
 MODE="push"; DO_GIT=1; DO_FTP=1; DRY_RUN=0; INIT_MANIFEST=0
 usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; }

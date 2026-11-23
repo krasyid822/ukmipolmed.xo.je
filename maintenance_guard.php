@@ -10,6 +10,7 @@
 // Tidak ada key default yang ditanam di repo.
 
 require_once __DIR__ . '/store.php';
+require_once __DIR__ . '/security_helper.php';
 
 function maintenance_key()
 {
@@ -22,7 +23,7 @@ function maintenance_key()
 function maintenance_authorized()
 {
     if (PHP_SAPI === 'cli') return true;
-    if (session_status() !== PHP_SESSION_ACTIVE) @session_start();
+    ukmi_session_start();
 
     $key = maintenance_key();
     $provided = (string) ($_REQUEST['k'] ?? '');

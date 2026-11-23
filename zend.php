@@ -7,9 +7,8 @@ declare(strict_types=1);
 
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 
-if (session_status() !== PHP_SESSION_ACTIVE) {
-	session_start();
-}
+require_once __DIR__ . '/security_helper.php';
+ukmi_session_start();
 
 require_once __DIR__ . '/store.php';
 

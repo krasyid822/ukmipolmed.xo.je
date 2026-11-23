@@ -336,7 +336,7 @@ final class BackupService {
         $profilPrefix = Config::get('storage.folders.profil', 'profil/');
         $s3 = new S3Client();
         foreach ($objects as $path => $b64) {
-            if (!is_string($path) || !str_starts_with($path, $profilPrefix) || !is_string($b64)) {
+            if (!is_string($path) || !str_starts_with($path, $profilPrefix) || str_contains($path, '..') || str_contains($path, "\0") || !is_string($b64)) {
                 continue;
             }
             $raw = base64_decode($b64, true);
@@ -353,7 +353,7 @@ final class BackupService {
                 'png' => 'image/png',
                 default => 'image/jpeg',
             };
-            if ($s3->putObject($path, $raw, $mime, true)) {
+            if ($s3->putObject($path, $raw, $mime, false)) {
                 $summary['media']++;
             }
         }

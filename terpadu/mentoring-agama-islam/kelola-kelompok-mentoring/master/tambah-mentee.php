@@ -18,11 +18,17 @@ use Mentoring\MasterSchema;
 use Mentoring\ProfilePhoto;
 
 AdminAuth::guard();
+$lockedGender = AdminAuth::allowedGender();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!AdminAuth::verifyCsrfToken()) {
+        http_response_code(403);
+        die('Token CSRF tidak valid atau sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+    }
     $namaLengkap = trim($_POST['nama_lengkap'] ?? '');
     $nomorWa = trim($_POST['nomor_whatsapp'] ?? '');
     $timId = trim($_POST['tim_id'] ?? '');
+    $genderInput = $lockedGender ?? trim($_POST['gender'] ?? 'Laki-laki');
 
     if ($timId === '') {
         header('Location: ' . $basePath . 'tambah-mentee?error=validasi&pesan=' . rawurlencode('Kelompok / Tim wajib dipilih.'), true, 303);
@@ -32,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $validationError = MasterSchema::validatePersonInput([
         'nama_lengkap' => $namaLengkap,
         'nomor_whatsapp' => $nomorWa,
-        'gender' => $_POST['gender'] ?? 'Laki-laki',
+        'gender' => $genderInput,
         'tempat_lahir' => $_POST['tempat_lahir'] ?? '',
         'tanggal_lahir' => $_POST['tanggal_lahir'] ?? '',
         'nim' => $_POST['nim'] ?? '',
@@ -59,25 +65,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $result = MasterData::transaction(static function (array $master) use ($newId, $fotoPath, $namaLengkap, $nomorWa, $timId): array {
+    $result = MasterData::transaction(static function (array $master) use ($newId, $fotoPath, $namaLengkap, $nomorWa, $timId, $genderInput): array {
         // Mentor diambil otomatis dari tim yang dipilih (menjaga integritas referensi)
         $mentorId = '';
+        $selectedTeam = null;
         foreach ($master['teams'] as $team) {
             if (($team['id'] ?? '') === $timId) {
+                $selectedTeam = $team;
                 $mentorId = (string)($team['mentor_id'] ?? '');
                 break;
             }
         }
 
-        if ($mentorId === '') {
-            throw new MasterDataException('Tim yang dipilih tidak ditemukan atau belum memiliki mentor.', 'notfound');
+        if ($mentorId === '' || $selectedTeam === null || !AdminAuth::canAccessRecord($master, 'tim', $selectedTeam)) {
+            throw new MasterDataException('Tim yang dipilih tidak ditemukan, belum memiliki mentor, atau tidak sesuai akses role Anda.', 'notfound');
         }
 
         $master['mentees'][] = [
             'id' => $newId,
             'foto_profil' => $fotoPath,
             'nama_lengkap' => $namaLengkap,
-            'gender' => trim($_POST['gender'] ?? 'Laki-laki'),
+            'gender' => $genderInput,
             'tempat_lahir' => MasterSchema::normalizeName((string)($_POST['tempat_lahir'] ?? '')),
             'tanggal_lahir' => trim($_POST['tanggal_lahir'] ?? ''),
             'kelas' => Academic::normalizeClass($_POST['kelas'] ?? ''),
@@ -105,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$master = MasterData::loadAll();
+$master = AdminAuth::filterMasterData(MasterData::loadAll());
 $errorWajib = ($_GET['error'] ?? '') === 'wajib';
 $errorFoto = ($_GET['error'] ?? '') === 'foto';
 $formError = mentoring_form_error();
@@ -159,6 +167,7 @@ $formError = mentoring_form_error();
 
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
+            <?= AdminAuth::csrfField() ?>
             <div class="master-form-split">
             <div class="master-form-col">
             <div class="form-section-label">Foto Profil</div>
@@ -206,10 +215,15 @@ $formError = mentoring_form_error();
             <div class="form-grid cols-3">
                 <div class="form-group">
                     <label>Gender:</label>
-                    <select name="gender" class="form-control">
-                        <option value="Laki-laki">Laki-laki</option>
-                        <option value="Perempuan">Perempuan</option>
-                    </select>
+                    <?php if ($lockedGender !== null): ?>
+                        <input type="hidden" name="gender" value="<?= htmlspecialchars($lockedGender) ?>">
+                        <input type="text" class="form-control" value="<?= htmlspecialchars($lockedGender) ?>" readonly>
+                    <?php else: ?>
+                        <select name="gender" class="form-control">
+                            <option value="Laki-laki">Laki-laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                        </select>
+                    <?php endif; ?>
                 </div>
                 <div class="form-group">
                     <label>Tempat Lahir:</label>

@@ -1,15 +1,28 @@
 <?php
-session_start();
+header('X-Robots-Tag: noindex, nofollow, noarchive');
+require_once __DIR__ . '/security_helper.php';
 require_once __DIR__ . '/store.php';
 
+ukmi_session_start();
 $configPath = __DIR__ . '/data.json';
+$config = store_read_json($configPath);
+$sessionVersion = is_array($config) && isset($config['session_version']) ? max(1, (int) $config['session_version']) : 1;
+$loggedIn = !empty($_SESSION['admin_logged_in'])
+    && (($_SESSION['session_version'] ?? 0) === $sessionVersion)
+    && (($_SESSION['role'] ?? '') === 'admin');
+if (!$loggedIn) {
+    http_response_code(403);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>Akses ditolak</title></head><body><h1>Akses ditolak</h1><p>Halaman ini hanya untuk admin yang sudah login.</p></body></html>';
+    exit;
+}
+
 $defaultPath = __DIR__ . '/default.json';
 $defaults = ['fb_app_id' => ''];
 if (is_readable($defaultPath)) {
     $tmp = json_decode((string) file_get_contents($defaultPath), true);
     if (is_array($tmp)) $defaults = array_merge($defaults, $tmp);
 }
-$config = store_read_json($configPath);
 
 $fbAppId = null;
 if (is_array($config) && !empty($config['fb_app_id'])) {
@@ -18,9 +31,7 @@ if (is_array($config) && !empty($config['fb_app_id'])) {
     $fbAppId = trim((string) $defaults['fb_app_id']);
 }
 
-$host = $_SERVER['HTTP_HOST'] ?? 'ukmipolmed.xo.je';
-$scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) === 'on') ? 'https' : 'http';
-$baseUrl = $scheme . '://' . $host;
+$baseUrl = 'https://ukmipolmed.my.id';
 $redirectUri = $baseUrl . '/oauth';
 
 function h($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }

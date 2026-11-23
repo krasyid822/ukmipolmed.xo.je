@@ -1,13 +1,11 @@
 <?php
 // s3_gate.php — GATE: uji outbound + public-read ke Blomp S3.
-// Akses web wajib ?k=UKMIrestore2026. CLI (uji lokal) dikecualikan.
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/s3_helper.php';
+require_once __DIR__ . '/maintenance_guard.php';
 
-if (PHP_SAPI !== 'cli' && (($_REQUEST['k'] ?? '') !== 'UKMIrestore2026')) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'forbidden']);
-    exit;
+if (PHP_SAPI !== 'cli') {
+    maintenance_require_json();
 }
 
 $available = s3_available();

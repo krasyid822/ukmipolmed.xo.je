@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 
+use Mentoring\AdminAuth;
 use Mentoring\BirthdayReminder;
 use Mentoring\MasterData;
 
@@ -46,6 +47,9 @@ $flashMessage = match ($msg) {
 };
 
 $master = MasterData::loadAll();
+if ($from === 'master' && AdminAuth::isAdmin() && AdminAuth::allowedGender() !== null) {
+    $master = AdminAuth::filterMasterData($master);
+}
 $today = new DateTimeImmutable('now', new DateTimeZone('Asia/Jakarta'));
 $todayBirthdays = BirthdayReminder::getTodayBirthdays($master, $today);
 $suspendUntil = BirthdayReminder::getSuspendUntil();

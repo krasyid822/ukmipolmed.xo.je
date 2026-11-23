@@ -195,7 +195,7 @@ function comment_embed_allowed_tags(): array
 {
 	return [
 		'iframe' => ['src', 'width', 'height', 'allow', 'allowfullscreen', 'frameborder', 'title', 'loading', 'referrerpolicy', 'class'],
-		'blockquote' => ['cite', 'class'],
+		'blockquote' => ['cite', 'class', 'data-instgrm-permalink', 'data-instgrm-version'],
 		'img' => ['src', 'alt', 'width', 'height', 'loading', 'class'],
 		'video' => ['src', 'poster', 'width', 'height', 'controls', 'loop', 'muted', 'playsinline', 'preload', 'class'],
 		'audio' => ['src', 'controls', 'loop', 'preload', 'class'],

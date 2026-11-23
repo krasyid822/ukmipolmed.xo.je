@@ -71,7 +71,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:16px;">Header card presentation</h2>
 	<p class="muted-text" style="margin:0 0 10px;">Kartu ini tampil di section hero beranda. Bisa digeser swipe ke kanan/kiri atau dipindah lewat tombol panah. Gunakan tombol Naik/Turun untuk menentukan urutan tampil (kartu paling atas akan tampil lebih dulu).</p>
-	<form method="post" class="stack-sm" id="hero-cards-form">
+	<form method="post" class="stack-sm" id="hero-cards-form"><?php echo ukmi_csrf_field(); ?>
 		<div id="hero-card-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px;">
 			<?php foreach ($heroCards as $heroIdx => $heroCard): ?>
 			<?php $isLockedCard = !empty($heroCard['locked']) || (($heroCard['type'] ?? '') === 'default'); ?>

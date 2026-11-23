@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /seo-cache/
+Disallow: /admin
+Disallow: /login
+Disallow: /menulis
 Sitemap: https://ukmipolmed.my.id/sitemap.xml

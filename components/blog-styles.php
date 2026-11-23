@@ -225,4 +225,33 @@
 		.gdrive-embed-wrapper { position: relative; width: 100%; overflow: hidden; }
 		.gdrive-embed-wrapper iframe { display: block; width: 100% !important; height: 600px !important; border: 0 !important; }
 		@media (max-width: 600px) { .gdrive-embed-wrapper iframe { height: 70vh !important; } }
+
+		.share-bar .share-btn {
+			width: 40px;
+			height: 40px;
+			min-height: 40px;
+			padding: 0;
+			justify-content: center;
+			border-radius: 10px;
+			cursor: pointer;
+		}
+		.share-bar .share-btn svg {
+			width: 18px;
+			height: 18px;
+			display: block;
+			fill: currentColor;
+		}
+		.share-bar .share-btn[data-insight="share_wa"]:hover,
+		.share-bar .share-btn[data-insight="share_wa"]:focus-visible { color: #25D366; border-color: rgba(37, 211, 102, 0.5); }
+		.share-bar .share-btn[data-insight="share_fb"]:hover,
+		.share-bar .share-btn[data-insight="share_fb"]:focus-visible { color: #1877F2; border-color: rgba(24, 119, 242, 0.5); }
+		.share-bar .share-btn[data-insight="share_x"]:hover,
+		.share-bar .share-btn[data-insight="share_x"]:focus-visible { color: #ffffff; border-color: rgba(255, 255, 255, 0.45); }
+		.share-bar .share-btn[data-insight="share_tg"]:hover,
+		.share-bar .share-btn[data-insight="share_tg"]:focus-visible { color: #26A5E4; border-color: rgba(38, 165, 228, 0.5); }
+		.share-bar .share-btn[data-insight="share_li"]:hover,
+		.share-bar .share-btn[data-insight="share_li"]:focus-visible { color: #0A66C2; border-color: rgba(10, 102, 194, 0.5); }
+		.share-bar .share-btn[data-insight="share_copy"]:hover,
+		.share-bar .share-btn[data-insight="share_copy"]:focus-visible { color: var(--accent); border-color: rgba(56, 189, 248, 0.5); }
+		.share-bar .share-btn.is-copied { color: #4ade80; border-color: rgba(74, 222, 128, 0.55); }
 	</style>

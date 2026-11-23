@@ -221,3 +221,10 @@ ukmipolmed/
 ## Link Dasbor Cloudflare Worker
 
 https://dash.cloudflare.com/3de0b671809fb85f3f3715028d168fb4/workers/services/view/laporan-mai/production
+
+## Holistik SEO
+
+### Catatan Hal yang Tetap Memerlukan Peran Manusia / Sinyal Eksternal
+  
+- Verifikasi faktual E-E-A-T (keaslian foto dokumentasi, kutipan narasumber/pengurus, dan start_date agenda nyata). 
+- Sinyal off-page/eksternal seperti backlink organik, kelengkapan bio & sameAs penulis, serta pemantauan Google Search Console & CrUX.

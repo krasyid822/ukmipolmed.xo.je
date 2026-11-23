@@ -44,7 +44,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 ?>
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:16px;">Kartu dokumentasi kegiatan (maks 10)</h2>
-	<form method="post" class="stack-sm" id="docs-form" data-autosave-key="docs">
+	<form method="post" class="stack-sm" id="docs-form" data-autosave-key="docs"><?php echo ukmi_csrf_field(); ?>
 		<div id="doc-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
 			<?php foreach ($docs as $docIdx => $doc): $isProtectedDoc = $docIdx < count($docDefaults); ?>
 			<div class="doc-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">

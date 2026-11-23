@@ -34,8 +34,17 @@ if ($index === null) {
 }
 
 $mentee = $master['mentees'][$index];
+$lockedGender = AdminAuth::allowedGender();
+if (!AdminAuth::canAccessGender($mentee['gender'] ?? '')) {
+    header('Location: ' . $basePath . '?error=notfound#tab-mentees', true, 303);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!AdminAuth::verifyCsrfToken()) {
+        http_response_code(403);
+        die('Token CSRF tidak valid atau sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+    }
     $namaLengkap = trim($_POST['nama_lengkap'] ?? '');
     $nomorWa = trim($_POST['nomor_whatsapp'] ?? '');
     $timId = trim($_POST['tim_id'] ?? '');
@@ -45,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $result = MasterData::transaction(static function (array $master) use ($menteeId, $namaLengkap, $nomorWa, $timId): array {
+    $result = MasterData::transaction(static function (array $master) use ($menteeId, $namaLengkap, $nomorWa, $timId, $lockedGender): array {
         $index = null;
         foreach ($master['mentees'] ?? [] as $i => $mentee) {
             if (($mentee['id'] ?? '') === $menteeId) {
@@ -60,19 +69,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Mentor mengikuti tim yang dipilih (menjaga integritas referensi)
         $mentorId = '';
+        $selectedTeam = null;
         foreach ($master['teams'] ?? [] as $team) {
             if (($team['id'] ?? '') === $timId) {
+                $selectedTeam = $team;
                 $mentorId = (string)($team['mentor_id'] ?? '');
                 break;
             }
         }
 
         $mentee = $master['mentees'][$index];
+        if (!AdminAuth::canAccessGender($mentee['gender'] ?? '')) {
+            throw new MasterDataException('Anda tidak memiliki akses ke data mentee ini.', 'notfound');
+        }
+        if ($selectedTeam === null || !AdminAuth::canAccessRecord($master, 'tim', $selectedTeam)) {
+            throw new MasterDataException('Tim yang dipilih tidak sesuai akses role Anda.', 'notfound');
+        }
         $mentee['nama_lengkap'] = $namaLengkap;
         $mentee['nomor_whatsapp'] = $nomorWa;
         $mentee['tim_id'] = $timId;
         $mentee['mentor_id'] = $mentorId;
-        $mentee['gender'] = trim($_POST['gender'] ?? 'Laki-laki');
+        $mentee['gender'] = $lockedGender ?? trim($_POST['gender'] ?? 'Laki-laki');
         $mentee['tempat_lahir'] = MasterSchema::normalizeName((string)($_POST['tempat_lahir'] ?? ''));
         $mentee['tanggal_lahir'] = trim($_POST['tanggal_lahir'] ?? '');
         $mentee['kelas'] = Academic::normalizeClass($_POST['kelas'] ?? '');
@@ -107,7 +124,8 @@ $formError = mentoring_form_error();
 $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
 $semesterAkademik = Academic::semesterFromNim($mentee['nim'] ?? '');
 $stambukAkademik = Academic::entryYearFromNim($mentee['nim'] ?? '');
-$timIds = array_column($master['teams'] ?? [], 'nama_tim', 'id');
+$filteredMaster = AdminAuth::filterMasterData($master);
+$timIds = array_column($filteredMaster['teams'] ?? [], 'nama_tim', 'id');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -145,6 +163,7 @@ $timIds = array_column($master['teams'] ?? [], 'nama_tim', 'id');
 
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
+            <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="id" value="<?= $h($menteeId) ?>">
             <div class="master-form-split">
             <div class="master-form-col">
@@ -182,11 +201,16 @@ $timIds = array_column($master['teams'] ?? [], 'nama_tim', 'id');
             <div class="form-grid cols-3">
                 <div class="form-group">
                     <label>Gender:</label>
-                    <select name="gender" class="form-control">
-                        <?php foreach (['Laki-laki', 'Perempuan'] as $gender): ?>
-                            <option value="<?= $h($gender) ?>" <?= ($mentee['gender'] ?? '') === $gender ? 'selected' : '' ?>><?= $h($gender) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php if ($lockedGender !== null): ?>
+                        <input type="hidden" name="gender" value="<?= $h($lockedGender) ?>">
+                        <input type="text" class="form-control" value="<?= $h($lockedGender) ?>" readonly>
+                    <?php else: ?>
+                        <select name="gender" class="form-control">
+                            <?php foreach (['Laki-laki', 'Perempuan'] as $gender): ?>
+                                <option value="<?= $h($gender) ?>" <?= ($mentee['gender'] ?? '') === $gender ? 'selected' : '' ?>><?= $h($gender) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
                 </div>
                 <div class="form-group">
                     <label>Tempat Lahir:</label>

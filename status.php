@@ -373,11 +373,13 @@ $summary = buildSummary($insights, $todayKey, $storeFile, $start, $forceHostingS
 if ($view === 'ui') {
 	// Simple BI-style dashboard UI.
 	header('Content-Type: text/html; charset=utf-8');
+	header('X-Robots-Tag: noindex, nofollow');
 	?><!doctype html>
 	<html lang="id">
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="robots" content="noindex, nofollow">
 		<title>UKMI POLMED · BI Dashboard</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

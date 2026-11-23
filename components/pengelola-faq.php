@@ -72,7 +72,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:16px;">Pengelola FAQ</h2>
 	<p class="muted-text" style="margin:0 0 10px;">FAQ yang disimpan di sini akan dipakai halaman FAQ publik. Item bisa ditambah, diedit, atau dihapus langsung dari daftar ini.</p>
-	<form method="post" class="stack-sm" id="faq-form" data-autosave-key="faqs">
+	<form method="post" class="stack-sm" id="faq-form" data-autosave-key="faqs"><?php echo ukmi_csrf_field(); ?>
 		<div id="faq-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px;">
 			<?php $faqItems = !empty($faqs) ? $faqs : [['question' => '', 'answer' => '', 'slug' => '', 'written_at' => '', 'updated_at' => '']]; ?>
 			<?php foreach ($faqItems as $faqIdx => $faqItem): ?>
