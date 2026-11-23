@@ -732,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 patActive = [];
                 const patWrap = document.createElement('div');
                 patWrap.className = 'biometric-pattern';
-                patWrap.innerHTML = '<div class="pattern-grid" id="bioPatternGrid"></div><div class="pattern-value" id="bioPatternValue">Belum ada pola</div><button type="button" class="biometric-btn-clear" id="bioBtnClearPattern">Hapus Pola</button><p class="biometric-hint">Pola diverifikasi otomatis begitu selesai digambar.</p>';
+                patWrap.innerHTML = '<div class="pattern-grid" id="bioPatternGrid"></div><div class="pattern-value" id="bioPatternValue">Belum ada pola</div><button type="button" class="biometric-btn biometric-btn-verify" id="bioBtnVerifyPattern" style="width:100%;margin-top:8px;" disabled>Verifikasi Pola</button><button type="button" class="biometric-btn-clear" id="bioBtnClearPattern">Hapus Pola</button><p class="biometric-hint">Ketuk atau seret minimal 3 titik (bisa lebih dari 3 titik), lalu tekan Verifikasi Pola.</p>';
                 divMethods.appendChild(patWrap);
 
                 const grid = document.getElementById('bioPatternGrid');
@@ -748,42 +748,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 let patDrawing = false;
                 let patSubmitting = false;
                 const patValue = document.getElementById('bioPatternValue');
+                const patVerify = document.getElementById('bioBtnVerifyPattern');
                 const patClear = document.getElementById('bioBtnClearPattern');
                 function patRedraw() {
                     dots.forEach(d => d.classList.toggle('active', patActive.includes(d.dataset.index)));
                     patValue.textContent = patActive.length ? 'Pola: ' + patActive.join('') : 'Belum ada pola';
+                    patVerify.disabled = patSubmitting || patActive.length < 3;
                 }
                 function touchDot(d) {
                     if (patSubmitting) return;
                     const i = d.dataset.index;
                     if (patActive.includes(i)) return;
+                    hideResult();
                     patActive.push(i);
                     patRedraw();
                 }
-                // Verifikasi otomatis: kirim pola ke server segera setelah
-                // pengguna mengangkat jari/mouse, tanpa tombol Verifikasi.
-                function finishPattern() {
-                    if (!patDrawing) return;
+                function stopDraw() {
                     patDrawing = false;
+                }
+                grid.addEventListener('mousedown', e => { if (e.target.closest('.pattern-dot')) { patDrawing = true; touchDot(e.target.closest('.pattern-dot')); } });
+                grid.addEventListener('mousemove', e => { if (!patDrawing) return; const d = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pattern-dot'); if (d && d.closest('#bioPatternGrid') === grid) touchDot(d); });
+                grid.addEventListener('mouseup', stopDraw);
+                grid.addEventListener('mouseleave', stopDraw);
+                grid.addEventListener('touchstart', e => { e.preventDefault(); const d = e.target.closest('.pattern-dot'); if (d) { patDrawing = true; touchDot(d); } }, { passive: false });
+                grid.addEventListener('touchmove', e => { e.preventDefault(); if (!patDrawing) return; const d = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY)?.closest('.pattern-dot'); if (d && d.closest('#bioPatternGrid') === grid) touchDot(d); }, { passive: false });
+                grid.addEventListener('touchend', stopDraw);
+                grid.addEventListener('touchcancel', stopDraw);
+                patVerify.addEventListener('click', () => {
                     if (patSubmitting) return;
                     if (patActive.length < 3) {
                         show('Gambar pola minimal 3 titik', 'error');
                         return;
                     }
                     patSubmitting = true;
+                    patRedraw();
                     serverAuthenticatePattern(v, () => {
                         patSubmitting = false;
                         patActive = [];
                         patRedraw();
                     });
-                }
-                grid.addEventListener('mousedown', e => { if (e.target.closest('.pattern-dot')) { patDrawing = true; touchDot(e.target.closest('.pattern-dot')); } });
-                grid.addEventListener('mousemove', e => { if (!patDrawing) return; const d = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pattern-dot'); if (d && d.closest('#bioPatternGrid') === grid) touchDot(d); });
-                grid.addEventListener('mouseup', finishPattern);
-                grid.addEventListener('mouseleave', finishPattern);
-                grid.addEventListener('touchstart', e => { e.preventDefault(); const d = e.target.closest('.pattern-dot'); if (d) { patDrawing = true; touchDot(d); } }, { passive: false });
-                grid.addEventListener('touchmove', e => { e.preventDefault(); if (!patDrawing) return; const d = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY)?.closest('.pattern-dot'); if (d && d.closest('#bioPatternGrid') === grid) touchDot(d); }, { passive: false });
-                grid.addEventListener('touchend', finishPattern);
+                });
                 patClear.addEventListener('click', () => { if (patSubmitting) return; patActive = []; hideResult(); patRedraw(); });
                 patRedraw();
             }

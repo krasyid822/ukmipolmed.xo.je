@@ -250,7 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function moveDraw(e) {
         if (!drawing) return;
-        const dot = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pattern-dot');
+        const pt = e.touches && e.touches[0] ? e.touches[0] : e;
+        const dot = document.elementFromPoint(pt.clientX, pt.clientY)?.closest('.pattern-dot');
         if (dot && dot.closest('#patternGrid') === grid) {
             touchDot(dot);
         }
@@ -272,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
     grid.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); }, { passive: false });
     grid.addEventListener('touchmove', (e) => { e.preventDefault(); moveDraw(e); }, { passive: false });
     grid.addEventListener('touchend', endDraw);
+    grid.addEventListener('touchcancel', endDraw);
 
     btnClear.addEventListener('click', () => {
         active = [];

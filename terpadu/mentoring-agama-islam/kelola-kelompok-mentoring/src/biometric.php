@@ -12,7 +12,7 @@ namespace Mentoring;
 
 class Biometric {
     private const SETUP_FILE = 'biometric_setup.json';
-    private const TOKEN_TTL_MINUTES = 1440;
+    private const DEFAULT_TOKEN_TTL_MINUTES = 1440;
     private const CHALLENGE_TTL_SECONDS = 300;
 
     public const ENTITY_TYPES = ['mentor', 'mentee'];
@@ -46,9 +46,8 @@ class Biometric {
         return JsonFile::writeAtomic(self::setupTokensFile(), $tokens, true);
     }
 
-    public static function setupTokenTtlMinutes(): int {
-        $ttl = Config::get('biometric.setup_token_ttl_minutes', self::TOKEN_TTL_MINUTES);
-        return max(1, (int)$ttl);
+    public static function tokenTtlMinutes(): int {
+        return max(1, (int)Config::get('biometric.setup_token_ttl_minutes', self::DEFAULT_TOKEN_TTL_MINUTES));
     }
 
     /**
@@ -61,7 +60,7 @@ class Biometric {
         }
 
         $token = bin2hex(random_bytes(16));
-        $expiresAt = (new \DateTimeImmutable())->modify('+' . self::setupTokenTtlMinutes() . ' minutes')
+        $expiresAt = (new \DateTimeImmutable())->modify('+' . self::tokenTtlMinutes() . ' minutes')
             ->format(\DateTimeInterface::ATOM);
 
         $tokens = self::loadSetupTokens();
