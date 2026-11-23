@@ -370,9 +370,17 @@ if ($record !== null) {
             'Status' => $record['status'] ?? 'Aktif',
         ];
     } elseif ($tipe === 'tim') {
+        $menteeCount = 0;
+        $teamId = (string)($record['id'] ?? '');
+        foreach ($master['mentees'] ?? [] as $mentee) {
+            if ((string)($mentee['tim_id'] ?? '') === $teamId) {
+                $menteeCount++;
+            }
+        }
         $summaryFields = [
             'Nama Tim' => $record['nama_tim'] ?? '-',
             'Mentor Pendamping' => $mentorNames[$record['mentor_id'] ?? ''] ?? ($record['mentor_id'] ?? '-'),
+            'Jumlah Mentee' => $menteeCount . ' mentee',
             'Status' => $record['status'] ?? 'Aktif',
         ];
     } else {

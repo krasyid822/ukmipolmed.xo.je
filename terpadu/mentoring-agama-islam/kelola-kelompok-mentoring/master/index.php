@@ -66,6 +66,20 @@ $botState = $botChannels[$primaryBotChannel]['state'];
 $showBotModal = $botAnyInvalid;
 
 $master = AdminAuth::filterMasterData(MasterData::loadAll());
+$archivedRows = [];
+foreach (($master['archived_mentors'] ?? []) as $row) {
+    if (is_array($row)) {
+        $archivedRows[] = ['jenis' => 'Mentor', 'row' => $row];
+    }
+}
+foreach (($master['archived_mentees'] ?? []) as $row) {
+    if (is_array($row)) {
+        $archivedRows[] = ['jenis' => 'Mentee', 'row' => $row];
+    }
+}
+usort($archivedRows, static function (array $a, array $b): int {
+    return strcmp((string)($b['row']['archived_at'] ?? ''), (string)($a['row']['archived_at'] ?? ''));
+});
 $todayBirthdays = BirthdayReminder::getTodayBirthdays($master);
 $basePath = mentoring_base_path(__DIR__);
 $appBase = mentoring_base_path(dirname(__DIR__));
@@ -2016,18 +2030,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 120);
     });
 
-    // Pencarian sederhana pada Arsip Purna
-    const archiveInput = document.getElementById('archive-search');
-    const archiveBody = document.getElementById('archive-tbody');
-    if (archiveInput && archiveBody) {
-        const archiveRows = Array.from(archiveBody.querySelectorAll('tr'));
-        archiveInput.addEventListener('input', () => {
-            const keyword = archiveInput.value.toLowerCase().trim();
-            archiveRows.forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(keyword) ? '' : 'none';
-            });
-        });
-    }
 });
 </script>
 
