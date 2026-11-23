@@ -53,6 +53,12 @@ RUNTIME_SKIP=( "data.json" "insights.json" "authors.json" "assessments.json" "s3
 DEV_SKIP=( ".gitignore" "syn.sh" "router.php" "localhost.sh" ".my-idea.txt" "AGENTS.md" "TEMUAN.TXT" "readme.md" "LICENSE" ".syn_manifest" "slimrepo.sh" ".netrc" ".env" )
 in_list() { local n="$1"; shift; local x; for x in "$@"; do [ "$x" = "$n" ] && return 0; done; return 1; }
 
+lftp_header() {
+  echo "set ftp:ssl-allow yes"
+  echo "set ftp:ssl-protect-data no"
+  echo "set ssl:verify-certificate yes"
+}
+
 if command -v sha1sum >/dev/null 2>&1; then SHACMD="sha1sum"; else SHACMD="shasum -a 1"; fi
 
 list_files() {
@@ -90,7 +96,7 @@ gz_fallback() {
   done
   [ "$skipped" -eq "${#rels[@]}" ] && { warn "Tidak ada file valid untuk fallback"; return 1; }
   s="$(mktemp)"; gzdir="$(mktemp -d)"
-  { echo "set net:timeout 120"; echo "set ftp:passive-mode on"; echo "set net:max-retries 6"; echo "set net:reconnect-interval-base 3"; echo "set xfer:clobber yes"; echo "open $FTP_HOST"; } > "$s"
+  { lftp_header; echo "set net:timeout 120"; echo "set ftp:passive-mode on"; echo "set net:max-retries 6"; echo "set net:reconnect-interval-base 3"; echo "set xfer:clobber yes"; echo "open $FTP_HOST"; } > "$s"
   for d in "${dirs[@]}"; do printf 'mkdir -p "%s"\n' "$FTP_ROOT/$d" >> "$s"; done
   echo "set cmd:fail-exit yes" >> "$s"
   for rel in "${rels[@]}"; do
@@ -158,6 +164,7 @@ do_ftp_push() {
   done
   local s1; s1="$(mktemp)"
   {
+    lftp_header
     echo "set net:timeout 300"; echo "set xfer:timeout 300"; echo "set ftp:passive-mode on"
     echo "set net:max-retries 6"; echo "set net:reconnect-interval-base 3"; echo "set xfer:clobber yes"; echo "open $FTP_HOST"
     for d in "${dirs[@]}"; do printf 'mkdir -p "%s"\n' "$FTP_ROOT/$d"; done
@@ -172,13 +179,13 @@ do_ftp_push() {
   local upaths=()
   for rel in "${changed[@]}"; do upaths+=("$FTP_ROOT/$rel$UP"); done
   local lsl
-  lsl="$( { echo "set net:timeout 60"; echo "set ftp:passive-mode on"; echo "open $FTP_HOST"; for p in "${upaths[@]}"; do printf 'ls -la "%s"\n' "$p"; done; echo "bye"; } | timeout 150 lftp 2>/dev/null || true )"
+  lsl="$( { lftp_header; echo "set net:timeout 60"; echo "set ftp:passive-mode on"; echo "open $FTP_HOST"; for p in "${upaths[@]}"; do printf 'ls -la "%s"\n' "$p"; done; echo "bye"; } | timeout 150 lftp 2>/dev/null || true )"
   declare -A TS=()
   local p sz
   while read -r p sz; do [ -n "$p" ] && [ -n "$sz" ] && TS["$p"]="$sz"; done < <(printf '%s\n' "$lsl" | awk 'NF>=9 && $1 ~ /^-/ {print $9, $5}')
 
   local s3; s3="$(mktemp)"; local okc=0 lsz tsz; local failed=(); local renamed=()
-  { echo "set net:timeout 60"; echo "set ftp:passive-mode on"; echo "set net:max-retries 4"; echo "open $FTP_HOST"; echo "set cmd:fail-exit yes"; } > "$s3"
+  { lftp_header; echo "set net:timeout 60"; echo "set ftp:passive-mode on"; echo "set net:max-retries 4"; echo "open $FTP_HOST"; echo "set cmd:fail-exit yes"; } > "$s3"
   for rel in "${changed[@]}"; do
     lsz="$(stat -c%s "$REPO_DIR/$rel" 2>/dev/null || echo -1)"
     tsz="${TS["$FTP_ROOT/$rel$UP"]:-}"
@@ -221,6 +228,7 @@ do_ftp_fetch() {
   log "FTP fetch (kode/app) FTP -> lokal (tanpa data runtime/.uploads)"
   local script; script="$(mktemp)"
   {
+    lftp_header
     echo "set net:timeout 300"; echo "set xfer:timeout 300"; echo "set ftp:passive-mode on"
     echo "set net:max-retries 5"; echo "set xfer:clobber yes"; echo "open $FTP_HOST"
     echo "mirror --no-perms --only-newer --exclude-glob data.json --exclude-glob default.json --exclude-glob insights.json --exclude-glob authors.json --exclude-glob assessments.json --exclude-glob s3_config.php --exclude-glob .s3_usage.json --exclude-glob .s3_uploads.json --exclude-glob \".uploads/\" --exclude-glob \".git/\" --exclude-glob \".backups/\" --exclude-glob \".store/\" --exclude-glob \"seo-cache/\" --exclude-glob \".kilo/\" --exclude-glob \"terpadu/\" --exclude-glob \".crush/\" --exclude-glob \".freebuff/\" \"$FTP_ROOT\" \"$REPO_DIR\""
