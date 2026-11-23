@@ -116,6 +116,7 @@
                 entity_id: data.entity_id || '',
                 entity_name: data.entity_name || '',
                 role: data.role || '',
+                allowed_team_ids: Array.isArray(data.allowed_team_ids) ? data.allowed_team_ids : null,
                 saved_at: Date.now()
             }));
         } catch (e) {}

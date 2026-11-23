@@ -71,6 +71,17 @@ class S3Client {
     }
 
     /**
+     * Ambil ukuran objek (bytes) via HEAD request tanpa mengunduh isi.
+     */
+    public function getObjectSize(string $relativeKey): ?int {
+        $res = $this->request('HEAD', $this->getFullKey($relativeKey), [], '');
+        if ($res['code'] >= 200 && $res['code'] < 300 && ($res['content_length'] ?? -1) >= 0) {
+            return (int)$res['content_length'];
+        }
+        return null;
+    }
+
+    /**
      * Hapus objek dari Blomp S3 (signed DELETE).
      */
     public function deleteObject(string $relativeKey): bool {
@@ -149,17 +160,24 @@ class S3Client {
         ];
         if ($method === 'PUT') {
             $options[CURLOPT_POSTFIELDS] = $payload;
+        } elseif ($method === 'HEAD') {
+            $options[CURLOPT_NOBODY] = true;
         }
         curl_setopt_array($ch, $options);
 
         $body = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $contentLength = (int)curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T);
+        if ($contentLength < 0) {
+            $contentLength = (int)curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
+        }
         $error = (string)curl_error($ch);
         curl_close($ch);
 
         return [
             'code' => $code,
             'body' => is_string($body) ? $body : null,
+            'content_length' => $contentLength,
             'error' => $error,
         ];
     }

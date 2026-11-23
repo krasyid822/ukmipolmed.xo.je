@@ -14,9 +14,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 
 use Mentoring\Academic;
+use Mentoring\Config;
 use Mentoring\MasterData;
 use Mentoring\MasterSchema;
 use Mentoring\ProfilePhoto;
+
+$mentorPerPage = Config::mentorShowcasePerPage();
 
 $appBase = mentoring_request_app_base('daftar');
 if ($appBase === null) {
@@ -261,11 +264,77 @@ if (!in_array($selectedGender, ['Laki-laki', 'Perempuan'], true)) {
             display: flex;
             flex-direction: column;
             gap: 8px;
+            cursor: pointer;
             transition: border-color 0.2s, transform 0.15s;
+        }
+        .mentor-card:hover {
+            border-color: #475569;
         }
         .mentor-card.selected {
             border-color: #38bdf8;
             background: rgba(2, 132, 199, 0.1);
+        }
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+            margin-bottom: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #334155;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .pagination-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .pagination-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: nowrap;
+            max-width: 100%;
+            overflow: hidden;
+        }
+        .page-nav-btn {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .page-nav-btn:hover:not(:disabled) {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+        .page-nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .page-nav-btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+            font-weight: 600;
+        }
+        .page-nav-ellipsis {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            padding: 6px 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            user-select: none;
+            flex-shrink: 0;
         }
         .mentor-card-head {
             display: flex;
@@ -486,7 +555,7 @@ if (!in_array($selectedGender, ['Laki-laki', 'Perempuan'], true)) {
                         <label for="jadwal_kuliah">Sesi Kuliah <span style="color:#f87171">*</span></label>
                         <select name="jadwal_kuliah" id="jadwal_kuliah" class="form-control" required>
                             <?php foreach (['Pagi', 'Sore', 'Tidak Menentu'] as $sesi): ?>
-                                <option value="<?= $h($sesi) ?>" <?= ($_POST['jadwal_kuliah'] ?? 'Pagi') === $sesi ? 'selected' : '' ?>><?= $h($sesi) ?></option>
+                                <option value="<?= $h($sesi) ?>" <?= ($_POST['jadwal_kuliah'] ?? 'Tidak Menentu') === $sesi ? 'selected' : '' ?>><?= $h($sesi) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -514,6 +583,11 @@ if (!in_array($selectedGender, ['Laki-laki', 'Perempuan'], true)) {
                 </div>
 
                 <div class="mentor-showcase-grid" id="mentorShowcaseGrid"></div>
+
+                <div id="mentorShowcasePagination" class="pagination-container" style="display:none;">
+                    <div id="mentorPaginationInfo" class="pagination-info"></div>
+                    <div id="mentorPaginationControls" class="pagination-controls"></div>
+                </div>
 
                 <div class="form-group" style="margin-bottom: 0;">
                     <label for="preferred_mentor_id">Tertarik dengan Mentor Mana?</label>
@@ -588,6 +662,9 @@ if (!in_array($selectedGender, ['Laki-laki', 'Perempuan'], true)) {
 <script>
 const SHOWCASE_MENTORS = <?= json_encode($showcaseMentors, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 const INITIAL_PREFERRED_MENTOR = <?= json_encode((string)($_POST['preferred_mentor_id'] ?? '')) ?>;
+const MENTOR_PAGE_SIZE = <?= (int)$mentorPerPage ?>;
+let currentMentorPage = 1;
+let currentFilteredMentors = [];
 
 function escapeHtml(str) {
     const div = document.createElement('div');
@@ -595,13 +672,167 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+function buildMentorPaginationItems(current, total, maxSlots) {
+    if (total <= maxSlots) {
+        return Array.from({ length: total }, (_, idx) => idx + 1);
+    }
+    if (maxSlots <= 1) {
+        return [current];
+    }
+    if (maxSlots === 2) {
+        return current > 1 ? ['...', current] : [current, '...'];
+    }
+    if (maxSlots === 3) {
+        if (current === 1 || current === total) {
+            return [1, '...', total];
+        }
+        return ['...', current, '...'];
+    }
+    if (maxSlots === 4) {
+        if (current <= 2) return [1, 2, '...', total];
+        if (current >= total - 1) return [1, '...', total - 1, total];
+        return [1, '...', current, '...'];
+    }
+
+    if (current <= maxSlots - 2) {
+        const items = [];
+        for (let i = 1; i <= maxSlots - 2; i++) items.push(i);
+        items.push('...', total);
+        return items;
+    }
+    if (current >= total - (maxSlots - 3)) {
+        const items = [1, '...'];
+        for (let i = total - (maxSlots - 3); i <= total; i++) items.push(i);
+        return items;
+    }
+
+    const innerCount = maxSlots - 4;
+    const half = Math.floor(innerCount / 2);
+    let start = current - half;
+    let end = start + innerCount - 1;
+    if (start < 2) {
+        start = 2;
+        end = start + innerCount - 1;
+    }
+    if (end > total - 1) {
+        end = total - 1;
+        start = end - innerCount + 1;
+    }
+    const items = [1, '...'];
+    for (let i = start; i <= end; i++) items.push(i);
+    items.push('...', total);
+    return items;
+}
+
+function renderMentorPage(page) {
+    const grid = document.getElementById('mentorShowcaseGrid');
+    const paginationContainer = document.getElementById('mentorShowcasePagination');
+    const infoSpan = document.getElementById('mentorPaginationInfo');
+    const controlsDiv = document.getElementById('mentorPaginationControls');
+    if (!grid || !paginationContainer || !infoSpan || !controlsDiv) return;
+
+    const total = currentFilteredMentors.length;
+    if (total === 0) {
+        paginationContainer.style.display = 'none';
+        return;
+    }
+
+    const totalPages = Math.ceil(total / MENTOR_PAGE_SIZE) || 1;
+    currentMentorPage = Math.max(1, Math.min(page, totalPages));
+
+    const start = (currentMentorPage - 1) * MENTOR_PAGE_SIZE;
+    const end = start + MENTOR_PAGE_SIZE;
+
+    const cards = Array.from(grid.querySelectorAll('.mentor-card'));
+    cards.forEach((card, idx) => {
+        card.style.display = (idx >= start && idx < end) ? '' : 'none';
+    });
+
+    const showingStart = start + 1;
+    const showingEnd = Math.min(end, total);
+    infoSpan.textContent = `Menampilkan ${showingStart}-${showingEnd} dari ${total} mentor (Halaman ${currentMentorPage}/${totalPages})`;
+
+    paginationContainer.style.display = 'flex';
+
+    const containerWidth = paginationContainer.clientWidth;
+    const infoWidth = infoSpan.offsetWidth || 0;
+    let availableWidth = containerWidth;
+    if (containerWidth <= 0) {
+        availableWidth = Math.max(200, (grid.clientWidth || window.innerWidth) - 48);
+    } else if (containerWidth - infoWidth - 16 >= 320) {
+        availableWidth = containerWidth - infoWidth - 16;
+    }
+
+    function renderMentorControlsWithSlots(maxSlots) {
+        controlsDiv.innerHTML = '';
+
+        const prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'page-nav-btn';
+        prevBtn.textContent = '« Prev';
+        prevBtn.disabled = (currentMentorPage === 1);
+        prevBtn.addEventListener('click', () => {
+            if (currentMentorPage > 1) renderMentorPage(currentMentorPage - 1);
+        });
+        controlsDiv.appendChild(prevBtn);
+
+        const items = buildMentorPaginationItems(currentMentorPage, totalPages, maxSlots);
+        items.forEach(item => {
+            if (item === '...') {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'page-nav-ellipsis';
+                ellipsis.textContent = '...';
+                ellipsis.setAttribute('aria-hidden', 'true');
+                controlsDiv.appendChild(ellipsis);
+            } else {
+                const numBtn = document.createElement('button');
+                numBtn.type = 'button';
+                numBtn.className = 'page-nav-btn' + (item === currentMentorPage ? ' active' : '');
+                numBtn.textContent = item;
+                numBtn.addEventListener('click', () => renderMentorPage(item));
+                controlsDiv.appendChild(numBtn);
+            }
+        });
+
+        const nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'page-nav-btn';
+        nextBtn.textContent = 'Next »';
+        nextBtn.disabled = (currentMentorPage === totalPages || totalPages === 0);
+        nextBtn.addEventListener('click', () => {
+            if (currentMentorPage < totalPages) renderMentorPage(currentMentorPage + 1);
+        });
+        controlsDiv.appendChild(nextBtn);
+    }
+
+    let maxSlots = Math.max(1, Math.min(totalPages, Math.floor((availableWidth - 148) / 42)));
+    renderMentorControlsWithSlots(maxSlots);
+
+    while (availableWidth > 0 && controlsDiv.scrollWidth > availableWidth && maxSlots > 1) {
+        maxSlots -= 1;
+        renderMentorControlsWithSlots(maxSlots);
+    }
+}
+
+let mentorPaginationResizeTimer = null;
+window.addEventListener('resize', () => {
+    clearTimeout(mentorPaginationResizeTimer);
+    mentorPaginationResizeTimer = setTimeout(() => {
+        if (currentFilteredMentors.length > 0) {
+            renderMentorPage(currentMentorPage);
+        }
+    }, 120);
+});
+
 function renderMentorShowcase(gender, keepSelection = false) {
     const grid = document.getElementById('mentorShowcaseGrid');
     const emptyBox = document.getElementById('mentorShowcaseEmpty');
+    const paginationContainer = document.getElementById('mentorShowcasePagination');
     const select = document.getElementById('preferred_mentor_id');
     if (!grid || !select) return;
 
     const filtered = SHOWCASE_MENTORS.filter(m => m.gender === gender);
+    currentFilteredMentors = filtered;
     const currentValue = keepSelection ? (INITIAL_PREFERRED_MENTOR || select.value) : '';
 
     // Perbarui opsi <select>
@@ -618,6 +849,7 @@ function renderMentorShowcase(gender, keepSelection = false) {
 
     if (filtered.length === 0) {
         grid.innerHTML = '';
+        if (paginationContainer) paginationContainer.style.display = 'none';
         if (emptyBox) emptyBox.style.display = 'block';
         return;
     }
@@ -650,15 +882,47 @@ function renderMentorShowcase(gender, keepSelection = false) {
             </div>
         `;
 
+        card.addEventListener('click', () => {
+            const newVal = select.value === m.id ? '' : m.id;
+            select.value = newVal;
+            const wrapper = select.nextElementSibling;
+            if (wrapper && wrapper.classList.contains('searchable-select-wrapper')) {
+                const txt = wrapper.querySelector('.trigger-text');
+                if (txt && select.options[select.selectedIndex]) {
+                    txt.textContent = select.options[select.selectedIndex].text;
+                }
+            }
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
         grid.appendChild(card);
     });
+
+    let initialPage = 1;
+    if (select.value) {
+        const idx = filtered.findIndex(m => m.id === select.value);
+        if (idx !== -1) {
+            initialPage = Math.floor(idx / MENTOR_PAGE_SIZE) + 1;
+        }
+    }
+    renderMentorPage(initialPage);
 }
 
-function highlightSelectedMentorCard(selectedId) {
+function highlightSelectedMentorCard(selectedId, jumpToPage = true) {
     document.querySelectorAll('.mentor-card').forEach(card => {
         const match = card.dataset.mentorId === selectedId && selectedId !== '';
         card.classList.toggle('selected', match);
     });
+
+    if (jumpToPage && selectedId !== '') {
+        const idx = currentFilteredMentors.findIndex(m => m.id === selectedId);
+        if (idx !== -1) {
+            const targetPage = Math.floor(idx / MENTOR_PAGE_SIZE) + 1;
+            if (targetPage !== currentMentorPage) {
+                renderMentorPage(targetPage);
+            }
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

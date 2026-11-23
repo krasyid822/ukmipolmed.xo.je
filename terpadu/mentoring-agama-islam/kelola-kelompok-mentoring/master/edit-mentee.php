@@ -122,10 +122,12 @@ $timIds = array_column($master['teams'] ?? [], 'nama_tim', 'id');
 <body>
 <?php mentoring_loading_overlay(); ?>
 
-<div class="container" style="max-width: 960px;">
+<div class="container master-subpage" style="max-width: 960px;">
     <header class="page-header">
-        <h1 class="page-title">Ubah Data Mentee</h1>
-        <p class="page-subtitle">Perbarui biodata, kelompok, dan status keaktifan mentee</p>
+        <div>
+            <h1 class="page-title">Ubah Data Mentee</h1>
+            <p class="page-subtitle">Perbarui biodata, kelompok, dan status keaktifan mentee</p>
+        </div>
         <div class="subpage-back">
             <a href="<?= $h($basePath) ?>#tab-mentees">&larr; Kembali ke Data Master</a>
         </div>
@@ -144,7 +146,8 @@ $timIds = array_column($master['teams'] ?? [], 'nama_tim', 'id');
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="id" value="<?= $h($menteeId) ?>">
-
+            <div class="master-form-split">
+            <div class="master-form-col">
             <div class="form-section-label">Identitas Wajib</div>
             <div class="form-grid">
                 <div class="form-group">
@@ -173,9 +176,10 @@ $timIds = array_column($master['teams'] ?? [], 'nama_tim', 'id');
                     </select>
                 </div>
             </div>
-
+            </div>
+            <div class="master-form-col">
             <div class="form-section-label">Biodata</div>
-            <div class="form-grid">
+            <div class="form-grid cols-3">
                 <div class="form-group">
                     <label>Gender:</label>
                     <select name="gender" class="form-control">
@@ -211,7 +215,7 @@ $timIds = array_column($master['teams'] ?? [], 'nama_tim', 'id');
                     <label>Jadwal Kuliah:</label>
                     <select name="jadwal_kuliah" class="form-control">
                         <?php foreach (['Pagi', 'Sore', 'Tidak Menentu'] as $jadwal): ?>
-                            <option value="<?= $h($jadwal) ?>" <?= ($mentee['jadwal_kuliah'] ?? '') === $jadwal ? 'selected' : '' ?>><?= $h($jadwal) ?></option>
+                            <option value="<?= $h($jadwal) ?>" <?= (($mentee['jadwal_kuliah'] ?? '') ?: 'Tidak Menentu') === $jadwal ? 'selected' : '' ?>><?= $h($jadwal) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -237,16 +241,55 @@ $timIds = array_column($master['teams'] ?? [], 'nama_tim', 'id');
                 <button type="submit" class="submit-btn">Simpan Perubahan</button>
                 <a href="<?= $h($basePath) ?>#tab-mentees" class="btn-cancel">Batal</a>
             </div>
+            </div>
+            </div>
         </form>
     </div>
 </div>
 
 <script src="<?= $h($appBase) ?>public/assets/js/searchable-select.js"></script>
 <script>
+function getColContentHeight(col, actions) {
+    let height = 0;
+    const colTop = col.getBoundingClientRect().top;
+    for (const child of col.children) {
+        if (child === actions || child.style.display === 'none') continue;
+        const rect = child.getBoundingClientRect();
+        const bottom = rect.bottom - colTop;
+        if (bottom > height) height = bottom;
+    }
+    return height;
+}
+
+function relocateFormActions() {
+    const split = document.querySelector('.master-form-split');
+    const actions = split ? split.querySelector('.form-actions') : null;
+    if (!split || !actions) return;
+    const cols = split.querySelectorAll('.master-form-col');
+    if (cols.length < 2) return;
+    const [leftCol, rightCol] = cols;
+
+    if (window.innerWidth < 1024) {
+        if (actions.parentElement !== rightCol) rightCol.appendChild(actions);
+        return;
+    }
+
+    const leftHeight = getColContentHeight(leftCol, actions);
+    const rightHeight = getColContentHeight(rightCol, actions);
+
+    if (rightHeight > leftHeight) {
+        if (actions.parentElement !== leftCol) leftCol.appendChild(actions);
+    } else {
+        if (actions.parentElement !== rightCol) rightCol.appendChild(actions);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select.form-control').forEach(el => {
         if (typeof initSearchableSelect === 'function') initSearchableSelect(el);
     });
+    relocateFormActions();
+    window.addEventListener('resize', relocateFormActions);
     const toTitleCase = (val) => val.toLowerCase().replace(/(^|[\s\-'.,\/()])(\S)/g, (_, sep, ch) => sep + ch.toUpperCase());
     ['tempat_lahir', 'alamat_sekarang', 'alamat_orang_tua'].forEach((name) => {
         const el = document.querySelector(`input[name="${name}"]`);

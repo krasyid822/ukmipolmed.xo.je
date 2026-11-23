@@ -840,4 +840,100 @@ class Biometric {
 
         return (bool)$result['ok'];
     }
+
+    /**
+     * Cocokkan apakah record mentor dan mentee merujuk pada orang yang sama
+     * (berdasarkan nomor WA, NIM, atau nama lengkap yang dinormalisasi).
+     */
+    private static function isSamePerson(array $mentor, array $mentee): bool {
+        $mWa = trim((string)($mentor['nomor_whatsapp'] ?? ''));
+        $meWa = trim((string)($mentee['nomor_whatsapp'] ?? ''));
+        if ($mWa !== '' && $meWa !== '' && $mWa === $meWa) {
+            return true;
+        }
+
+        $mNim = mb_strtolower(trim((string)($mentor['detail_kesibukan']['nim'] ?? '')));
+        $meNim = mb_strtolower(trim((string)($mentee['nim'] ?? '')));
+        if ($mNim !== '' && $meNim !== '' && $mNim === $meNim) {
+            return true;
+        }
+
+        $mNama = mb_strtolower(preg_replace('/\s+/', ' ', trim((string)($mentor['nama_lengkap'] ?? ''))) ?? '');
+        $meNama = mb_strtolower(preg_replace('/\s+/', ' ', trim((string)($mentee['nama_lengkap'] ?? ''))) ?? '');
+        if ($mNama !== '' && $meNama !== '' && $mNama === $meNama) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Ambil daftar ID tim yang memiliki relasi langsung dengan entitas biometrik.
+     * - Mentor: tim yang dibinanya + tim tempat ia menjadi mentee perwakilan (jika ada).
+     * - Mentee perwakilan: tim yang ia tempati + tim yang ia bina (jika ia juga mentor).
+     *
+     * @return list<string>
+     */
+    public static function getAllowedTeamIds(string $entityType, string $entityId, ?array $master = null): array {
+        $master = $master ?? self::loadMaster();
+        $allowed = [];
+
+        if ($entityType === 'mentor') {
+            foreach ($master['teams'] ?? [] as $t) {
+                if ((string)($t['mentor_id'] ?? '') === $entityId) {
+                    $allowed[] = (string)($t['id'] ?? '');
+                }
+            }
+
+            $mentor = null;
+            foreach ($master['mentors'] ?? [] as $m) {
+                if ((string)($m['id'] ?? '') === $entityId) {
+                    $mentor = $m;
+                    break;
+                }
+            }
+            if ($mentor !== null) {
+                foreach ($master['mentees'] ?? [] as $me) {
+                    if (!empty($me['delegate_for']) && self::isSamePerson($mentor, $me) && !empty($me['tim_id'])) {
+                        $allowed[] = (string)$me['tim_id'];
+                    }
+                }
+            }
+        } elseif ($entityType === 'mentee') {
+            $mentee = null;
+            foreach ($master['mentees'] ?? [] as $me) {
+                if ((string)($me['id'] ?? '') === $entityId) {
+                    $mentee = $me;
+                    break;
+                }
+            }
+            if ($mentee !== null) {
+                if (!empty($mentee['tim_id'])) {
+                    $allowed[] = (string)$mentee['tim_id'];
+                }
+                foreach ($master['mentors'] ?? [] as $m) {
+                    if (self::isSamePerson($m, $mentee)) {
+                        $mId = (string)($m['id'] ?? '');
+                        foreach ($master['teams'] ?? [] as $t) {
+                            if ((string)($t['mentor_id'] ?? '') === $mId) {
+                                $allowed[] = (string)($t['id'] ?? '');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($allowed, static fn(string $id): bool => $id !== '')));
+    }
+
+    /**
+     * Periksa apakah tim boleh dilaporkan oleh entitas biometrik yang terverifikasi.
+     */
+    public static function isTeamAllowedForEntity(string $entityType, string $entityId, string $teamId): bool {
+        if ($teamId === '') {
+            return false;
+        }
+        return in_array($teamId, self::getAllowedTeamIds($entityType, $entityId), true);
+    }
 }

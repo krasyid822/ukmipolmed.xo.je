@@ -97,10 +97,12 @@ $mentorIds = array_column($master['mentors'] ?? [], 'nama_lengkap', 'id');
 <body>
 <?php mentoring_loading_overlay(); ?>
 
-<div class="container" style="max-width: 960px;">
+<div class="container master-subpage" style="max-width: 960px;">
     <header class="page-header">
-        <h1 class="page-title">Ubah Data Tim Mentoring</h1>
-        <p class="page-subtitle">Perbarui nama tim, logo, dan mentor pendampingnya</p>
+        <div>
+            <h1 class="page-title">Ubah Data Tim Mentoring</h1>
+            <p class="page-subtitle">Perbarui nama tim, logo, dan mentor pendampingnya</p>
+        </div>
         <div class="subpage-back">
             <a href="<?= $h($basePath) ?>#tab-teams">&larr; Kembali ke Data Master</a>
         </div>

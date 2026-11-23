@@ -127,10 +127,12 @@ foreach ($menteesOfMentor as $m) {
 <body>
 <?php mentoring_loading_overlay(); ?>
 
-<div class="container" style="max-width: 960px;">
+<div class="container master-subpage" style="max-width: 960px;">
     <header class="page-header">
-        <h1 class="page-title">Ubah Data Mentor</h1>
-        <p class="page-subtitle">Perbarui biodata mentor pendamping mentoring</p>
+        <div>
+            <h1 class="page-title">Ubah Data Mentor</h1>
+            <p class="page-subtitle">Perbarui biodata mentor pendamping mentoring</p>
+        </div>
         <div class="subpage-back">
             <a href="<?= $h($basePath) ?>#tab-mentors">&larr; Kembali ke Data Master</a>
         </div>
@@ -149,7 +151,8 @@ foreach ($menteesOfMentor as $m) {
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="id" value="<?= $h($mentorId) ?>">
-
+            <div class="master-form-split">
+            <div class="master-form-col">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Nama Lengkap &amp; Gelar: <span style="color:#f87171">*</span></label>
@@ -193,9 +196,31 @@ foreach ($menteesOfMentor as $m) {
                 </div>
             </div>
 
+            <div class="form-section-label">Mentee Perwakilan (Penginput Laporan)</div>
+            <div class="form-grid">
+                <div class="form-group col-span-2">
+                    <label>Mentee yang diizinkan menginput laporan atas nama mentor:</label>
+                    <select name="delegate_mentee_id" class="form-control">
+                        <option value="">-- Tidak ada perwakilan --</option>
+                        <?php foreach ($menteesOfMentor as $m): ?>
+                            <option value="<?= $h($m['id']) ?>" <?= ($currentDelegate !== null && (string)($m['id'] ?? '') === (string)($currentDelegate['id'] ?? '')) ? 'selected' : '' ?>>
+                                <?= $h($m['nama_lengkap'] ?? '') ?> (<?= $h($m['nim'] ?? '-') ?>)
+                                <?= !empty($m['delegate_for'] ?? '') ? ' • sudah dipercaya' : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="photo-hint">
+                        Mentee yang dipilih akan menerima link pendaftaran biometrik sekali pakai
+                        (dibuat lewat halaman Pengaturan → Atur Ulang Biometrik) untuk menyiapkan data
+                        biometrik pribadinya. Hanya satu perwakilan per mentor.
+                    </div>
+                </div>
+            </div>
+            </div>
+            <div class="master-form-col">
             <div id="detail-kuliah">
                 <div class="form-section-label">Detail Perkuliahan</div>
-                <div class="form-grid">
+                <div class="form-grid cols-3">
                     <div class="form-group">
                         <label>NIM:</label>
                         <input type="text" name="nim" class="form-control" value="<?= $h($detail['nim'] ?? '') ?>">
@@ -216,16 +241,17 @@ foreach ($menteesOfMentor as $m) {
                         <label>Jadwal Kuliah:</label>
                         <select name="jadwal_kuliah_mentor" class="form-control">
                             <?php foreach (['Pagi', 'Sore', 'Tidak Menentu'] as $jadwal): ?>
-                                <option value="<?= $h($jadwal) ?>" <?= ($detail['jadwal_kuliah'] ?? '') === $jadwal ? 'selected' : '' ?>><?= $h($jadwal) ?></option>
+                                <option value="<?= $h($jadwal) ?>" <?= (($detail['jadwal_kuliah'] ?? '') ?: 'Tidak Menentu') === $jadwal ? 'selected' : '' ?>><?= $h($jadwal) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
+
             </div>
 
             <div id="detail-bekerja">
                 <div class="form-section-label">Detail Pekerjaan</div>
-                <div class="form-grid">
+                <div class="form-grid cols-3">
                     <div class="form-group">
                         <label>Instansi / Perusahaan:</label>
                         <input type="text" name="instansi_perusahaan" class="form-control" value="<?= $h($detail['instansi_perusahaan'] ?? '') ?>">
@@ -239,6 +265,7 @@ foreach ($menteesOfMentor as $m) {
                         <input type="text" name="jadwal_kerja" class="form-control" value="<?= $h($detail['jadwal_kerja'] ?? '') ?>">
                     </div>
                 </div>
+
             </div>
 
             <div class="form-section-label">Domisili &amp; Organisasi</div>
@@ -255,44 +282,63 @@ foreach ($menteesOfMentor as $m) {
                     <label>Amanah Organisasi:</label>
                     <input type="text" name="amanah_organisasi" class="form-control" value="<?= $h($mentor['amanah_organisasi'] ?? '') ?>">
                 </div>
-            </div>
 
-            <div class="form-section-label">Mentee Perwakilan (Penginput Laporan)</div>
-            <div class="form-grid">
-                <div class="form-group col-span-2">
-                    <label>Mentee yang diizinkan menginput laporan atas nama mentor:</label>
-                    <select name="delegate_mentee_id" class="form-control">
-                        <option value="">-- Tidak ada perwakilan --</option>
-                        <?php foreach ($menteesOfMentor as $m): ?>
-                            <option value="<?= $h($m['id']) ?>" <?= ($currentDelegate !== null && (string)($m['id'] ?? '') === (string)($currentDelegate['id'] ?? '')) ? 'selected' : '' ?>>
-                                <?= $h($m['nama_lengkap'] ?? '') ?> (<?= $h($m['nim'] ?? '-') ?>)
-                                <?= !empty($m['delegate_for'] ?? '') ? ' • sudah dipercaya' : '' ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <div class="photo-hint">
-                        Mentee yang dipilih akan menerima                         link pendaftaran biometrik sekali pakai
-                        (dibuat lewat halaman Pengaturan → Atur Ulang Biometrik) untuk menyiapkan data
-                        biometrik pribadinya. Hanya satu perwakilan per mentor.
-                    </div>
-                </div>
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="submit-btn">Simpan Perubahan</button>
                 <a href="<?= $h($basePath) ?>#tab-mentors" class="btn-cancel">Batal</a>
             </div>
+
+            </div>
+            </div>
         </form>
     </div>
 </div>
 
 <script>
+function getColContentHeight(col, actions) {
+    let height = 0;
+    const colTop = col.getBoundingClientRect().top;
+    for (const child of col.children) {
+        if (child === actions || child.style.display === 'none') continue;
+        const rect = child.getBoundingClientRect();
+        const bottom = rect.bottom - colTop;
+        if (bottom > height) height = bottom;
+    }
+    return height;
+}
+
+function relocateFormActions() {
+    const split = document.querySelector('.master-form-split');
+    const actions = split ? split.querySelector('.form-actions') : null;
+    if (!split || !actions) return;
+    const cols = split.querySelectorAll('.master-form-col');
+    if (cols.length < 2) return;
+    const [leftCol, rightCol] = cols;
+
+    if (window.innerWidth < 1024) {
+        if (actions.parentElement !== rightCol) rightCol.appendChild(actions);
+        return;
+    }
+
+    const leftHeight = getColContentHeight(leftCol, actions);
+    const rightHeight = getColContentHeight(rightCol, actions);
+
+    if (rightHeight > leftHeight) {
+        if (actions.parentElement !== leftCol) leftCol.appendChild(actions);
+    } else {
+        if (actions.parentElement !== rightCol) rightCol.appendChild(actions);
+    }
+}
+
 function toggleDetailKesibukan() {
     const val = document.getElementById('mentor-status-kesibukan').value;
     document.getElementById('detail-kuliah').style.display =
         (val === 'Kuliah' || val === 'Kuliah & Bekerja') ? '' : 'none';
     document.getElementById('detail-bekerja').style.display =
         (val === 'Bekerja' || val === 'Kuliah & Bekerja') ? '' : 'none';
+    relocateFormActions();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -300,6 +346,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select.form-control').forEach(el => {
         if (typeof initSearchableSelect === 'function') initSearchableSelect(el);
     });
+    relocateFormActions();
+    window.addEventListener('resize', relocateFormActions);
     const toTitleCase = (val) => val.toLowerCase().replace(/(^|[\s\-'.,\/()])(\S)/g, (_, sep, ch) => sep + ch.toUpperCase());
     ['tempat_lahir', 'alamat_sekarang', 'alamat_orang_tua'].forEach((name) => {
         const el = document.querySelector(`input[name="${name}"]`);

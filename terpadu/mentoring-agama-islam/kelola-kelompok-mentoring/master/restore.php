@@ -12,6 +12,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../bootstrap.php';
 
 use Mentoring\AdminAuth;
+use Mentoring\BackupService;
 use Mentoring\MasterData;
 
 AdminAuth::guard();
@@ -76,9 +77,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!is_array($bundle)) {
                     $error = 'Berkas bukan JSON bundel backup yang valid.';
                 } else {
-                    $result = MasterData::importBundle($bundle);
+                    $result = BackupService::restoreBundle($bundle, [
+                        'replace_reports' => !empty($_POST['replace_reports']),
+                        'restore_config' => !empty($_POST['restore_config']),
+                    ]);
                     if ($result['ok']) {
-                        header('Location: ' . $pageUrl . '?msg=restored', true, 303);
+                        $sum = $result['summary'] ?? [];
+                        $qs = http_build_query([
+                            'msg' => 'restored',
+                            'm' => (int)($sum['master'] ?? 0),
+                            'r' => (int)($sum['reports'] ?? 0),
+                            'med' => (int)($sum['media'] ?? 0),
+                            'loc' => (int)($sum['local_state'] ?? 0),
+                        ]);
+                        header('Location: ' . $pageUrl . '?' . $qs, true, 303);
                         exit;
                     }
                     $error = (string)($result['error'] ?? 'Pemulihan gagal.');
@@ -95,7 +107,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $msgKey = (string)($_GET['msg'] ?? '');
 if ($msgKey === 'restored') {
-    $message = 'Data master berhasil dipulihkan dari berkas backup sebagai versi baru.';
+    $mCount = (int)($_GET['m'] ?? 0);
+    $rCount = (int)($_GET['r'] ?? 0);
+    $medCount = (int)($_GET['med'] ?? 0);
+    $locCount = (int)($_GET['loc'] ?? 0);
+    if ($rCount > 0 || $medCount > 0 || $locCount > 0) {
+        $message = sprintf(
+            'Pemulihan selesai: %d master, %d laporan, %d media, %d state lokal.',
+            $mCount,
+            $rCount,
+            $medCount,
+            $locCount
+        );
+    } else {
+        $message = 'Data master berhasil dipulihkan dari berkas backup sebagai versi baru.';
+    }
 } elseif ($msgKey === 'rollback') {
     $message = 'Data master berhasil dikembalikan ke versi yang dipilih.';
 }
@@ -163,7 +189,17 @@ $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
                 <label>Berkas Backup:</label>
                 <input type="file" name="bundle" accept="application/json,.json" class="form-control" required>
             </div>
-            <button type="submit" class="btn-action">Pulihkan Data Master</button>
+            <div style="display: grid; gap: 8px; margin: 12px 0 16px; font-size: 0.88rem; color: #cbd5e1;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="replace_reports" value="1">
+                    <span>Ganti seluruh daftar laporan (jika tidak dicentang, laporan digabung/merge secara aman)</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #fcd34d;">
+                    <input type="checkbox" name="restore_config" value="1">
+                    <span>Pulihkan juga konfigurasi <code>default.json</code> (kredensial S3 &amp; API key) jika ada di bundel</span>
+                </label>
+            </div>
+            <button type="submit" class="btn-action">Pulihkan Data dari Backup</button>
         </form>
     </div>
 
@@ -172,15 +208,15 @@ $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
         <?php if ($history === []): ?>
             <p style="color: #94a3b8; font-size: 0.9rem;">Belum ada versi master yang tersimpan.</p>
         <?php else: ?>
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <div class="table-scroll">
+                <table class="attendance-table" style="width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.85rem;">
                     <thead>
                         <tr style="text-align: left; color: #94a3b8;">
-                            <th style="padding: 8px 6px;">Waktu</th>
-                            <th style="padding: 8px 6px;">Sumber</th>
-                            <th style="padding: 8px 6px;">Ringkasan</th>
-                            <th style="padding: 8px 6px;">Status</th>
-                            <th style="padding: 8px 6px;">Aksi</th>
+                            <th style="padding: 8px 6px; white-space: nowrap;">Waktu</th>
+                            <th style="padding: 8px 6px; white-space: nowrap;">Sumber</th>
+                            <th style="padding: 8px 6px; white-space: nowrap;">Ringkasan</th>
+                            <th style="padding: 8px 6px; white-space: nowrap;">Status</th>
+                            <th style="padding: 8px 6px; white-space: nowrap;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -198,11 +234,11 @@ $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
                             $revision = (string)($entry['revision'] ?? '');
                             ?>
                             <tr style="border-top: 1px solid rgba(148, 163, 184, 0.2);">
-                                <td style="padding: 8px 6px;"><?= $h($entry['updated_at'] ?? '-') ?></td>
-                                <td style="padding: 8px 6px;"><?= $h($entry['source'] ?? '-') ?></td>
+                                <td style="padding: 8px 6px; white-space: nowrap;"><?= $h($entry['updated_at'] ?? '-') ?></td>
+                                <td style="padding: 8px 6px; white-space: nowrap;"><?= $h($entry['source'] ?? '-') ?></td>
                                 <td style="padding: 8px 6px;"><?= $h($summaryText) ?></td>
-                                <td style="padding: 8px 6px;"><?= $isCurrent ? '<b style="color:#34d399">Aktif</b>' : 'Arsip' ?></td>
-                                <td style="padding: 8px 6px;">
+                                <td style="padding: 8px 6px; white-space: nowrap;"><?= $isCurrent ? '<b style="color:#34d399">Aktif</b>' : 'Arsip' ?></td>
+                                <td style="padding: 8px 6px; white-space: nowrap;">
                                     <?php if ($revision !== '' && !$isCurrent): ?>
                                         <form method="POST" data-confirm="Kembalikan data master ke versi ini? Versi saat ini tetap tersimpan." data-confirm-title="Rollback Data Master" style="margin: 0;">
                                             <input type="hidden" name="action" value="rollback">

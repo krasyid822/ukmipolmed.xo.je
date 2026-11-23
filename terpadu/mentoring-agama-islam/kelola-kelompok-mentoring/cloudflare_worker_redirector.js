@@ -25,6 +25,8 @@ const DEFAULTS = {
     VIEW_BASE: "https://ukmipolmed.my.id/terpadu/mai/mentoring/view",
     APP_LAPORAN_URL: "https://ukmipolmed.my.id/terpadu/mai/mentoring/?source=pwa",
     APP_DAFTAR_URL: "https://ukmipolmed.my.id/terpadu/mai/mentoring/daftar?source=pwa",
+    BLOG_S3_PREFIX: "ukmipolmed",
+    BLOG_BASE: "https://ukmipolmed.my.id",
 };
 
 const EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
@@ -39,6 +41,26 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request).catch(() => {
+                const url = new URL(event.request.url);
+                const isDaftar = url.pathname.includes('daftar') || url.searchParams.get('mode') === 'daftar';
+                const target = isDaftar ? ${JSON.stringify(DEFAULTS.APP_DAFTAR_URL)} : ${JSON.stringify(DEFAULTS.APP_LAPORAN_URL)};
+                const html = '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">' +
+                    '<meta http-equiv="refresh" content="0; url=' + target + '">' +
+                    '<title>Membuka Aplikasi...</title></head><body>' +
+                    '<script>window.location.replace(' + JSON.stringify(target) + ');</script>' +
+                    '<p>Membuka aplikasi offline... <a href="' + target + '">Lanjutkan</a></p>' +
+                    '</body></html>';
+                return new Response(html, {
+                    status: 200,
+                    headers: { 'Content-Type': 'text/html; charset=utf-8' }
+                });
+            })
+        );
+        return;
+    }
     event.respondWith(fetch(event.request));
 });
 `;
@@ -51,7 +73,7 @@ function isPwaAnalyzer(request, url) {
     return /PWABuilder|HeadlessChrome|Lighthouse|PageSpeed|GTmetrix/i.test(ua);
 }
 
-function buildPwaLandingResponse(url, mode) {
+function buildPwaLandingResponse(url, mode, autoRedirect = false) {
     const isLaporan = mode !== "daftar";
     const targetAppUrl = isLaporan ? DEFAULTS.APP_LAPORAN_URL : DEFAULTS.APP_DAFTAR_URL;
     const manifestUrl = `${url.origin}/pwa/${isLaporan ? "manifest-laporan.webmanifest" : "manifest-daftar.webmanifest"}`;
@@ -59,6 +81,26 @@ function buildPwaLandingResponse(url, mode) {
         ? "Pelaporan Mentoring Agama Islam UKMI Polmed"
         : "Pendaftaran Mentoring Agama Islam UKMI Polmed";
     const iconUrl = `${url.origin}/pwa/${isLaporan ? "icon-192x192.png" : "icon-daftar-192x192.png"}`;
+    const redirectScript = autoRedirect
+        ? `
+        var redirected = false;
+        function goApp() {
+            if (redirected) return;
+            redirected = true;
+            window.location.replace(${JSON.stringify(targetAppUrl)});
+        }
+        setTimeout(goApp, 800);
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' })
+                .then(goApp)
+                .catch(goApp);
+        } else {
+            goApp();
+        }`
+        : `
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' }).catch(function () {});
+        }`;
     const html = `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -72,10 +114,7 @@ function buildPwaLandingResponse(url, mode) {
 </head>
 <body>
     <p>Membuka <a href="${escapeHtml(targetAppUrl)}">${escapeHtml(title)}</a>...</p>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' }).catch(function () {});
-        }
+    <script>${redirectScript}
     </script>
 </body>
 </html>`;
@@ -83,7 +122,7 @@ function buildPwaLandingResponse(url, mode) {
         status: 200,
         headers: {
             "Content-Type": "text/html; charset=utf-8",
-            "Cache-Control": "public, max-age=3600",
+            "Cache-Control": autoRedirect ? "no-cache" : "public, max-age=3600",
         },
     });
 }
@@ -108,13 +147,7 @@ export default {
         if (url.pathname.startsWith("/pwa/")) {
             const pwaName = url.pathname.slice("/pwa/".length).replace(/^\/+/, "");
             if (pwaName === "laporan" || pwaName === "daftar") {
-                const targetAppUrl = pwaName === "laporan"
-                    ? DEFAULTS.APP_LAPORAN_URL
-                    : DEFAULTS.APP_DAFTAR_URL;
-                if (!isPwaAnalyzer(request, url)) {
-                    return Response.redirect(targetAppUrl, 302);
-                }
-                return buildPwaLandingResponse(url, pwaName);
+                return buildPwaLandingResponse(url, pwaName, !isPwaAnalyzer(request, url));
             }
 
             if (!/^[A-Za-z0-9._-]+\.(webmanifest|png)$/i.test(pwaName)) {
@@ -168,19 +201,159 @@ export default {
             });
         }
 
+        // Route gambar blog: /blog-img?key=<s3Key> atau /blog-img?slug=<slug>
+        if (url.pathname === "/blog-img") {
+            const blogPrefix = String(env.BLOG_S3_PREFIX || DEFAULTS.BLOG_S3_PREFIX).replace(/^\/+|\/+$/g, "");
+            let imgKey = url.searchParams.get("key") || "";
+            if (imgKey !== "") {
+                const mime = isAllowedBlogImageKey(imgKey, blogPrefix);
+                if (!mime) {
+                    return new Response("Kunci gambar tidak valid", { status: 400 });
+                }
+                const res = await s3GetRaw(env, imgKey);
+                if (!res || !res.ok) {
+                    return new Response("Gambar tidak ditemukan", { status: 404 });
+                }
+                const headers = {
+                    "Content-Type": mime,
+                    "Cache-Control": "public, max-age=2592000",
+                    "X-Content-Type-Options": "nosniff",
+                };
+                const contentLength = res.headers.get("content-length");
+                if (contentLength) {
+                    headers["Content-Length"] = contentLength;
+                }
+                return new Response(res.body, { status: 200, headers });
+            }
+
+            const imgSlug = url.searchParams.get("slug") || "";
+            if (!/^[A-Za-z0-9._-]+$/.test(imgSlug)) {
+                return new Response("Slug gambar tidak valid", { status: 400 });
+            }
+            const postRes = await s3GetRaw(env, `${blogPrefix}/data_json/posts/${await sha1Hex(imgSlug)}.json`);
+            if (!postRes || !postRes.ok) {
+                return new Response("Postingan tidak ditemukan", { status: 404 });
+            }
+            let post;
+            try {
+                post = await postRes.json();
+            } catch (_e) {
+                return new Response("Data postingan tidak valid", { status: 500 });
+            }
+            const rawImage = typeof post?.image === "string" ? post.image.trim() : "";
+            const extractedKey = extractFotoKey(rawImage);
+            if (extractedKey) {
+                const mime = isAllowedBlogImageKey(extractedKey, blogPrefix);
+                if (mime) {
+                    const res = await s3GetRaw(env, extractedKey);
+                    if (res && res.ok) {
+                        const headers = {
+                            "Content-Type": mime,
+                            "Cache-Control": "public, max-age=2592000",
+                            "X-Content-Type-Options": "nosniff",
+                        };
+                        const contentLength = res.headers.get("content-length");
+                        if (contentLength) {
+                            headers["Content-Length"] = contentLength;
+                        }
+                        return new Response(res.body, { status: 200, headers });
+                    }
+                }
+            }
+            const decoded = decodeDataUriImage(rawImage);
+            if (decoded) {
+                return new Response(decoded.bytes, {
+                    status: 200,
+                    headers: {
+                        "Content-Type": decoded.mime,
+                        "Cache-Control": "public, max-age=86400",
+                        "X-Content-Type-Options": "nosniff",
+                    },
+                });
+            }
+            return new Response("Gambar tidak ditemukan", { status: 404 });
+        }
+
+        // Route link preview blog: /blog/<slug> atau /blog?slug=<slug>
+        if (url.pathname === "/blog" || url.pathname.startsWith("/blog/")) {
+            const blogBase = String(env.BLOG_BASE || DEFAULTS.BLOG_BASE).replace(/\/+$/, "");
+            const blogPrefix = String(env.BLOG_S3_PREFIX || DEFAULTS.BLOG_S3_PREFIX).replace(/^\/+|\/+$/g, "");
+            let slug = "";
+            if (url.pathname.startsWith("/blog/")) {
+                const rawSeg = url.pathname.slice("/blog/".length).replace(/^\/+|\/+$/g, "");
+                try {
+                    slug = decodeURIComponent(rawSeg);
+                } catch (_e) {
+                    return new Response("Slug tidak valid", { status: 400 });
+                }
+            } else {
+                slug = (url.searchParams.get("slug") || "").trim();
+            }
+
+            if (slug === "") {
+                return Response.redirect(`${blogBase}/blog`, 302);
+            }
+            if (!/^[A-Za-z0-9._-]+$/.test(slug)) {
+                return new Response("Slug tidak valid", { status: 400 });
+            }
+
+            const targetUrl = `${blogBase}/blog/${encodeURIComponent(slug)}`;
+            const userAgent = request.headers.get("User-Agent") || "";
+            const isBot = /WhatsApp|TelegramBot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Embedly|SkypeUriPreview|Viber|Line/i.test(userAgent);
+
+            if (!isBot) {
+                return Response.redirect(targetUrl, 302);
+            }
+
+            let title = "Blog UKMI POLMED";
+            let description = "Baca berita, catatan kegiatan, dan tulisan inspiratif dari UKMI Politeknik Negeri Medan.";
+            let imageUrl = `${url.origin}/pwa/icon-512x512.png`;
+
+            try {
+                const postRes = await s3GetRaw(env, `${blogPrefix}/data_json/posts/${await sha1Hex(slug)}.json`);
+                if (postRes && postRes.ok) {
+                    const post = await postRes.json();
+                    if (post && typeof post.title === "string" && post.title.trim() !== "") {
+                        title = post.title.trim();
+                    }
+                    const rawSummary = typeof post?.summary === "string" ? post.summary.trim() : "";
+                    if (rawSummary !== "") {
+                        description = stripMarkdown(rawSummary, 200) || description;
+                    } else if (typeof post?.body === "string" && post.body.trim() !== "") {
+                        description = stripMarkdown(post.body, 180) || description;
+                    }
+                    const rawImage = typeof post?.image === "string" ? post.image.trim() : "";
+                    const fotoKey = extractFotoKey(rawImage);
+                    if (fotoKey && isAllowedBlogImageKey(fotoKey, blogPrefix)) {
+                        imageUrl = `${url.origin}/blog-img?key=${encodeURIComponent(fotoKey)}`;
+                    } else if (/^data:image\//i.test(rawImage)) {
+                        imageUrl = `${url.origin}/blog-img?slug=${encodeURIComponent(slug)}`;
+                    } else if (/^https?:\/\//i.test(rawImage)) {
+                        try {
+                            const imgParsed = new URL(rawImage);
+                            const baseParsed = new URL(blogBase);
+                            if (imgParsed.host !== baseParsed.host) {
+                                imageUrl = rawImage;
+                            }
+                        } catch (_e) {
+                            // Abaikan URL gambar tidak valid
+                        }
+                    }
+                }
+            } catch (_e) {
+                // Gunakan fallback metadata bila objek belum ada atau gagal dibaca
+            }
+
+            return new Response(
+                generateBlogHtml(targetUrl, title, description, imageUrl),
+                { headers: { "Content-Type": "text/html; charset=utf-8" } }
+            );
+        }
+
         // Route utama: ?id=<reportId> atau landing root (/)
         if (!url.searchParams.has("id")) {
             const isDaftar = url.pathname === "/daftar" || url.searchParams.get("mode") === "daftar";
-            if (isDaftar) {
-                if (!isPwaAnalyzer(request, url)) {
-                    return Response.redirect(DEFAULTS.APP_DAFTAR_URL, 302);
-                }
-                return buildPwaLandingResponse(url, "daftar");
-            }
-            if (!isPwaAnalyzer(request, url)) {
-                return Response.redirect(DEFAULTS.APP_LAPORAN_URL, 302);
-            }
-            return buildPwaLandingResponse(url, "laporan");
+            return buildPwaLandingResponse(url, isDaftar ? "daftar" : "laporan", !isPwaAnalyzer(request, url));
         }
 
         const reportId = url.searchParams.get("id") || "";
@@ -226,6 +399,12 @@ export default {
 };
 
 async function s3Get(env, relativeKey) {
+    const prefix = String(env.S3_PREFIX || DEFAULTS.S3_PREFIX).replace(/^\/+|\/+$/g, "");
+    const fullKey = (prefix ? `${prefix}/` : "") + relativeKey.replace(/^\/+/, "");
+    return s3GetRaw(env, fullKey);
+}
+
+async function s3GetRaw(env, fullKey) {
     const accessKey = String(env.S3_ACCESS_KEY || "");
     const secretKey = String(env.S3_SECRET_KEY || "");
     if (!accessKey || !secretKey) {
@@ -235,12 +414,11 @@ async function s3Get(env, relativeKey) {
     const endpoint = String(env.S3_ENDPOINT || DEFAULTS.S3_ENDPOINT).replace(/\/+$/, "");
     const region = String(env.S3_REGION || DEFAULTS.S3_REGION);
     const bucket = String(env.S3_BUCKET || DEFAULTS.S3_BUCKET);
-    const prefix = String(env.S3_PREFIX || DEFAULTS.S3_PREFIX).replace(/^\/+|\/+$/g, "");
-    const fullKey = (prefix ? `${prefix}/` : "") + relativeKey.replace(/^\/+/, "");
+    const cleanKey = String(fullKey || "").replace(/^\/+/, "");
 
     const parsedEndpoint = new URL(endpoint);
     const hostHeader = parsedEndpoint.host;
-    const segments = `${bucket}/${fullKey}`.split("/").filter(Boolean);
+    const segments = `${bucket}/${cleanKey}`.split("/").filter(Boolean);
     const canonicalUri = "/" + segments.map((seg) => encodeURIComponent(seg)).join("/");
 
     const now = new Date();
@@ -334,4 +512,98 @@ function escapeHtml(str) {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+}
+
+async function sha1Hex(str) {
+    const digest = await crypto.subtle.digest("SHA-1", encodeUtf8(str));
+    return toHex(digest);
+}
+
+function stripMarkdown(text, maxLen = 180) {
+    const clean = String(text || "")
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+        .replace(/`{1,3}[^`]*`{1,3}/g, " ")
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/[*_~>-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    if (!maxLen || clean.length <= maxLen) return clean;
+    return clean.slice(0, maxLen).trim();
+}
+
+function extractFotoKey(imageStr) {
+    const raw = String(imageStr || "").trim();
+    if (!raw) return "";
+    try {
+        const parsed = raw.startsWith("/") ? new URL(raw, DEFAULTS.BLOG_BASE) : new URL(raw);
+        if (parsed.pathname === "/foto" || parsed.pathname === "/foto.php") {
+            return (parsed.searchParams.get("key") || "").trim();
+        }
+    } catch (_e) {
+        // Bukan URL valid
+    }
+    return "";
+}
+
+function isAllowedBlogImageKey(key, blogPrefix) {
+    const k = String(key || "");
+    if (!k || k.includes("..")) return null;
+    const prefix = String(blogPrefix || DEFAULTS.BLOG_S3_PREFIX).replace(/^\/+|\/+$/g, "");
+    const allowed = [`${prefix}/uploads/`, `${prefix}/assets/`];
+    if (!allowed.some((p) => k.startsWith(p))) return null;
+    const match = k.match(/\.([a-z0-9]+)$/i);
+    if (!match) return null;
+    const ext = match[1].toLowerCase();
+    const map = {
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        gif: "image/gif",
+        webp: "image/webp",
+    };
+    return map[ext] || null;
+}
+
+function decodeDataUriImage(dataUri) {
+    const match = String(dataUri || "").match(/^data:(image\/(?:jpeg|jpg|png|gif|webp));base64,(.+)$/is);
+    if (!match) return null;
+    const mime = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
+    try {
+        const bin = atob(match[2].replace(/\s+/g, ""));
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) {
+            bytes[i] = bin.charCodeAt(i);
+        }
+        return { mime, bytes };
+    } catch (_e) {
+        return null;
+    }
+}
+
+function generateBlogHtml(targetUrl, title, description, imageUrl) {
+    return `<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}">
+    <link rel="canonical" href="${escapeHtml(targetUrl)}">
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:site_name" content="UKMI POLMED">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="${escapeHtml(title)}">
+    <meta property="og:description" content="${escapeHtml(description)}">
+    <meta property="og:image" content="${escapeHtml(imageUrl)}">
+    <meta property="og:url" content="${escapeHtml(targetUrl)}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${escapeHtml(title)}">
+    <meta name="twitter:description" content="${escapeHtml(description)}">
+    <meta name="twitter:image" content="${escapeHtml(imageUrl)}">
+    <meta http-equiv="refresh" content="0; url=${escapeHtml(targetUrl)}">
+</head>
+<body>
+    <p>Mengalihkan ke artikel: <a href="${escapeHtml(targetUrl)}">${escapeHtml(title)}</a></p>
+</body>
+</html>`;
 }

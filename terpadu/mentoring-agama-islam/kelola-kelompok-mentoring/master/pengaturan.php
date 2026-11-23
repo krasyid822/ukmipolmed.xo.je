@@ -278,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isSingle) {
 // ---------------------------------------------------------------------------
 $master = MasterData::loadAll();
 $allRows = $master[$cfg['collection']] ?? [];
-$rows = $allRows;
+$rows = array_reverse($allRows);
 $record = null;
 
 if ($isSingle) {
@@ -694,6 +694,7 @@ if ($record !== null) {
                         <div class="photo-fields">
                             <input type="file" name="foto_profil" accept="image/*"
                                    class="form-control" data-profile-photo
+                                   data-allow-clipboard="true"
                                    <?= $tipe === 'tim' ? 'data-require-face="false" data-crop="contain"' : 'capture="user"' ?>
                                    data-preview="settings-photo-preview" data-info="settings-photo-info">
                             <div class="photo-hint" id="settings-photo-info"><?= $h($cfg['photo_hint']) ?></div>
@@ -846,52 +847,54 @@ if ($record !== null) {
                     <input type="text" class="table-search-input" id="settings-search"
                            placeholder="🔍 Cari data <?= $h(strtolower($cfg['label'])) ?>...">
                 </div>
-                <table class="attendance-table">
-                    <thead>
-                        <tr>
-                            <?php foreach ($columns as $column): ?>
-                                <th><?= $h($column) ?></th>
-                            <?php endforeach; ?>
-                        </tr>
-                    </thead>
-                    <tbody id="settings-tbody">
-                        <?php foreach ($rows as $row): ?>
-                            <?php
-                            $id = (string)($row['id'] ?? '');
-                            $openUrl = $basePath . 'pengaturan?tipe=' . urlencode($tipe) . '&id=' . urlencode($id);
-                            ?>
+                <div class="table-scroll">
+                    <table class="attendance-table">
+                        <thead>
                             <tr>
-                                <?php if ($tipe === 'mentor'): ?>
-                                    <?= $renderAvatar($row['foto_profil'] ?? null, $row['nama_lengkap'] ?? '') ?>
-                                    <td><b><?= $h($row['nama_lengkap'] ?? '-') ?></b><br><small><?= $h($id) ?></small></td>
-                                    <td><?= $h($row['nomor_whatsapp'] ?? '-') ?></td>
-                                    <td><?= $h($row['status_kesibukan'] ?? '-') ?></td>
-                                    <td><span class="badge-status aktif"><?= $h($row['status'] ?? 'Aktif') ?></span></td>
-                                <?php elseif ($tipe === 'tim'): ?>
-                                    <?= $renderAvatar($row['foto_profil'] ?? null, $row['nama_tim'] ?? '') ?>
-                                    <td><b><?= $h($row['nama_tim'] ?? '-') ?></b><br><small><?= $h($id) ?></small></td>
-                                    <td><?= $h($mentorNames[$row['mentor_id'] ?? ''] ?? ($row['mentor_id'] ?? '-')) ?></td>
-                                    <td><span class="badge-status aktif"><?= $h($row['status'] ?? 'Aktif') ?></span></td>
-                                <?php else: ?>
-                                    <?php
-                                    $statusBadgeClass = ($row['status_keaktifan'] ?? '') === 'Peringatan'
-                                        ? 'peringatan'
-                                        : ((($row['status_keaktifan'] ?? '') === 'Tidak Aktif') ? 'tidak_aktif' : 'aktif');
-                                    ?>
-                                    <?= $renderAvatar($row['foto_profil'] ?? null, $row['nama_lengkap'] ?? '') ?>
-                                    <td><b><?= $h($row['nama_lengkap'] ?? '-') ?></b><br><small><?= $h($id) ?></small></td>
-                                    <?php $kelasArsip = Academic::formatClass($row['kelas'] ?? '', $row['nim'] ?? ''); ?>
-                                    <td><?= $h($row['nim'] ?? '-') ?><?= $kelasArsip !== '' ? ' • ' . $h($kelasArsip) : '' ?></td>
-                                    <td><?= $h($row['tim_id'] ?? '-') ?></td>
-                                    <td><span class="badge-status <?= $statusBadgeClass ?>"><?= $h($row['status_keaktifan'] ?? 'Aktif') ?></span></td>
-                                <?php endif; ?>
-                                <td>
-                                    <a class="row-action" href="<?= $h($openUrl) ?>">&#9881; Atur</a>
-                                </td>
+                                <?php foreach ($columns as $column): ?>
+                                    <th><?= $h($column) ?></th>
+                                <?php endforeach; ?>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody id="settings-tbody">
+                            <?php foreach ($rows as $row): ?>
+                                <?php
+                                $id = (string)($row['id'] ?? '');
+                                $openUrl = $basePath . 'pengaturan?tipe=' . urlencode($tipe) . '&id=' . urlencode($id);
+                                ?>
+                                <tr>
+                                    <?php if ($tipe === 'mentor'): ?>
+                                        <?= $renderAvatar($row['foto_profil'] ?? null, $row['nama_lengkap'] ?? '') ?>
+                                        <td><b><?= $h($row['nama_lengkap'] ?? '-') ?></b><br><small><?= $h($id) ?></small></td>
+                                        <td><?= $h($row['nomor_whatsapp'] ?? '-') ?></td>
+                                        <td><?= $h($row['status_kesibukan'] ?? '-') ?></td>
+                                        <td><span class="badge-status aktif"><?= $h($row['status'] ?? 'Aktif') ?></span></td>
+                                    <?php elseif ($tipe === 'tim'): ?>
+                                        <?= $renderAvatar($row['foto_profil'] ?? null, $row['nama_tim'] ?? '') ?>
+                                        <td><b><?= $h($row['nama_tim'] ?? '-') ?></b><br><small><?= $h($id) ?></small></td>
+                                        <td><?= $h($mentorNames[$row['mentor_id'] ?? ''] ?? ($row['mentor_id'] ?? '-')) ?></td>
+                                        <td><span class="badge-status aktif"><?= $h($row['status'] ?? 'Aktif') ?></span></td>
+                                    <?php else: ?>
+                                        <?php
+                                        $statusBadgeClass = ($row['status_keaktifan'] ?? '') === 'Peringatan'
+                                            ? 'peringatan'
+                                            : ((($row['status_keaktifan'] ?? '') === 'Tidak Aktif') ? 'tidak_aktif' : 'aktif');
+                                        ?>
+                                        <?= $renderAvatar($row['foto_profil'] ?? null, $row['nama_lengkap'] ?? '') ?>
+                                        <td><b><?= $h($row['nama_lengkap'] ?? '-') ?></b><br><small><?= $h($id) ?></small></td>
+                                        <?php $kelasArsip = Academic::formatClass($row['kelas'] ?? '', $row['nim'] ?? ''); ?>
+                                        <td><?= $h($row['nim'] ?? '-') ?><?= $kelasArsip !== '' ? ' • ' . $h($kelasArsip) : '' ?></td>
+                                        <td><?= $h($row['tim_id'] ?? '-') ?></td>
+                                        <td><span class="badge-status <?= $statusBadgeClass ?>"><?= $h($row['status_keaktifan'] ?? 'Aktif') ?></span></td>
+                                    <?php endif; ?>
+                                    <td>
+                                        <a class="row-action" href="<?= $h($openUrl) ?>">&#9881; Atur</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
         </div>
     <?php endif; ?>

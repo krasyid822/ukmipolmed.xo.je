@@ -293,4 +293,147 @@ class ReportRepository {
         }
         return round(($hadir / $total) * 100, 1);
     }
+
+    /**
+     * Pulihkan laporan mentoring beserta og_meta dan dokumentasinya dari bundel backup.
+     *
+     * @param array<int,array<string,mixed>> $pointers
+     * @param array<string,string> $objects Base64-encoded S3 objects keyed by relative S3 path
+     * @param array<string,string> $checksums SHA-256 hex keyed by relative S3 path
+     * @return array{ok:bool,restored:int,media_restored:int,skipped:array<int,string>,error:?string}
+     */
+    public static function importFromBackup(array $pointers, array $objects, array $checksums, bool $replaceAll = false): array {
+        $s3 = new S3Client();
+        $ogFolder = Config::get('storage.folders.og_meta', 'og_meta/');
+        $restoredPointers = [];
+        $skipped = [];
+        $mediaRestored = 0;
+
+        foreach ($pointers as $pointer) {
+            if (!is_array($pointer)) {
+                continue;
+            }
+            $id = trim((string)($pointer['id'] ?? ''));
+            $s3Path = (string)($pointer['s3_path'] ?? '');
+            $crypto = $pointer['crypto'] ?? null;
+
+            if ($id === '' || $s3Path === '' || !is_array($crypto)) {
+                $skipped[] = $id !== '' ? $id : '(tanpa-id)';
+                continue;
+            }
+
+            $b64 = $objects[$s3Path] ?? null;
+            if (!is_string($b64) || $b64 === '') {
+                $skipped[] = $id;
+                continue;
+            }
+
+            $raw = base64_decode($b64, true);
+            if ($raw === false) {
+                $skipped[] = $id;
+                continue;
+            }
+
+            if (isset($checksums[$s3Path]) && !hash_equals((string)$checksums[$s3Path], hash('sha256', $raw))) {
+                $skipped[] = $id . ' (checksum tidak cocok)';
+                continue;
+            }
+
+            $decrypted = Crypto::decryptData(
+                $raw,
+                (string)($crypto['key'] ?? ''),
+                (string)($crypto['iv'] ?? ''),
+                (string)($crypto['tag'] ?? ''),
+                true
+            );
+            if (!is_array($decrypted)) {
+                $skipped[] = $id . ' (gagal dekripsi)';
+                continue;
+            }
+
+            if (!$s3->putObject($s3Path, $raw, 'application/octet-stream', false)) {
+                $skipped[] = $id . ' (gagal unggah S3)';
+                continue;
+            }
+
+            $dokPath = (string)($pointer['dokumentasi_path'] ?? '');
+            if ($dokPath !== '' && is_string($objects[$dokPath] ?? null)) {
+                $dokRaw = base64_decode($objects[$dokPath], true);
+                if ($dokRaw !== false && (!isset($checksums[$dokPath]) || hash_equals((string)$checksums[$dokPath], hash('sha256', $dokRaw)))) {
+                    $ext = strtolower(pathinfo($dokPath, PATHINFO_EXTENSION));
+                    $mime = match ($ext) {
+                        'webp' => 'image/webp',
+                        'png' => 'image/png',
+                        default => 'image/jpeg',
+                    };
+                    if ($s3->putObject($dokPath, $dokRaw, $mime, true)) {
+                        $mediaRestored++;
+                    }
+                }
+            }
+
+            $ogPath = $ogFolder . $id . '.json';
+            $ogRaw = null;
+            if (is_string($objects[$ogPath] ?? null)) {
+                $decodedOg = base64_decode($objects[$ogPath], true);
+                if ($decodedOg !== false && (!isset($checksums[$ogPath]) || hash_equals((string)$checksums[$ogPath], hash('sha256', $decodedOg)))) {
+                    $ogRaw = $decodedOg;
+                }
+            }
+            if ($ogRaw === null) {
+                $ogMeta = [
+                    'title' => 'Laporan Mentoring ' . ($decrypted['nama_tim'] ?? ($pointer['nama_tim'] ?? '')),
+                    'description' => 'Tema: ' . ($decrypted['tema'] ?? ($pointer['tema'] ?? '')) . ' | Waktu: '
+                        . Watobot::formatTanggalIndonesia((string)($decrypted['tanggal'] ?? ($pointer['tanggal'] ?? date('Y-m-d'))))
+                        . ' | Tempat: ' . ($decrypted['tempat'] ?? ''),
+                    'image' => $dokPath,
+                    'tim' => $decrypted['nama_tim'] ?? ($pointer['nama_tim'] ?? ''),
+                ];
+                $ogRaw = (string)json_encode($ogMeta, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+            $s3->putObject($ogPath, $ogRaw, 'application/json', true);
+
+            $restoredPointers[] = $pointer;
+        }
+
+        if ($replaceAll) {
+            $ok = Storage::replacePointers('laporan', $restoredPointers);
+        } else {
+            try {
+                $existing = Storage::getPointers('laporan');
+            } catch (\Throwable $e) {
+                $existing = [];
+            }
+
+            $byId = [];
+            foreach ($existing as $p) {
+                if (is_array($p) && !empty($p['id'])) {
+                    $byId[(string)$p['id']] = $p;
+                }
+            }
+            foreach ($restoredPointers as $p) {
+                $byId[(string)$p['id']] = $p;
+            }
+
+            $ok = Storage::replacePointers('laporan', array_values($byId));
+        }
+
+        if (!$ok) {
+            return [
+                'ok' => false,
+                'restored' => count($restoredPointers),
+                'media_restored' => $mediaRestored,
+                'skipped' => $skipped,
+                'error' => 'Gagal memperbarui pointer_laporan.json.',
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'restored' => count($restoredPointers),
+            'media_restored' => $mediaRestored,
+            'skipped' => $skipped,
+            'error' => null,
+        ];
+    }
 }

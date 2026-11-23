@@ -22,10 +22,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $namaLengkap = trim($_POST['nama_lengkap'] ?? '');
     $nomorWa = trim($_POST['nomor_whatsapp'] ?? '');
 
-    if ($namaLengkap === '' || $nomorWa === '') {
-        header('Location: ' . $basePath . 'tambah-mentor?error=wajib', true, 303);
+    $validationError = MasterSchema::validatePersonInput([
+        'nama_lengkap' => $namaLengkap,
+        'nomor_whatsapp' => $nomorWa,
+        'gender' => $_POST['gender'] ?? 'Laki-laki',
+        'tempat_lahir' => $_POST['tempat_lahir'] ?? '',
+        'tanggal_lahir' => $_POST['tanggal_lahir'] ?? '',
+        'nim' => $_POST['nim'] ?? '',
+        'kelas' => $_POST['kelas'] ?? '',
+        'jadwal_kuliah' => $_POST['jadwal_kuliah_mentor'] ?? 'Tidak Menentu',
+        'status_kesibukan' => $_POST['status_kesibukan'] ?? 'Kuliah',
+        'alamat_sekarang' => $_POST['alamat_sekarang'] ?? '',
+        'alamat_orang_tua' => $_POST['alamat_orang_tua'] ?? '',
+    ], true);
+    if ($validationError !== null) {
+        header('Location: ' . $basePath . 'tambah-mentor?error=validasi&pesan=' . rawurlencode($validationError), true, 303);
         exit;
     }
+    $nomorWa = MasterSchema::normalizePhone($nomorWa);
 
     $newId = 'mtr-' . substr(bin2hex(random_bytes(3)), 0, 6);
 
@@ -55,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'jadwal_kerja' => trim($_POST['jadwal_kerja'] ?? ''),
                 'nim' => trim($_POST['nim'] ?? ''),
                 'kelas' => Academic::normalizeClass($_POST['kelas'] ?? ''),
-                'jadwal_kuliah' => trim($_POST['jadwal_kuliah_mentor'] ?? ''),
+                'jadwal_kuliah' => trim($_POST['jadwal_kuliah_mentor'] ?? 'Tidak Menentu') ?: 'Tidak Menentu',
             ],
             'alamat_sekarang' => MasterSchema::normalizeName((string)($_POST['alamat_sekarang'] ?? '')),
             'alamat_orang_tua' => MasterSchema::normalizeName((string)($_POST['alamat_orang_tua'] ?? '')),
@@ -91,10 +105,12 @@ $formError = mentoring_form_error();
 <body>
 <?php mentoring_loading_overlay(); ?>
 
-<div class="container" style="max-width: 960px;">
+<div class="container master-subpage" style="max-width: 960px;">
     <header class="page-header">
-        <h1 class="page-title">Tambah Mentor Baru</h1>
-        <p class="page-subtitle">Lengkapi biodata mentor pendamping mentoring</p>
+        <div>
+            <h1 class="page-title">Tambah Mentor Baru</h1>
+            <p class="page-subtitle">Lengkapi biodata mentor pendamping mentoring</p>
+        </div>
         <div class="subpage-back">
             <a href="<?= htmlspecialchars($basePath) ?>">&larr; Kembali ke Data Master</a>
         </div>
@@ -118,8 +134,15 @@ $formError = mentoring_form_error();
         </div>
     <?php endif; ?>
 
+    <div id="draftRestoreBanner" style="display:none; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #6ee7b7; padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 0.85rem; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+        <span>Progres pengisian terakhir Anda dipulihkan otomatis.</span>
+        <button type="button" id="btnResetDraft" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; padding: 5px 11px; border-radius: 7px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit;">Reset Isian</button>
+    </div>
+
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
+            <div class="master-form-split">
+            <div class="master-form-col">
             <div class="form-section-label">Foto Profil</div>
             <div class="form-group">
                 <label>Foto Selfie Mentor:</label>
@@ -128,6 +151,7 @@ $formError = mentoring_form_error();
                     <div class="photo-fields">
                         <input type="file" name="foto_profil" accept="image/*" capture="user"
                                class="form-control" data-profile-photo
+                               data-allow-clipboard="true"
                                data-preview="mentor-photo-preview" data-info="mentor-photo-info">
                         <div class="photo-hint" id="mentor-photo-info">
                             Wajib berupa <b>foto selfie</b> yang memperlihatkan wajah dengan jelas
@@ -141,11 +165,11 @@ $formError = mentoring_form_error();
             <div class="form-grid">
                 <div class="form-group">
                     <label>Nama Lengkap &amp; Gelar: <span style="color:#f87171">*</span></label>
-                    <input type="text" name="nama_lengkap" class="form-control" required placeholder="Ahmad Fauzi, S.Kom.">
+                    <input type="text" name="nama_lengkap" class="form-control" required minlength="2" maxlength="120" placeholder="Ahmad Fauzi, S.Kom.">
                 </div>
                 <div class="form-group">
                     <label>Nomor WhatsApp: <span style="color:#f87171">*</span></label>
-                    <input type="text" name="nomor_whatsapp" class="form-control" required placeholder="6281234567890">
+                    <input type="tel" name="nomor_whatsapp" class="form-control" required inputmode="numeric" pattern="(\+?62|0)8[0-9\s\-]{7,15}" title="Gunakan nomor WhatsApp Indonesia yang valid, mis. 6281234567890 atau 081234567890" placeholder="6281234567890">
                 </div>
                 <div class="form-group">
                     <label>Gender:</label>
@@ -156,11 +180,11 @@ $formError = mentoring_form_error();
                 </div>
                 <div class="form-group">
                     <label>Tempat Lahir:</label>
-                    <input type="text" name="tempat_lahir" class="form-control" placeholder="Medan">
+                    <input type="text" name="tempat_lahir" class="form-control" minlength="2" maxlength="80" placeholder="Medan">
                 </div>
                 <div class="form-group">
                     <label>Tanggal Lahir:</label>
-                    <input type="date" name="tanggal_lahir" class="form-control">
+                    <input type="date" name="tanggal_lahir" class="form-control" min="1940-01-01" max="<?= date('Y-m-d', strtotime('-10 years')) ?>">
                 </div>
                 <div class="form-group">
                     <label>Status Kesibukan:</label>
@@ -171,18 +195,19 @@ $formError = mentoring_form_error();
                     </select>
                 </div>
             </div>
-
+            </div>
+            <div class="master-form-col">
             <!-- Detail Kuliah (tampil saat Kuliah / Kuliah & Bekerja) -->
             <div id="detail-kuliah">
                 <div class="form-section-label">Detail Perkuliahan</div>
-                <div class="form-grid">
+                <div class="form-grid cols-3">
                     <div class="form-group">
                         <label>NIM:</label>
-                        <input type="text" name="nim" class="form-control" placeholder="2305181010">
+                        <input type="text" name="nim" class="form-control" inputmode="numeric" pattern="\d{6,15}" title="NIM harus berupa angka 6–15 digit" placeholder="2305181010">
                     </div>
                     <div class="form-group">
                         <label>Kelas:</label>
-                        <input type="text" name="kelas" class="form-control" placeholder="TRPL-A">
+                        <input type="text" name="kelas" class="form-control" pattern="[A-Za-z]{2,10}([\s\-]?[0-9]*[A-Za-z][A-Za-z0-9]*)?" title="Contoh: TRPL-A atau MI-B" placeholder="TRPL-A">
                         <div class="photo-hint">Cukup program studi + kelas, contoh <b>TRPL-A</b>. Semester dihitung otomatis dari dua digit awal NIM.</div>
                     </div>
                     <div class="form-group">
@@ -190,7 +215,7 @@ $formError = mentoring_form_error();
                         <select name="jadwal_kuliah_mentor" class="form-control">
                             <option value="Pagi">Pagi</option>
                             <option value="Sore">Sore</option>
-                            <option value="Tidak Menentu">Tidak Menentu</option>
+                            <option value="Tidak Menentu" selected>Tidak Menentu</option>
                         </select>
                     </div>
                 </div>
@@ -199,7 +224,7 @@ $formError = mentoring_form_error();
             <!-- Detail Bekerja (tampil saat Bekerja / Kuliah & Bekerja) -->
             <div id="detail-bekerja" style="display:none;">
                 <div class="form-section-label">Detail Pekerjaan</div>
-                <div class="form-grid">
+                <div class="form-grid cols-3">
                     <div class="form-group">
                         <label>Instansi / Perusahaan:</label>
                         <input type="text" name="instansi_perusahaan" class="form-control" placeholder="PT. Contoh">
@@ -219,11 +244,11 @@ $formError = mentoring_form_error();
             <div class="form-grid">
                 <div class="form-group">
                     <label>Alamat Sekarang:</label>
-                    <input type="text" name="alamat_sekarang" class="form-control" placeholder="Jl. Medan, No. 1">
+                    <input type="text" name="alamat_sekarang" class="form-control" minlength="4" maxlength="250" placeholder="Jl. Medan, No. 1">
                 </div>
                 <div class="form-group">
                     <label>Alamat Orang Tua:</label>
-                    <input type="text" name="alamat_orang_tua" class="form-control" placeholder="Jl. Kampung, No. 2">
+                    <input type="text" name="alamat_orang_tua" class="form-control" minlength="4" maxlength="250" placeholder="Jl. Kampung, No. 2">
                 </div>
                 <div class="form-group col-span-2">
                     <label>Amanah Organisasi:</label>
@@ -234,6 +259,8 @@ $formError = mentoring_form_error();
             <div class="form-actions">
                 <button type="submit" class="submit-btn">Simpan Mentor</button>
                 <a href="<?= htmlspecialchars($basePath) ?>" class="btn-cancel">Batal</a>
+            </div>
+            </div>
             </div>
         </form>
     </div>
@@ -274,5 +301,17 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 <script src="<?= htmlspecialchars($appBase) ?>public/assets/js/searchable-select.js"></script>
 <script src="<?= htmlspecialchars($appBase) ?>public/assets/js/profile-photo.js"></script>
+<script src="<?= htmlspecialchars($appBase) ?>public/assets/js/master-draft.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof initMasterFormDraft === 'function') {
+        initMasterFormDraft({
+            key: 'mai_master_draft_mentor_v1',
+            photoPreviewId: 'mentor-photo-preview',
+            photoInfoId: 'mentor-photo-info'
+        });
+    }
+});
+</script>
 </body>
 </html>

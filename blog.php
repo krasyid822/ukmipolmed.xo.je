@@ -527,7 +527,13 @@ if ($filterSlug !== '' && count($posts) === 1) {
 
 			</div>
 
-			<?php $shareUrl = $metaUrl; $shareText = $metaTitle; ?>
+			<?php
+			$workerBase = rtrim(trim((string) ($config['worker_redirector_url'] ?? 'https://laporan-mai.krasyid822.workers.dev')), '/');
+			$shareUrl = ($canonicalSlug !== '' && $workerBase !== '')
+				? ($workerBase . '/blog/' . rawurlencode($canonicalSlug))
+				: $metaUrl;
+			$shareText = $metaTitle;
+			?>
 			<div class="share-bar" style="margin-top:16px;padding:14px 16px;border:1px solid var(--stroke);border-radius:14px;background:rgba(255,255,255,0.03);display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
 				<strong style="font-size:14px;color:var(--muted);">Bagikan:</strong>
 				<a class="btn ghost" style="min-height:40px;padding:8px 12px;font-size:14px;" target="_blank" rel="noopener" href="https://wa.me/?text=<?php echo urlencode($shareText . ' ' . $shareUrl); ?>" data-insight="share_wa">WhatsApp</a>

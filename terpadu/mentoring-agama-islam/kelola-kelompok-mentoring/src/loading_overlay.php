@@ -113,7 +113,7 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
     .ukmi-loading-track span { animation: none; left: 32%; }
 }
 </style>
-<div class="ukmi-loading-overlay" id="ukmi-loading-overlay" role="status" aria-live="polite" aria-busy="true">
+<div class="ukmi-loading-overlay is-visible" id="ukmi-loading-overlay" role="status" aria-live="polite" aria-busy="true">
     <div class="ukmi-loading-media">
         <img class="ukmi-loading-gif" src="<?= htmlspecialchars($assetBase, ENT_QUOTES) ?>public/assets/img/palestine.gif?v=2" alt="Animasi pemuatan" width="260" height="260">
         <picture class="ukmi-loading-picture-logo">
@@ -132,16 +132,13 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
     if (!el) return;
     var textEl = document.getElementById('ukmi-loading-text');
     var defaultText = 'Memuat konten, mohon tunggu...';
-    var showDelay = 120;
     var minVisible = 420;
-    var shownAt = 0;
+    var shownAt = Date.now();
     var done = false;
-    var showTimer = null;
     var hideTimer = null;
     var limitTimer = null;
 
     function clearTimers() {
-        if (showTimer) { clearTimeout(showTimer); showTimer = null; }
         if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
         if (limitTimer) { clearTimeout(limitTimer); limitTimer = null; }
     }
@@ -168,13 +165,6 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
         }, 15000);
     }
 
-    function showInitial() {
-        if (done || !el) return;
-        el.classList.add('is-visible');
-        shownAt = Date.now();
-    }
-
-    showTimer = setTimeout(showInitial, showDelay);
     limitTimer = setTimeout(function () {
         if (!done) hide();
     }, 15000);
@@ -217,6 +207,29 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
         if (form.hasAttribute('data-no-loading')) return;
         if (form.target && form.target !== '_self') return;
         showNow('Memproses permintaan, mohon tunggu...');
+    });
+
+    document.addEventListener('click', function (event) {
+        if (event.defaultPrevented || event.button !== 0) return;
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        var target = event.target;
+        var link = target && target.closest ? target.closest('a[href]') : null;
+        if (!link) return;
+        if (link.hasAttribute('download') || link.hasAttribute('data-no-loading')) return;
+        var linkTarget = link.getAttribute('target');
+        if (linkTarget && linkTarget !== '_self') return;
+        var rawHref = (link.getAttribute('href') || '').trim();
+        if (!rawHref || rawHref.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(rawHref)) return;
+        try {
+            var nextUrl = new URL(link.href, window.location.href);
+            if (nextUrl.origin !== window.location.origin) return;
+            if (nextUrl.pathname === window.location.pathname && nextUrl.search === window.location.search && nextUrl.hash !== '') {
+                return;
+            }
+        } catch (e) {
+            return;
+        }
+        showNow('Memuat halaman, mohon tunggu...');
     });
 })();
 </script>

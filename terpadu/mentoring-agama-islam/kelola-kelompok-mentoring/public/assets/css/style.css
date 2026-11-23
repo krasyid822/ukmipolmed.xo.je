@@ -33,6 +33,7 @@ body {
 .container {
     width: 100%;
     max-width: 840px;
+    min-width: 0;
 }
 
 .page-header {
@@ -75,7 +76,7 @@ body {
 
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
 }
 
@@ -84,6 +85,8 @@ body {
     flex-direction: column;
     gap: 6px;
     margin-bottom: 14px;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .form-group.col-span-2 {
@@ -107,7 +110,13 @@ label {
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     -webkit-appearance: none;
+}
+
+input.form-control[readonly] {
+    text-overflow: ellipsis;
 }
 
 .form-control:focus {
@@ -121,11 +130,13 @@ label {
     flex-direction: column;
     gap: 8px;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .field-row-top {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
 }
 
@@ -133,6 +144,8 @@ label {
 .searchable-select-wrapper {
     position: relative;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .searchable-select-trigger {
@@ -143,11 +156,16 @@ label {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
     cursor: pointer;
     font-size: 0.925rem;
     color: var(--text-main);
     user-select: none;
     min-height: 42px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .searchable-select-trigger:focus,
@@ -156,10 +174,14 @@ label {
 }
 
 .trigger-text {
+    display: block;
+    flex: 1 1 0%;
+    min-width: 0;
+    max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-right: 8px;
+    padding-right: 4px;
 }
 
 .trigger-arrow {
@@ -211,6 +233,9 @@ label {
     color: #cbd5e1;
     cursor: pointer;
     transition: background 0.15s;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.4;
 }
 
 .searchable-select-item:hover {
@@ -235,6 +260,17 @@ label {
 .attendance-desktop {
     display: block;
     overflow-x: auto;
+}
+
+.table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll > table {
+    width: 100%;
 }
 
 .attendance-table {
@@ -316,10 +352,21 @@ label {
     gap: 8px;
 }
 
+.mentee-card-header > div {
+    min-width: 0;
+    flex: 1 1 0%;
+}
+
+.mentee-card-header .badge-status {
+    flex-shrink: 0;
+}
+
 .mentee-card-name {
     font-size: 0.95rem;
     font-weight: 700;
     color: #f8fafc;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .mentee-card-sub {
@@ -536,6 +583,38 @@ label {
     color: var(--text-muted);
     line-height: 1.5;
     margin-top: 6px;
+}
+
+.photo-clipboard-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.photo-clipboard-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.photo-clipboard-btn:hover {
+    background: rgba(2, 132, 199, 0.2);
+    border-color: var(--primary);
+    color: #38bdf8;
+}
+
+.photo-clipboard-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
 }
 
 .avatar-form {
@@ -755,7 +834,7 @@ label {
     }
 
     .form-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 10px;
     }
 
@@ -764,7 +843,7 @@ label {
     }
 
     .field-row-top {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 8px;
     }
 
@@ -780,4 +859,266 @@ label {
     .searchable-select-trigger {
         font-size: 0.9rem;
     }
+
+    .table-scroll .attendance-table th,
+    .table-scroll .attendance-table td {
+        padding: 10px 12px;
+    }
+
+    .table-scroll .attendance-table th {
+        white-space: nowrap;
+    }
+}
+
+@media (min-width: 1024px) {
+    body:has(.master-subpage) {
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    .container.master-subpage {
+        max-width: 1280px !important;
+    }
+
+    .master-subpage .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        text-align: left;
+        margin-bottom: 10px;
+    }
+
+    .master-subpage .page-title {
+        font-size: 1.35rem;
+        margin-bottom: 2px;
+    }
+
+    .master-subpage .page-subtitle {
+        font-size: 0.85rem;
+    }
+
+    .master-subpage .subpage-back {
+        margin-top: 0;
+    }
+
+    .master-subpage .card {
+        padding: 14px 18px;
+        margin-bottom: 0;
+    }
+
+    .master-subpage .form-grid {
+        gap: 10px 12px;
+    }
+
+    .master-subpage .form-group {
+        margin-bottom: 6px;
+        gap: 4px;
+    }
+
+    .master-subpage .form-control,
+    .master-subpage .searchable-select-trigger {
+        padding: 8px 10px;
+        min-height: 38px;
+        font-size: 0.9rem;
+    }
+
+    .master-subpage .form-section-label {
+        margin: 8px 0 6px;
+    }
+
+    .master-subpage .photo-hint {
+        font-size: 0.75rem;
+        line-height: 1.35;
+        margin-top: 3px;
+    }
+
+    .master-subpage .form-actions {
+        margin-top: 8px;
+    }
+
+    .master-subpage .form-actions .submit-btn,
+    .master-subpage .form-actions .btn-cancel {
+        padding: 8px 18px;
+        min-height: 38px;
+    }
+
+    .master-form-split {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        align-items: stretch;
+    }
+
+    .master-form-col {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .master-subpage .master-form-col > .form-actions {
+        margin-top: auto;
+        padding-top: 10px;
+    }
+
+    .master-subpage .master-form-col:nth-child(2) > .form-actions {
+        justify-content: flex-end;
+    }
+
+    .master-form-split .form-section-label:first-child {
+        margin-top: 0;
+    }
+
+    .form-grid.cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+/* Birthday Reminder Banner */
+.birthday-banner {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    color: #f8fafc;
+}
+
+.birthday-banner-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.birthday-banner-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fde68a;
+}
+
+.birthday-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.25);
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    color: #fde68a;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.birthday-close-btn {
+    background: transparent;
+    border: none;
+    color: #fde68a;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+    opacity: 0.8;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.birthday-close-btn:hover {
+    opacity: 1;
+    background: rgba(245, 158, 11, 0.18);
+}
+
+.birthday-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.birthday-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.birthday-person {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.birthday-name {
+    font-weight: 600;
+    color: #f8fafc;
+    font-size: 0.92rem;
+}
+
+.birthday-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.birthday-role {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #7dd3fc;
+}
+
+.birthday-team {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.birthday-age {
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #fde68a;
+    white-space: nowrap;
+}
+
+.birthday-banner-link {
+    display: block;
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.birthday-banner-link:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: rgba(245, 158, 11, 0.7);
+    transform: translateY(-1px);
+}
+
+.birthday-link-sub {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: #fcd34d;
+    opacity: 0.92;
+}
+
+.birthday-link-arrow {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fde68a;
 }

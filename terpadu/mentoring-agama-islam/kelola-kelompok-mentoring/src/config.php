@@ -112,4 +112,8 @@ class Config {
     public static function isProduction(): bool {
         return (self::get('app.mode') === 'production');
     }
+
+    public static function mentorShowcasePerPage(): int {
+        return max(1, (int)self::get('app.mentor_showcase_per_page', 3));
+    }
 }

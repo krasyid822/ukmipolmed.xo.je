@@ -83,6 +83,39 @@ final class MasterSchema {
             }
         }
 
+        // Rekonsiliasi status Disetujui pada pendaftar: hanya sah jika benar-benar terdaftar sebagai mentee & punya tim.
+        $validTeamIds = [];
+        foreach ($data['teams'] ?? [] as $team) {
+            if (is_array($team) && !empty($team['id'])) {
+                $validTeamIds[(string)$team['id']] = true;
+            }
+        }
+        $menteeTeamMap = [];
+        foreach (['mentees', 'archived_mentees'] as $mCol) {
+            foreach ($data[$mCol] ?? [] as $mentee) {
+                if (is_array($mentee) && !empty($mentee['id'])) {
+                    $menteeTeamMap[(string)$mentee['id']] = (string)($mentee['tim_id'] ?? '');
+                }
+            }
+        }
+        foreach ($data['registrants'] ?? [] as $index => $reg) {
+            if (!is_array($reg)) {
+                continue;
+            }
+            $assignedMenteeId = trim((string)($reg['assigned_mentee_id'] ?? ''));
+            $menteeTimId = $assignedMenteeId !== '' ? ($menteeTeamMap[$assignedMenteeId] ?? '') : '';
+            if ($assignedMenteeId !== '' && $menteeTimId !== '' && isset($validTeamIds[$menteeTimId])) {
+                $data['registrants'][$index]['status_pendaftaran'] = 'Disetujui';
+                $data['registrants'][$index]['assigned_tim_id'] = $menteeTimId;
+            } else {
+                $data['registrants'][$index]['assigned_mentee_id'] = '';
+                $data['registrants'][$index]['assigned_tim_id'] = '';
+                if (($reg['status_pendaftaran'] ?? '') === 'Disetujui') {
+                    $data['registrants'][$index]['status_pendaftaran'] = 'Menunggu';
+                }
+            }
+        }
+
         return $data;
     }
 
@@ -157,6 +190,13 @@ final class MasterSchema {
                     self::checkEnum($errors, $label, $row, 'pengalaman_mentoring', self::MENTORING_EXPERIENCE);
                     self::checkDate($errors, $label, $row, 'tanggal_lahir');
                     self::checkPhone($errors, $label, $row);
+                    if (($row['status_pendaftaran'] ?? '') === 'Disetujui') {
+                        $assignedMenteeId = trim((string)($row['assigned_mentee_id'] ?? ''));
+                        $assignedTimId = trim((string)($row['assigned_tim_id'] ?? ''));
+                        if ($assignedMenteeId === '' || $assignedTimId === '') {
+                            $errors[] = "{$label} berstatus Disetujui tetapi belum terhubung ke mentee dan tim.";
+                        }
+                    }
                 }
             }
         }
@@ -203,6 +243,105 @@ final class MasterSchema {
         }
 
         return $errors;
+    }
+
+    /**
+     * Validasi input form Tambah Tim Mentoring.
+     */
+    public static function validateTeamInput(string $namaTim, string $mentorId): ?string {
+        $namaTim = trim($namaTim);
+        $mentorId = trim($mentorId);
+
+        if ($namaTim === '' || $mentorId === '') {
+            return 'Nama tim dan mentor pendamping wajib diisi.';
+        }
+
+        $len = mb_strlen($namaTim, 'UTF-8');
+        if ($len < 2 || $len > 80 || !preg_match('/\p{L}/u', $namaTim)) {
+            return 'Nama tim harus 2–80 karakter dan mengandung huruf.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Validasi input form Tambah Mentor / Mentee.
+     */
+    public static function validatePersonInput(array $input, bool $isMentor): ?string {
+        $nama = trim((string)($input['nama_lengkap'] ?? ''));
+        $namaLen = mb_strlen($nama, 'UTF-8');
+        if ($nama === '' || $namaLen < 2 || $namaLen > 120 || !preg_match('/\p{L}.*\p{L}/u', $nama)) {
+            return 'Nama lengkap wajib diisi (2–120 karakter dan minimal mengandung 2 huruf).';
+        }
+
+        $waRaw = trim((string)($input['nomor_whatsapp'] ?? ''));
+        $waNorm = self::normalizePhone($waRaw);
+        if ($waRaw === '' || !preg_match('/^62\d{8,15}$/', $waNorm)) {
+            return 'Nomor WhatsApp tidak valid. Gunakan nomor Indonesia yang benar, mis. 6281234567890 atau 081234567890.';
+        }
+
+        $gender = trim((string)($input['gender'] ?? ''));
+        if (!in_array($gender, self::GENDERS, true)) {
+            return 'Gender tidak valid.';
+        }
+
+        $tempatLahir = trim((string)($input['tempat_lahir'] ?? ''));
+        if ($tempatLahir !== '') {
+            $tlLen = mb_strlen($tempatLahir, 'UTF-8');
+            if ($tlLen < 2 || $tlLen > 80 || !preg_match('/\p{L}/u', $tempatLahir)) {
+                return 'Tempat lahir harus 2–80 karakter dan mengandung huruf.';
+            }
+        }
+
+        $tanggalLahir = trim((string)($input['tanggal_lahir'] ?? ''));
+        if ($tanggalLahir !== '') {
+            if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $tanggalLahir, $m)
+                || !checkdate((int)$m[2], (int)$m[3], (int)$m[1])) {
+                return 'Tanggal lahir tidak valid (gunakan format YYYY-MM-DD).';
+            }
+            $year = (int)$m[1];
+            $maxYear = (int)date('Y') - 10;
+            if ($year < 1940 || $year > $maxYear) {
+                return "Tahun lahir harus antara 1940 sampai {$maxYear}.";
+            }
+        }
+
+        $nim = trim((string)($input['nim'] ?? ''));
+        if ($nim !== '' && !preg_match('/^\d{6,15}$/', $nim)) {
+            return 'NIM harus berupa angka 6–15 digit tanpa huruf atau spasi.';
+        }
+
+        $kelasRaw = trim((string)($input['kelas'] ?? ''));
+        if ($kelasRaw !== '') {
+            $kelasNorm = Academic::normalizeClass($kelasRaw);
+            if (!preg_match('/^[A-Z]{2,10}(-[A-Z][A-Z0-9]*)?$/', $kelasNorm)) {
+                return 'Format kelas tidak valid. Gunakan format prodi + kelas, mis. TRPL-A.';
+            }
+        }
+
+        $jadwalKuliah = trim((string)($input['jadwal_kuliah'] ?? ''));
+        if (!in_array($jadwalKuliah, self::SCHEDULES, true)) {
+            return 'Jadwal kuliah tidak valid.';
+        }
+
+        if ($isMentor) {
+            $statusKesibukan = trim((string)($input['status_kesibukan'] ?? ''));
+            if (!in_array($statusKesibukan, self::BUSY_STATUS, true)) {
+                return 'Status kesibukan tidak valid.';
+            }
+        }
+
+        foreach (['alamat_sekarang' => 'Alamat sekarang', 'alamat_orang_tua' => 'Alamat orang tua'] as $field => $label) {
+            $val = trim((string)($input[$field] ?? ''));
+            if ($val !== '') {
+                $len = mb_strlen($val, 'UTF-8');
+                if ($len < 4 || $len > 250 || !preg_match('/\p{L}/u', $val)) {
+                    return "{$label} harus 4–250 karakter dan mengandung huruf.";
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

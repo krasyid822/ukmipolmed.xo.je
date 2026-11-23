@@ -3,7 +3,7 @@
  * Mendukung Offline-First App Shell, Caching API Read, Background Sync, Periodic Sync, dan Push.
  */
 
-const CACHE_VERSION = 'mai-pwa-v20261122-2';
+const CACHE_VERSION = 'mai-pwa-v20261123-2';
 const APP_SHELL_CACHE = `app-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
 const API_CACHE = `api-${CACHE_VERSION}`;
@@ -15,9 +15,11 @@ const APP_SHELL_URLS = [
     './public/assets/css/style.css',
     './public/assets/css/style.css?v=4',
     './public/assets/css/style.css?v=5',
+    './public/assets/css/style.css?v=7',
     './public/assets/css/biometric.css',
     './public/assets/css/biometric.css?v=6',
     './public/assets/css/pwa.css',
+    './public/assets/css/pwa.css?v=1',
     './public/assets/js/searchable-select.js',
     './public/assets/js/searchable-select.js?v=4',
     './public/assets/js/image-compressor.js',
@@ -28,6 +30,7 @@ const APP_SHELL_URLS = [
     './public/assets/js/biometric.js',
     './public/assets/js/biometric.js?v=20261122-1',
     './public/assets/js/pwa-offline.js',
+    './public/assets/js/pwa-offline.js?v=1',
     './public/assets/img/favicon.webp?v=2',
     './public/assets/img/favicon.jpeg?v=2',
     './public/assets/img/palestine.gif?v=2'
@@ -136,31 +139,43 @@ self.addEventListener('fetch', (event) => {
                 const netRes = await fetch(request);
                 if (netRes && netRes.ok) {
                     cache.put(request, netRes.clone());
+                    const canonicalKey = url.pathname.includes('daftar') ? './daftar' : './';
+                    cache.put(canonicalKey, netRes.clone());
+                    return netRes;
                 }
-                return netRes;
+                if (netRes && netRes.status < 500) {
+                    return netRes;
+                }
             } catch (err) {
-                const cachedExact = await cache.match(request, { ignoreSearch: true });
-                if (cachedExact) return cachedExact;
-
-                if (url.pathname.includes('daftar')) {
-                    const cachedDaftar = await cache.match('./daftar', { ignoreSearch: true });
-                    if (cachedDaftar) return cachedDaftar;
-                } else {
-                    const cachedIndex = await cache.match('./', { ignoreSearch: true });
-                    if (cachedIndex) return cachedIndex;
-                }
-
-                const offlinePage = await cache.match('./offline.html');
-                return offlinePage || new Response('Offline', { status: 503 });
+                // Lanjut ke fallback cache di bawah
             }
+
+            const cachedExact = await cache.match(request, { ignoreSearch: true });
+            if (cachedExact) return cachedExact;
+
+            if (url.pathname.includes('daftar')) {
+                const cachedDaftar = await cache.match('./daftar', { ignoreSearch: true });
+                if (cachedDaftar) return cachedDaftar;
+            } else {
+                const cachedIndex = await cache.match('./', { ignoreSearch: true });
+                if (cachedIndex) return cachedIndex;
+            }
+
+            const cachedIndexPhp = await cache.match('./index.php', { ignoreSearch: true });
+            if (cachedIndexPhp) return cachedIndexPhp;
+
+            const offlinePage = await cache.match('./offline.html');
+            return offlinePage || new Response('Offline', { status: 503 });
         })());
         return;
     }
 
-    // 3. Static Assets (CSS, JS, Images): Stale-While-Revalidate (exact URL match)
+    // 3. Static Assets (CSS, JS, Images): Stale-While-Revalidate (exact URL match + fallback ignoreSearch)
     event.respondWith((async () => {
         const cache = await caches.open(RUNTIME_CACHE);
-        const cached = await cache.match(request) || await caches.match(request);
+        const cached = await cache.match(request) ||
+            await caches.match(request) ||
+            await caches.match(request, { ignoreSearch: true });
         const networkPromise = fetch(request).then((res) => {
             if (res && res.ok) {
                 cache.put(request, res.clone());

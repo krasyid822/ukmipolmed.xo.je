@@ -13,6 +13,7 @@ $appBase = mentoring_base_path(dirname(__DIR__));
 use Mentoring\AdminAuth;
 use Mentoring\MasterData;
 use Mentoring\MasterDataException;
+use Mentoring\MasterSchema;
 use Mentoring\ProfilePhoto;
 
 AdminAuth::guard();
@@ -21,8 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $namaTim = trim($_POST['nama_tim'] ?? '');
     $mentorId = trim($_POST['mentor_id'] ?? '');
 
-    if ($namaTim === '' || $mentorId === '') {
-        header('Location: ' . $basePath . 'tambah-tim?error=wajib', true, 303);
+    $validationError = MasterSchema::validateTeamInput($namaTim, $mentorId);
+    if ($validationError !== null) {
+        header('Location: ' . $basePath . 'tambah-tim?error=validasi&pesan=' . rawurlencode($validationError), true, 303);
         exit;
     }
 
@@ -104,10 +106,12 @@ $formError = mentoring_form_error();
 <body>
 <?php mentoring_loading_overlay(); ?>
 
-<div class="container" style="max-width: 960px;">
+<div class="container master-subpage" style="max-width: 960px;">
     <header class="page-header">
-        <h1 class="page-title">Tambah Tim Mentoring</h1>
-        <p class="page-subtitle">Buat kelompok mentoring baru beserta mentor pendampingnya</p>
+        <div>
+            <h1 class="page-title">Tambah Tim Mentoring</h1>
+            <p class="page-subtitle">Buat kelompok mentoring baru beserta mentor pendampingnya</p>
+        </div>
         <div class="subpage-back">
             <a href="<?= htmlspecialchars($basePath) ?>">&larr; Kembali ke Data Master</a>
         </div>
@@ -138,8 +142,15 @@ $formError = mentoring_form_error();
         </div>
     <?php endif; ?>
 
+    <div id="draftRestoreBanner" style="display:none; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #6ee7b7; padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-size: 0.85rem; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+        <span>Progres pengisian terakhir Anda dipulihkan otomatis.</span>
+        <button type="button" id="btnResetDraft" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; padding: 5px 11px; border-radius: 7px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit;">Reset Isian</button>
+    </div>
+
     <div class="card">
         <form method="POST" enctype="multipart/form-data">
+            <div class="master-form-split">
+            <div class="master-form-col">
             <div class="form-section-label">Logo Kelompok</div>
             <div class="form-group">
                 <label>Foto / Logo Identitas Kelompok:</label>
@@ -148,6 +159,7 @@ $formError = mentoring_form_error();
                     <div class="photo-fields">
                         <input type="file" name="foto_profil" accept="image/*"
                                class="form-control" data-profile-photo
+                               data-allow-clipboard="true"
                                data-require-face="false" data-crop="contain"
                                data-preview="tim-photo-preview" data-info="tim-photo-info">
                         <div class="photo-hint" id="tim-photo-info">
@@ -159,10 +171,12 @@ $formError = mentoring_form_error();
                 </div>
             </div>
 
+            </div>
+            <div class="master-form-col">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Nama Tim Mentoring: <span style="color:#f87171">*</span></label>
-                    <input type="text" name="nama_tim" class="form-control" required placeholder="Tim Al-Fatih">
+                    <input type="text" name="nama_tim" class="form-control" required minlength="2" maxlength="80" placeholder="Tim Al-Fatih">
                 </div>
                 <div class="form-group">
                     <label>Mentor Pendamping: <span style="color:#f87171">*</span></label>
@@ -179,16 +193,26 @@ $formError = mentoring_form_error();
                 <button type="submit" class="submit-btn">Simpan Tim</button>
                 <a href="<?= htmlspecialchars($basePath) ?>" class="btn-cancel">Batal</a>
             </div>
+            </div>
+            </div>
         </form>
     </div>
 </div>
 
 <script src="<?= htmlspecialchars($appBase) ?>public/assets/js/searchable-select.js"></script>
+<script src="<?= htmlspecialchars($appBase) ?>public/assets/js/master-draft.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select.form-control').forEach(el => {
         if (typeof initSearchableSelect === 'function') initSearchableSelect(el);
     });
+    if (typeof initMasterFormDraft === 'function') {
+        initMasterFormDraft({
+            key: 'mai_master_draft_tim_v1',
+            photoPreviewId: 'tim-photo-preview',
+            photoInfoId: 'tim-photo-info'
+        });
+    }
 });
 </script>
 <script src="<?= htmlspecialchars($appBase) ?>public/assets/js/profile-photo.js"></script>

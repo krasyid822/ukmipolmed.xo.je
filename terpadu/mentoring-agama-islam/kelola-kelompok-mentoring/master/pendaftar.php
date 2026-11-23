@@ -77,20 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: ' . $detailUrl(), true, 303);
             exit;
         }
-        $status = trim((string)($_POST['status_pendaftaran'] ?? 'Menunggu'));
-        if (!in_array($status, MasterSchema::REGISTRANT_STATUS, true)) {
-            $status = 'Menunggu';
-        }
         $catatan = trim((string)($_POST['catatan_admin'] ?? ''));
-        $namaLengkap = MasterSchema::normalizeName((string)($_POST['nama_lengkap'] ?? ''));
-        $nomorWa = MasterSchema::normalizePhone((string)($_POST['nomor_whatsapp'] ?? ''));
 
-        if ($namaLengkap === '' || $nomorWa === '') {
-            header('Location: ' . $detailUrl('', 'wajib'), true, 303);
-            exit;
-        }
-
-        $result = MasterData::transaction(static function (array $master) use ($regId, $status, $catatan, $namaLengkap, $nomorWa): array {
+        $result = MasterData::transaction(static function (array $master) use ($regId, $catatan): array {
             $idx = null;
             foreach ($master['registrants'] ?? [] as $i => $row) {
                 if (is_array($row) && (string)($row['id'] ?? '') === $regId) {
@@ -103,10 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $row = $master['registrants'][$idx];
-            $row['nama_lengkap'] = $namaLengkap;
-            $row['nomor_whatsapp'] = $nomorWa;
-            $row['status_pendaftaran'] = $status;
             $row['catatan_admin'] = $catatan;
+            $row['status_pendaftaran'] = 'Cadangan';
+            $row['alasan_penolakan'] = '';
             $row['updated_at'] = date('c');
 
             $master['registrants'][$idx] = $row;
@@ -118,6 +106,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         header('Location: ' . $detailUrl('updated'), true, 303);
+        exit;
+    }
+
+    if ($action === 'restore_to_cadangan') {
+        if (!empty($reg['assigned_mentee_id'])) {
+            header('Location: ' . $detailUrl(), true, 303);
+            exit;
+        }
+
+        $result = MasterData::transaction(static function (array $master) use ($regId): array {
+            $idx = null;
+            foreach ($master['registrants'] ?? [] as $i => $row) {
+                if (is_array($row) && (string)($row['id'] ?? '') === $regId) {
+                    $idx = $i;
+                    break;
+                }
+            }
+            if ($idx === null) {
+                throw new MasterDataException('Data pendaftar tidak ditemukan.', 'notfound');
+            }
+
+            $row = $master['registrants'][$idx];
+            $alasan = (string)($row['alasan_penolakan'] ?? '');
+            if ($alasan !== '' && (string)($row['catatan_admin'] ?? '') === $alasan) {
+                $row['catatan_admin'] = '';
+            }
+            $row['status_pendaftaran'] = 'Cadangan';
+            $row['alasan_penolakan'] = '';
+            $row['updated_at'] = date('c');
+
+            $master['registrants'][$idx] = $row;
+            return $master;
+        }, 'pulihkan-pendaftar');
+
+        if (!$result['ok']) {
+            mentoring_redirect_master_error($detailUrl(), $result);
+        }
+
+        header('Location: ' . $detailUrl('restored'), true, 303);
+        exit;
+    }
+
+    if ($action === 'reject') {
+        if (!empty($reg['assigned_mentee_id'])) {
+            header('Location: ' . $detailUrl(), true, 303);
+            exit;
+        }
+        $alasan = trim((string)($_POST['alasan_penolakan'] ?? ''));
+        if ($alasan === '') {
+            header('Location: ' . $detailUrl('', 'alasan_wajib'), true, 303);
+            exit;
+        }
+
+        $result = MasterData::transaction(static function (array $master) use ($regId, $alasan): array {
+            $idx = null;
+            foreach ($master['registrants'] ?? [] as $i => $row) {
+                if (is_array($row) && (string)($row['id'] ?? '') === $regId) {
+                    $idx = $i;
+                    break;
+                }
+            }
+            if ($idx === null) {
+                throw new MasterDataException('Data pendaftar tidak ditemukan.', 'notfound');
+            }
+
+            $row = $master['registrants'][$idx];
+            $row['status_pendaftaran'] = 'Ditolak';
+            $row['catatan_admin'] = $alasan;
+            $row['alasan_penolakan'] = $alasan;
+            $row['updated_at'] = date('c');
+
+            $master['registrants'][$idx] = $row;
+            return $master;
+        }, 'tolak-pendaftar');
+
+        if (!$result['ok']) {
+            mentoring_redirect_master_error($detailUrl(), $result);
+        }
+
+        header('Location: ' . $detailUrl('rejected'), true, 303);
         exit;
     }
 
@@ -152,6 +220,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $row = $master['registrants'][$idx];
+            $existingMenteeId = trim((string)($row['assigned_mentee_id'] ?? ''));
+            if ($existingMenteeId !== '') {
+                foreach ($master['mentees'] ?? [] as $mRow) {
+                    if (is_array($mRow) && (string)($mRow['id'] ?? '') === $existingMenteeId) {
+                        throw new MasterDataException('Pendaftar ini sudah terdaftar sebagai mentee.', 'duplikat');
+                    }
+                }
+            }
             $newMenteeId = 'mte-' . substr(bin2hex(random_bytes(3)), 0, 6);
 
             $master['mentees'][] = [
@@ -166,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'nomor_whatsapp' => (string)($row['nomor_whatsapp'] ?? ''),
                 'tim_id' => $timId,
                 'mentor_id' => $mentorId,
-                'jadwal_kuliah' => (string)($row['jadwal_kuliah'] ?? 'Pagi'),
+                'jadwal_kuliah' => (string)(($row['jadwal_kuliah'] ?? '') !== '' ? $row['jadwal_kuliah'] : 'Tidak Menentu'),
                 'alamat_sekarang' => (string)($row['alamat_sekarang'] ?? ''),
                 'alamat_orang_tua' => (string)($row['alamat_orang_tua'] ?? ''),
                 'amanah_organisasi' => 'Tidak Ada',
@@ -206,6 +282,27 @@ foreach ($master['mentors'] ?? [] as $m) {
 }
 
 $teams = $master['teams'] ?? [];
+$assignedMentee = null;
+$assignedTeam = null;
+$assignedMenteeId = trim((string)($reg['assigned_mentee_id'] ?? ''));
+if ($assignedMenteeId !== '') {
+    foreach (array_merge($master['mentees'] ?? [], $master['archived_mentees'] ?? []) as $mRow) {
+        if (is_array($mRow) && (string)($mRow['id'] ?? '') === $assignedMenteeId) {
+            $assignedMentee = $mRow;
+            break;
+        }
+    }
+    if ($assignedMentee !== null) {
+        $mTimId = (string)($assignedMentee['tim_id'] ?? '');
+        foreach ($teams as $tRow) {
+            if (is_array($tRow) && (string)($tRow['id'] ?? '') === $mTimId) {
+                $assignedTeam = $tRow;
+                break;
+            }
+        }
+    }
+}
+$isApprovedMentee = ($assignedMentee !== null && $assignedTeam !== null);
 $prefMentorId = (string)($reg['preferred_mentor_id'] ?? '');
 $mediaList = is_array($reg['media_komunikasi_list'] ?? null) ? $reg['media_komunikasi_list'] : [];
 if ($mediaList === [] && !empty($reg['media_komunikasi_lain'])) {
@@ -213,12 +310,14 @@ if ($mediaList === [] && !empty($reg['media_komunikasi_lain'])) {
 }
 
 $msg = match ((string)($_GET['msg'] ?? '')) {
-    'updated' => 'Data dan status pendaftar berhasil diperbarui.',
+    'updated' => 'Rencana penempatan pendaftar berhasil disimpan dan status ditandai sebagai Cadangan.',
+    'restored' => 'Status pendaftar berhasil dipulihkan menjadi Cadangan.',
+    'rejected' => 'Pendaftar telah ditandai sebagai Ditolak beserta alasannya.',
     default => '',
 };
 $err = match ((string)($_GET['error'] ?? '')) {
-    'wajib' => 'Nama lengkap dan Nomor WhatsApp wajib diisi.',
     'tim_wajib' => 'Pilih Tim Mentoring tujuan terlebih dahulu.',
+    'alasan_wajib' => 'Alasan penolakan wajib diisi.',
     default => mentoring_form_error(),
 };
 ?>
@@ -287,9 +386,71 @@ $err = match ((string)($_GET['error'] ?? '')) {
             flex-shrink: 0;
         }
         .reg-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .reg-page-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            text-align: left;
+            flex-wrap: wrap;
+        }
+        .reg-page-header .subpage-back { margin-top: 10px; }
+        .btn-reject-top {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 14px;
+            border-radius: 10px;
+            border: 1px solid #7f1d1d;
+            background: rgba(239, 68, 68, 0.12);
+            color: #fca5a5;
+            font-family: inherit;
+            font-size: 0.83rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-reject-top:hover { background: rgba(239, 68, 68, 0.25); border-color: #ef4444; }
+        .modal-box {
+            width: 100%;
+            max-width: 480px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+            max-height: calc(100vh - 36px);
+            overflow-y: auto;
+        }
+        .modal-box h3 {
+            font-size: 1.08rem;
+            color: #fecaca;
+            margin-bottom: 6px;
+        }
+        .modal-box > p {
+            font-size: 0.86rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+            margin-bottom: 14px;
+        }
+        .danger-btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            background: #dc2626;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .danger-btn:hover { background: #b91c1c; }
         @media (max-width: 600px) {
             .summary-grid { grid-template-columns: 1fr; }
             .summary-item.full { grid-column: span 1; }
+            .reg-page-header { flex-direction: column; }
         }
     </style>
 </head>
@@ -297,12 +458,32 @@ $err = match ((string)($_GET['error'] ?? '')) {
 <?php mentoring_loading_overlay(); ?>
 
 <div class="container" style="max-width: 960px;">
-    <header class="page-header">
-        <h1 class="page-title">Kelola Pendaftar</h1>
-        <p class="page-subtitle"><?= $h($reg['nama_lengkap'] ?? '-') ?> &bull; <?= $h($regId) ?></p>
-        <div class="subpage-back">
-            <a href="<?= $h($basePath) ?>#tab-pendaftar">&larr; Kembali ke Tab Pendaftar</a>
+    <header class="page-header reg-page-header">
+        <div>
+            <h1 class="page-title">Kelola Pendaftar</h1>
+            <p class="page-subtitle"><?= $h($reg['nama_lengkap'] ?? '-') ?> &bull; <?= $h($regId) ?></p>
+            <div class="subpage-back">
+                <a href="<?= $h($basePath) ?>#tab-pendaftar">&larr; Kembali ke Tab Pendaftar</a>
+            </div>
         </div>
+        <?php if (!$isApprovedMentee): ?>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <?php if (($reg['status_pendaftaran'] ?? '') === 'Ditolak'): ?>
+                    <form method="POST" style="margin: 0;">
+                        <input type="hidden" name="action" value="restore_to_cadangan">
+                        <input type="hidden" name="id" value="<?= $h($regId) ?>">
+                        <button type="submit" class="btn-action" style="padding: 9px 14px; font-size: 0.83rem;">&#8634; Pulihkan ke Cadangan</button>
+                    </form>
+                <?php endif; ?>
+                <form method="POST" style="margin: 0;"
+                      data-confirm="Hapus data pendaftar ini secara permanen?"
+                      data-confirm-title="Hapus Data Pendaftar">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="id" value="<?= $h($regId) ?>">
+                    <button type="submit" class="btn-reject-top">&#128465; Hapus Data Pendaftar</button>
+                </form>
+            </div>
+        <?php endif; ?>
     </header>
 
     <?php if ($msg !== ''): ?>
@@ -328,7 +509,18 @@ $err = match ((string)($_GET['error'] ?? '')) {
                 <?php endif; ?>
             </div>
             <div>
-                <h2 style="font-size: 1.25rem; color: #f8fafc;"><?= $h($reg['nama_lengkap'] ?? '-') ?></h2>
+                <?php
+                    $curStatus = (string)($reg['status_pendaftaran'] ?? 'Menunggu');
+                    $curBadgeClass = match ($curStatus) {
+                        'Disetujui' => 'aktif',
+                        'Ditolak' => 'tidak_aktif',
+                        default => 'peringatan',
+                    };
+                ?>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <h2 style="font-size: 1.25rem; color: #f8fafc;"><?= $h($reg['nama_lengkap'] ?? '-') ?></h2>
+                    <span class="badge-status <?= $curBadgeClass ?>"><?= $h($curStatus) ?></span>
+                </div>
                 <div style="font-size: 0.88rem; color: #94a3b8; margin-top: 2px;">
                     <?= $h($reg['gender'] ?? '-') ?> &bull; Mendaftar <?= !empty($reg['created_at']) ? $h(date('d M Y H:i', strtotime((string)$reg['created_at']))) : '-' ?>
                 </div>
@@ -405,16 +597,22 @@ $err = match ((string)($_GET['error'] ?? '')) {
                 <span class="summary-label">Alamat Orang Tua</span>
                 <span class="summary-value"><?= ($reg['alamat_orang_tua'] ?? '') !== '' ? $h($reg['alamat_orang_tua']) : '-' ?></span>
             </div>
+            <?php if (!empty($reg['catatan_admin'])): ?>
+            <div class="summary-item full">
+                <span class="summary-label"><?= ($reg['status_pendaftaran'] ?? '') === 'Ditolak' ? 'Alasan Penolakan' : 'Rencana Penempatan / Catatan Admin' ?></span>
+                <span class="summary-value"><?= nl2br($h($reg['catatan_admin'])) ?></span>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
     <!-- TERIMA & KONVERSI KE MENTEE -->
     <div class="card">
         <h3 class="card-title">Penempatan Kelompok (Konversi ke Mentee)</h3>
-        <?php if (!empty($reg['assigned_mentee_id'])): ?>
+        <?php if ($isApprovedMentee): ?>
             <p style="color: #34d399; font-size: 0.9rem;">
-                Pendaftar ini sudah diterima dan tercatat sebagai Mentee (ID: <b><?= $h($reg['assigned_mentee_id']) ?></b>).
-                <a href="<?= $h($basePath) ?>pengaturan?tipe=mentee&id=<?= urlencode((string)$reg['assigned_mentee_id']) ?>" style="color: #38bdf8; margin-left: 6px;">Lihat di Pengaturan Mentee &rarr;</a>
+                Pendaftar ini sudah diterima dan tercatat sebagai Mentee (ID: <b><?= $h($assignedMentee['id']) ?></b>) pada Tim <b><?= $h($assignedTeam['nama_tim']) ?></b>.
+                <a href="<?= $h($basePath) ?>pengaturan?tipe=mentee&id=<?= urlencode((string)$assignedMentee['id']) ?>" style="color: #38bdf8; margin-left: 6px;">Lihat di Pengaturan Mentee &rarr;</a>
             </p>
         <?php else: ?>
             <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 14px;">
@@ -444,47 +642,65 @@ $err = match ((string)($_GET['error'] ?? '')) {
         <?php endif; ?>
     </div>
 
-    <!-- PERBARUI STATUS & CATATAN -->
-    <?php if (empty($reg['assigned_mentee_id'])): ?>
+    <!-- RENCANA PENEMPATAN -->
+    <?php if (!$isApprovedMentee): ?>
     <div class="card">
-        <h3 class="card-title">Perbarui Status &amp; Catatan Admin</h3>
+        <h3 class="card-title">Rencana Penempatan</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">
+            <?php if (($reg['status_pendaftaran'] ?? '') === 'Ditolak'): ?>
+                Pendaftar ini berstatus <b>Ditolak</b>. Menyimpan rencana penempatan di bawah ini atau menekan tombol <b>Pulihkan ke Cadangan</b> akan mengembalikan status pendaftar menjadi <b>Cadangan</b>.
+            <?php else: ?>
+                Mengisi atau menyimpan rencana penempatan di bawah ini akan otomatis menandai status pendaftar menjadi <b>Cadangan</b>.
+            <?php endif; ?>
+        </p>
         <form method="POST">
             <input type="hidden" name="action" value="update">
             <input type="hidden" name="id" value="<?= $h($regId) ?>">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="nama_lengkap">Nama Lengkap:</label>
-                    <input type="text" name="nama_lengkap" id="nama_lengkap" class="form-control" required value="<?= $h($reg['nama_lengkap'] ?? '') ?>">
-                </div>
-                <div class="form-group">
-                    <label for="nomor_whatsapp">Nomor WhatsApp:</label>
-                    <input type="text" name="nomor_whatsapp" id="nomor_whatsapp" class="form-control" required value="<?= $h($reg['nomor_whatsapp'] ?? '') ?>">
-                </div>
-                <div class="form-group">
-                    <label for="status_pendaftaran">Status Pendaftaran:</label>
-                    <select name="status_pendaftaran" id="status_pendaftaran" class="form-control">
-                        <?php foreach (MasterSchema::REGISTRANT_STATUS as $st): ?>
-                            <option value="<?= $h($st) ?>" <?= ($reg['status_pendaftaran'] ?? 'Menunggu') === $st ? 'selected' : '' ?>><?= $h($st) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-group col-span-2">
-                    <label for="catatan_admin">Catatan Divisi Mentoring (Opsional):</label>
-                    <textarea name="catatan_admin" id="catatan_admin" class="form-control" rows="2" placeholder="Catatan tindak lanjut atau alasan status..."><?= $h($reg['catatan_admin'] ?? '') ?></textarea>
-                </div>
+            <div class="form-group">
+                <label for="catatan_admin">Rencana Penempatan / Catatan Divisi Mentoring:</label>
+                <textarea name="catatan_admin" id="catatan_admin" class="form-control" rows="7" style="min-height: 150px; line-height: 1.6; resize: vertical;" placeholder="Tuliskan rencana kelompok atau catatan tindak lanjut..."><?= ($reg['status_pendaftaran'] ?? '') === 'Ditolak' ? '' : $h($reg['catatan_admin'] ?? '') ?></textarea>
             </div>
-            <div class="form-actions" style="justify-content: space-between;">
-                <button type="submit" class="submit-btn">Simpan Perubahan</button>
+            <div class="form-actions" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button type="submit" class="submit-btn" style="width: auto; padding: 10px 20px;">
+                    <?= ($reg['status_pendaftaran'] ?? '') === 'Ditolak' ? 'Simpan Rencana &amp; Pulihkan ke Cadangan' : 'Simpan Rencana' ?>
+                </button>
             </div>
         </form>
 
-        <form method="POST" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #334155;"
-              data-confirm="Hapus data pendaftar ini secara permanen?"
-              data-confirm-title="Hapus Data Pendaftar">
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="id" value="<?= $h($regId) ?>">
-            <button type="submit" class="modal-btn danger" style="padding: 9px 16px;">Hapus Data Pendaftar</button>
-        </form>
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #334155; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <?php if (($reg['status_pendaftaran'] ?? '') === 'Ditolak'): ?>
+                <form method="POST" style="margin: 0;">
+                    <input type="hidden" name="action" value="restore_to_cadangan">
+                    <input type="hidden" name="id" value="<?= $h($regId) ?>">
+                    <button type="submit" class="btn-action" style="padding: 9px 16px;">&#8634; Pulihkan ke Status Cadangan</button>
+                </form>
+                <button type="button" class="modal-btn danger" style="padding: 9px 16px;" onclick="openRejectModal()">&#10005; Ubah Alasan Tolak</button>
+            <?php else: ?>
+                <button type="button" class="modal-btn danger" style="padding: 9px 16px;" onclick="openRejectModal()">&#10005; Tolak Pendaftar</button>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- MODAL TOLAK PENDAFTAR -->
+    <div class="modal-overlay" id="reject-modal" aria-hidden="true">
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
+            <h3 id="reject-modal-title">Tolak Pendaftar</h3>
+            <p>
+                Berikan alasan mengapa pendaftar <b><?= $h($reg['nama_lengkap'] ?? '-') ?></b> ditolak. Status akan berubah menjadi <b>Ditolak</b>.
+            </p>
+            <form method="POST" id="reject-form">
+                <input type="hidden" name="action" value="reject">
+                <input type="hidden" name="id" value="<?= $h($regId) ?>">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="alasan_penolakan">Alasan Penolakan: <span style="color:#f87171">*</span></label>
+                    <textarea name="alasan_penolakan" id="alasan_penolakan" class="form-control" rows="3" required placeholder="Contoh: Nomor WhatsApp tidak dapat dihubungi / mendaftar ganda..."><?= ($reg['status_pendaftaran'] ?? '') === 'Ditolak' ? $h($reg['catatan_admin'] ?? '') : '' ?></textarea>
+                </div>
+                <div class="modal-actions" style="margin-top: 16px; justify-content: flex-end;">
+                    <button type="button" class="btn-cancel" onclick="closeRejectModal()">Batal</button>
+                    <button type="submit" class="danger-btn">Tolak Pendaftar</button>
+                </div>
+            </form>
+        </div>
     </div>
     <?php endif; ?>
 </div>
@@ -492,7 +708,32 @@ $err = match ((string)($_GET['error'] ?? '')) {
 <script src="<?= $h($appBase) ?>public/assets/js/searchable-select.js"></script>
 <script src="<?= $h($appBase) ?>public/assets/js/modal.js?v=3"></script>
 <script>
+function openRejectModal() {
+    const modal = document.getElementById('reject-modal');
+    if (!modal) return;
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    const ta = document.getElementById('alasan_penolakan');
+    if (ta) setTimeout(() => ta.focus(), 50);
+}
+
+function closeRejectModal() {
+    const modal = document.getElementById('reject-modal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    const rejectModal = document.getElementById('reject-modal');
+    if (rejectModal) {
+        rejectModal.addEventListener('click', (event) => {
+            if (event.target === rejectModal) closeRejectModal();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && rejectModal.classList.contains('active')) closeRejectModal();
+        });
+    }
     document.querySelectorAll('form[data-confirm]').forEach((form) => {
         form.addEventListener('submit', (event) => {
             if (form.dataset.confirmed === '1') {
@@ -525,23 +766,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select.form-control').forEach(el => {
         if (typeof initSearchableSelect === 'function') initSearchableSelect(el);
     });
-
-    const namaEl = document.getElementById('nama_lengkap');
-    if (namaEl) {
-        const toTitleCase = (val) => val.toLowerCase().replace(/(^|[\s\-'])(\S)/g, (_, sep, ch) => sep + ch.toUpperCase());
-        namaEl.addEventListener('input', () => {
-            const start = namaEl.selectionStart;
-            const end = namaEl.selectionEnd;
-            const formatted = toTitleCase(namaEl.value);
-            if (namaEl.value !== formatted) {
-                namaEl.value = formatted;
-                if (start !== null && end !== null) namaEl.setSelectionRange(start, end);
-            }
-        });
-        namaEl.addEventListener('blur', () => {
-            namaEl.value = toTitleCase(namaEl.value).replace(/\s+/g, ' ').trim();
-        });
-    }
 });
 </script>
 </body>

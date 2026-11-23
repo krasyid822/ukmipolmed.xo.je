@@ -16,16 +16,93 @@ class ProfilePhotoPicker {
         this.requireFace = options.requireFace !== false;
         this.crop = options.crop === 'contain' ? 'contain' : 'cover';
         this.maxBytes = options.maxBytes || 8 * 1024 * 1024;
+        this.allowClipboard = Boolean(options.allowClipboard);
+        this._isInternalChange = false;
 
         if (!this.input) return;
 
         this.input.addEventListener('change', (e) => {
+            if (this._isInternalChange) return;
             const file = e.target.files && e.target.files[0];
             if (!file) {
                 this.reset();
                 return;
             }
             this.handleFile(file);
+        });
+
+        if (this.allowClipboard) {
+            this.initClipboardSupport();
+        }
+    }
+
+    initClipboardSupport() {
+        const bar = document.createElement('div');
+        bar.className = 'photo-clipboard-bar';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'photo-clipboard-btn';
+        btn.textContent = '📋 Tempel Foto dari Clipboard';
+
+        const hint = document.createElement('span');
+        hint.className = 'photo-clipboard-hint';
+        hint.textContent = 'atau tekan Ctrl+V / Cmd+V';
+
+        bar.appendChild(btn);
+        bar.appendChild(hint);
+        this.input.insertAdjacentElement('afterend', bar);
+
+        btn.addEventListener('click', async () => {
+            if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
+                this.setStatus('Peramban tidak mendukung tombol tempel. Gunakan shortcut <b>Ctrl+V / Cmd+V</b> di halaman ini.', '#fbbf24');
+                return;
+            }
+            try {
+                const items = await navigator.clipboard.read();
+                for (const item of items) {
+                    const imgType = item.types.find((t) => t.startsWith('image/'));
+                    if (imgType) {
+                        const blob = await item.getType(imgType);
+                        const file = new File([blob], 'clipboard-image.png', {
+                            type: imgType,
+                            lastModified: Date.now()
+                        });
+                        await this.handleFile(file);
+                        return;
+                    }
+                }
+                this.setStatus('✕ Tidak ada gambar di clipboard.', '#f87171');
+            } catch (err) {
+                this.setStatus('Tidak ada gambar di clipboard atau izin ditolak. Anda juga bisa langsung menekan <b>Ctrl+V / Cmd+V</b> di halaman ini.', '#fbbf24');
+            }
+        });
+
+        document.addEventListener('paste', (e) => {
+            const clipboardData = e.clipboardData;
+            if (!clipboardData) return;
+
+            let imageFile = null;
+            if (clipboardData.items) {
+                for (const item of clipboardData.items) {
+                    if (item.type && item.type.startsWith('image/')) {
+                        imageFile = item.getAsFile();
+                        break;
+                    }
+                }
+            } else if (clipboardData.files) {
+                for (const f of clipboardData.files) {
+                    if (f.type && f.type.startsWith('image/')) {
+                        imageFile = f;
+                        break;
+                    }
+                }
+            }
+
+            if (imageFile) {
+                e.preventDefault();
+                this.handleFile(imageFile);
+            }
         });
     }
 
@@ -120,6 +197,9 @@ class ProfilePhotoPicker {
             const dt = new DataTransfer();
             dt.items.add(compFile);
             this.input.files = dt.files;
+            this._isInternalChange = true;
+            this.input.dispatchEvent(new Event('change', { bubbles: true }));
+            this._isInternalChange = false;
 
             if (this.preview) {
                 this.preview.innerHTML = '';
@@ -145,7 +225,8 @@ function initProfilePhotoPickers() {
         const info = document.getElementById(input.dataset.info || '');
         new ProfilePhotoPicker(input, preview, info, {
             requireFace: input.dataset.requireFace !== 'false',
-            crop: input.dataset.crop === 'contain' ? 'contain' : 'cover'
+            crop: input.dataset.crop === 'contain' ? 'contain' : 'cover',
+            allowClipboard: input.dataset.allowClipboard === 'true'
         });
     });
 }

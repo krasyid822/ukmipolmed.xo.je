@@ -98,4 +98,13 @@ class Storage {
         $path = self::getPointerFile($type);
         return JsonFile::withLock($path . '.lock', static fn(): bool => JsonFile::writeAtomic($path, [$pointerRecord]));
     }
+
+    /**
+     * Ganti seluruh daftar pointer secara atomik di bawah lock.
+     */
+    public static function replacePointers(string $type, array $records): bool {
+        $path = self::getPointerFile($type);
+        $clean = array_values(array_filter($records, static fn($r): bool => is_array($r) && !empty($r['id'])));
+        return JsonFile::withLock($path . '.lock', static fn(): bool => JsonFile::writeAtomic($path, $clean));
+    }
 }

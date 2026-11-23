@@ -340,7 +340,7 @@ $attendanceRate = ReportRepository::attendanceRate(
         .btn-link.primary:hover { background: var(--primary-hover); }
         .btn-link.danger { background: rgba(239, 68, 68, 0.12); border-color: #7f1d1d; color: #fca5a5; }
         .btn-link.danger:hover { background: rgba(239, 68, 68, 0.25); border-color: #ef4444; color: #fecaca; }
-        .attendance-editor-wrap { overflow-x: auto; margin-top: 4px; }
+        .attendance-editor-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 4px; }
         .attendance-editor { width: 100%; min-width: 780px; border-collapse: collapse; }
         .attendance-editor th, .attendance-editor td { padding: 10px 12px; border-bottom: 1px solid #334155; text-align: left; }
         .attendance-editor th { background: #0b1120; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }

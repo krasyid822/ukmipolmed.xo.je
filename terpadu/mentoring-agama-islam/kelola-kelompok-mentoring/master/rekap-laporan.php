@@ -223,7 +223,7 @@ $h = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES);
         .export-note { font-size: 0.78rem; color: var(--text-muted); flex: 1 1 280px; line-height: 1.5; }
         .recap-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
         .recap-chip { background: #0b1120; border: 1px solid #334155; border-radius: 999px; padding: 5px 12px; font-size: 0.8rem; color: #cbd5e1; }
-        .recap-table-wrap { overflow-x: auto; }
+        .recap-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .rate-cell { min-width: 110px; }
         .rate-bar { height: 6px; background: #1e293b; border-radius: 999px; overflow: hidden; margin-top: 5px; }
         .rate-bar span { display: block; height: 100%; background: #10b981; border-radius: 999px; }

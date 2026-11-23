@@ -217,6 +217,7 @@ switch ($action) {
             Biometric::storeVerified($entityType, $entityId, $teamId);
             $entity = Biometric::findEntity($entityType, $entityId) ?? [];
             $offlineToken = Biometric::createOfflineToken($entityType, $entityId, $teamId);
+            $allowedTeamIds = Biometric::getAllowedTeamIds($entityType, $entityId);
             echo json_encode([
                 'success' => true,
                 'message' => 'Verifikasi lulus',
@@ -226,6 +227,7 @@ switch ($action) {
                     'entity_name' => (string)($entity['nama_lengkap'] ?? ''),
                     'role' => $entityType === 'mentor' ? 'Mentor' : 'Mentee Perwakilan',
                     'offline_token' => $offlineToken,
+                    'allowed_team_ids' => $allowedTeamIds,
                 ],
             ]);
             break;

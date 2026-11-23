@@ -57,6 +57,12 @@ if (!$verified) {
     die("Akses ditolak: verifikasi biometrik belum lulus. Silakan buka formulir dan verifikasi terlebih dahulu.");
 }
 
+if (!Biometric::isTeamAllowedForEntity((string)($verified['entity_type'] ?? ''), (string)($verified['entity_id'] ?? ''), $timId)) {
+    $jsonFail(403, 'team_not_allowed', 'Akses ditolak: Anda tidak memiliki relasi langsung dengan kelompok mentoring yang dipilih.');
+    http_response_code(403);
+    die('Akses ditolak: Anda tidak memiliki relasi langsung dengan kelompok mentoring yang dipilih.');
+}
+
 $tanggal = trim($_POST['tanggal'] ?? date('Y-m-d'));
 $jamMulai = trim($_POST['jam_mulai'] ?? '16:00');
 $jamSelesai = trim($_POST['jam_selesai'] ?? '17:30');

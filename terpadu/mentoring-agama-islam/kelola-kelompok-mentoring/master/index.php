@@ -10,6 +10,7 @@ require_once __DIR__ . '/../bootstrap.php';
 
 use Mentoring\Academic;
 use Mentoring\AdminAuth;
+use Mentoring\BirthdayReminder;
 use Mentoring\MasterData;
 use Mentoring\Config;
 use Mentoring\ProfilePhoto;
@@ -27,8 +28,8 @@ $botQueueItems = BotQueue::items();
 $botPendingCount = count($botQueueItems);
 $showBotModal = !empty($botState['api_invalid']);
 
-$perPage = (int)Config::get('app.pagination_per_page', 5);
 $master = MasterData::loadAll();
+$todayBirthdays = BirthdayReminder::getTodayBirthdays($master);
 $basePath = mentoring_base_path(__DIR__);
 $appBase = mentoring_base_path(dirname(__DIR__));
 
@@ -170,8 +171,8 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= htmlspecialchars(mentoring_base_path(dirname(__DIR__))) ?>public/assets/css/style.css">
     <style>
-        .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; }
-        .tab-btn { background: none; border: none; color: var(--text-muted); font-size: 1rem; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; scrollbar-width: thin; }
+        .tab-btn { background: none; border: none; color: var(--text-muted); font-size: 1rem; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer; white-space: nowrap; flex: 0 0 auto; }
         .tab-btn.active { background: var(--primary); color: #fff; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -195,6 +196,9 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             display: flex;
             gap: 6px;
             align-items: center;
+            flex-wrap: nowrap;
+            max-width: 100%;
+            overflow: hidden;
         }
         .page-nav-btn {
             background: #1e293b;
@@ -205,6 +209,8 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             font-size: 0.85rem;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .page-nav-btn:hover:not(:disabled) {
             background: var(--primary);
@@ -220,6 +226,17 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             color: #ffffff;
             border-color: var(--primary);
             font-weight: 600;
+        }
+        .page-nav-ellipsis {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            padding: 6px 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            user-select: none;
+            flex-shrink: 0;
         }
 
         /* Search input bar on table cards */
@@ -284,16 +301,33 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
         /* Tab Kelola Laporan */
         .laporan-filter {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             flex-wrap: wrap;
-            align-items: flex-end;
-            margin-bottom: 18px;
+            align-items: center;
+            margin-bottom: 14px;
         }
-        .filter-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 210px; min-width: 0; }
-        .filter-field label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #64748b; }
-        .filter-field select { min-height: 42px; }
-        .laporan-filter .btn-action { width: auto; min-height: 42px; padding: 9px 18px; }
-        .laporan-filter .btn-cancel { min-height: 42px; display: inline-flex; align-items: center; }
+        .filter-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 160px; min-width: 150px; }
+        .filter-field select { min-height: 38px; }
+        .laporan-filter .searchable-select-trigger {
+            min-height: 38px;
+            padding: 7px 12px;
+            font-size: 0.875rem;
+            border-radius: 8px;
+        }
+        .laporan-filter .searchable-select-panel {
+            min-width: 210px;
+            right: 0;
+            left: auto;
+        }
+        .laporan-filter .btn-action { width: auto; min-height: 38px; padding: 7px 14px; }
+        .laporan-filter .btn-cancel {
+            min-height: 38px;
+            padding: 7px 12px;
+            font-size: 0.875rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+        }
 
         .recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
         .stat-box { background: #0b1120; border: 1px solid #334155; border-radius: 12px; padding: 14px; }
@@ -378,18 +412,249 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
         .bot-form-message.info { display: block; color: #7dd3fc; }
         .bot-form-message.error { display: block; color: #f87171; }
         .bot-form-message.success { display: block; color: #34d399; }
+
+        /* Mobile Hamburger Menu & Drawer */
+        .page-header.master-header { display: none; }
+        .master-nav-row {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 10px;
+        }
+        .master-nav-row .tabs {
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .mobile-menu-btn {
+            flex: 0 0 auto;
+            width: 40px;
+            height: 40px;
+            background: #1e293b;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: #f8fafc;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .mobile-menu-btn:hover,
+        .mobile-menu-btn:focus-visible {
+            background: #273449;
+            border-color: var(--primary);
+            outline: none;
+        }
+        .mobile-drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .mobile-drawer-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .mobile-drawer {
+            width: min(300px, 85vw);
+            height: 100%;
+            background: var(--card-bg);
+            border-right: 1px solid var(--card-border);
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transform: translateX(-100%);
+            transition: transform 0.2s ease;
+            overflow-y: auto;
+        }
+        .mobile-drawer-overlay.active .mobile-drawer {
+            transform: translateX(0);
+        }
+        .mobile-drawer-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .mobile-drawer-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            line-height: 1.3;
+        }
+        .mobile-drawer-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        .mobile-drawer-close {
+            flex: 0 0 auto;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #0b1120;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            font-size: 1.25rem;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mobile-drawer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .mobile-drawer-links a {
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: #0b1120;
+            border: 1px solid #334155;
+            color: #38bdf8;
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 600;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .mobile-drawer-links a:hover {
+            background: #172033;
+            border-color: var(--primary);
+        }
+        .mobile-pendaftar-indicator {
+            position: absolute;
+            right: -8px;
+            top: 20px;
+            transform: translateY(-50%);
+            height: 36px;
+            min-width: 15px;
+            padding: 0 3px 0 5px;
+            border-radius: 100% 0 0 100% / 50% 0 0 50%;
+            background: rgba(30, 41, 59, 0.94);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(56, 189, 248, 0.45);
+            border-right: none;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.35);
+            color: #7dd3fc;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            white-space: nowrap;
+            z-index: 20;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .mobile-pendaftar-indicator.is-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(100%, -50%);
+        }
+
+        @media (max-width: 640px) {
+            #tab-pendaftar .tab-actions {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            #tab-pendaftar .tab-actions .btn-action {
+                min-height: 36px;
+                padding: 7px 10px;
+                font-size: 0.82rem;
+                border-radius: 8px;
+                width: 100%;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .container { max-width: 1280px !important; }
+            .mobile-menu-btn,
+            .mobile-drawer-overlay,
+            .mobile-pendaftar-indicator { display: none !important; }
+            .master-nav-row {
+                display: block;
+                border-bottom: none;
+                padding-bottom: 0;
+                margin-bottom: 0;
+            }
+            .master-nav-row .tabs {
+                margin-bottom: 14px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid var(--card-border);
+                flex-wrap: wrap;
+                overflow-x: visible;
+            }
+            .page-header.master-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                text-align: left;
+                margin-bottom: 16px;
+            }
+            .master-header-links {
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+            .tabs { margin-bottom: 14px; padding-bottom: 10px; flex-wrap: wrap; overflow-x: visible; }
+            .card-toolbar {
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 16px;
+                flex-wrap: nowrap;
+                margin-bottom: 14px;
+            }
+            .card-toolbar .card-title { margin-bottom: 0; flex: 0 0 auto; white-space: nowrap; }
+            .card-toolbar .table-search-bar { margin-bottom: 0; flex: 1 1 auto; max-width: none; }
+            .card-toolbar .table-search-input { max-width: none; width: 100%; }
+            .card-toolbar .tab-actions { margin-bottom: 0; flex: 0 0 auto; }
+            .card-toolbar .laporan-filter { margin-bottom: 0; flex: 0 0 auto; flex-wrap: nowrap; }
+            .card-toolbar .laporan-filter .filter-field { flex: 0 0 175px; width: 175px; }
+            .tab-split-desktop {
+                display: grid;
+                grid-template-columns: 330px minmax(0, 1fr);
+                gap: 18px;
+                align-items: start;
+            }
+            .tab-split-desktop .recap-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
     </style>
 </head>
 <body>
 <?php mentoring_loading_overlay(); ?>
 
 <div class="container" style="max-width: 960px;">
-    <header class="page-header">
-        <h1 class="page-title">Kelola Data Master Mentoring</h1>
-        <p class="page-subtitle">Manajemen Biodata Mentor, Tim Mentoring, dan Mentee</p>
-        <div style="margin-top: 10px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+    <header class="page-header master-header">
+        <div class="master-header-title">
+            <h1 class="page-title">Kelola Data Master Mentoring</h1>
+            <p class="page-subtitle">Manajemen Biodata Mentor, Tim Mentoring, dan Mentee</p>
+        </div>
+        <div class="master-header-links" style="margin-top: 10px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
             <a href="<?= htmlspecialchars(mentoring_base_path(dirname(__DIR__))) ?>" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">&larr; Kembali ke Form Pelaporan</a>
-            <a href="<?= htmlspecialchars($basePath) ?>backup" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">Backup Master</a>
+            <a href="<?= htmlspecialchars($basePath) ?>backup" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">Backup Sistem</a>
             <a href="<?= htmlspecialchars($basePath) ?>restore" style="color: #38bdf8; text-decoration: none; font-size: 0.9rem;">Pulihkan / Rollback</a>
         </div>
     </header>
@@ -398,6 +663,18 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
         <div class="flash-message" data-flash style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
             <?= htmlspecialchars($message) ?>
         </div>
+        <?php
+        $draftClearMap = [
+            'mentor_added' => 'mai_master_draft_mentor_v1',
+            'team_added' => 'mai_master_draft_tim_v1',
+            'mentee_added' => 'mai_master_draft_mentee_v1',
+        ];
+        if (isset($draftClearMap[$msgKey])):
+        ?>
+        <script>
+        try { localStorage.removeItem(<?= json_encode($draftClearMap[$msgKey]) ?>); } catch (e) {}
+        </script>
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($errorMessage): ?>
@@ -422,192 +699,246 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
         </div>
     <?php endif; ?>
 
-    <div class="tabs">
-        <button class="tab-btn <?= $activeTab === 'tab-mentors' ? 'active' : '' ?>" onclick="switchTab('tab-mentors', this)">Daftar Mentor (<?= count($master['mentors']) ?>)</button>
-        <button class="tab-btn <?= $activeTab === 'tab-teams' ? 'active' : '' ?>" onclick="switchTab('tab-teams', this)">Daftar Tim (<?= count($master['teams']) ?>)</button>
-        <button class="tab-btn <?= $activeTab === 'tab-mentees' ? 'active' : '' ?>" onclick="switchTab('tab-mentees', this)">Daftar Mentee (<?= count($master['mentees']) ?>)</button>
-        <button class="tab-btn <?= $activeTab === 'tab-export' ? 'active' : '' ?>" onclick="switchTab('tab-export', this)">Ekspor Excel</button>
-        <button class="tab-btn <?= $activeTab === 'tab-archive' ? 'active' : '' ?>" onclick="switchTab('tab-archive', this)">Arsip Purna (<?= count($master['archived_mentors'] ?? []) + count($master['archived_mentees'] ?? []) ?>)</button>
-        <button class="tab-btn <?= $activeTab === 'tab-laporan' ? 'active' : '' ?>" onclick="switchTab('tab-laporan', this)">Kelola Laporan (<?= count($laporanAll) ?>)</button>
-        <button class="tab-btn <?= $activeTab === 'tab-pendaftar' ? 'active' : '' ?>" onclick="switchTab('tab-pendaftar', this)">Pendaftar (<?= count($master['registrants'] ?? []) ?>)</button>
+    <?= BirthdayReminder::renderBanner($todayBirthdays, $appBase . 'ultah?from=master') ?>
+
+    <?php
+    $registrants = array_reverse(array_values(array_filter($master['registrants'] ?? [], 'is_array')));
+    $statusPriority = [
+        'Menunggu' => 1,
+        'Cadangan' => 2,
+        'Ditolak' => 3,
+        'Disetujui' => 4,
+    ];
+    usort($registrants, static function (array $a, array $b) use ($statusPriority): int {
+        $stA = (string)($a['status_pendaftaran'] ?? 'Menunggu');
+        $stB = (string)($b['status_pendaftaran'] ?? 'Menunggu');
+        $prioA = $statusPriority[$stA] ?? 99;
+        $prioB = $statusPriority[$stB] ?? 99;
+        if ($prioA !== $prioB) {
+            return $prioA <=> $prioB;
+        }
+        return strcmp((string)($b['created_at'] ?? ''), (string)($a['created_at'] ?? ''));
+    });
+    $regStats = ['total' => 0, 'Menunggu' => 0, 'Disetujui' => 0, 'Cadangan' => 0, 'Ditolak' => 0, 'ikhwan' => 0, 'akhwat' => 0];
+    foreach ($registrants as $reg) {
+        $st = (string)($reg['status_pendaftaran'] ?? 'Menunggu');
+        if (isset($regStats[$st])) {
+            $regStats[$st]++;
+        }
+        if ($st !== 'Disetujui') {
+            $regStats['total']++;
+            if (($reg['gender'] ?? '') === 'Laki-laki') {
+                $regStats['ikhwan']++;
+            } elseif (($reg['gender'] ?? '') === 'Perempuan') {
+                $regStats['akhwat']++;
+            }
+        }
+    }
+    $pendingRegistrantsCount = $regStats['total'];
+    $publicDaftarUrl = mentoring_request_origin() . $appBase . 'daftar';
+    ?>
+
+    <div class="master-nav-row">
+        <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Buka menu" aria-expanded="false" aria-controls="mobile-menu-drawer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+        <div class="tabs">
+            <button class="tab-btn <?= $activeTab === 'tab-mentors' ? 'active' : '' ?>" onclick="switchTab('tab-mentors', this)">Daftar Mentor (<?= count($master['mentors']) ?>)</button>
+            <button class="tab-btn <?= $activeTab === 'tab-teams' ? 'active' : '' ?>" onclick="switchTab('tab-teams', this)">Daftar Tim (<?= count($master['teams']) ?>)</button>
+            <button class="tab-btn <?= $activeTab === 'tab-mentees' ? 'active' : '' ?>" onclick="switchTab('tab-mentees', this)">Daftar Mentee (<?= count($master['mentees']) ?>)</button>
+            <button class="tab-btn <?= $activeTab === 'tab-export' ? 'active' : '' ?>" onclick="switchTab('tab-export', this)">Ekspor Excel</button>
+            <button class="tab-btn <?= $activeTab === 'tab-archive' ? 'active' : '' ?>" onclick="switchTab('tab-archive', this)">Arsip Purna (<?= count($master['archived_mentors'] ?? []) + count($master['archived_mentees'] ?? []) ?>)</button>
+            <button class="tab-btn <?= $activeTab === 'tab-laporan' ? 'active' : '' ?>" onclick="switchTab('tab-laporan', this)">Kelola Laporan (<?= count($laporanAll) ?>)</button>
+            <button class="tab-btn <?= $activeTab === 'tab-pendaftar' ? 'active' : '' ?>" onclick="switchTab('tab-pendaftar', this)">Pendaftar (<?= (int)$pendingRegistrantsCount ?>)</button>
+        </div>
+        <?php if ($pendingRegistrantsCount > 0): ?>
+            <button type="button" class="mobile-pendaftar-indicator" id="mobile-pendaftar-indicator" title="Ada <?= (int)$pendingRegistrantsCount ?> pendaftar" aria-label="Buka tab Pendaftar (<?= (int)$pendingRegistrantsCount ?>)">
+                <span><?= (int)$pendingRegistrantsCount ?></span>
+            </button>
+        <?php endif; ?>
+    </div>
+
+    <div class="mobile-drawer-overlay" id="mobile-menu-drawer" aria-hidden="true">
+        <div class="mobile-drawer" role="dialog" aria-modal="true" aria-labelledby="mobile-drawer-title">
+            <div class="mobile-drawer-header">
+                <div>
+                    <div class="mobile-drawer-title" id="mobile-drawer-title">Kelola Data Master Mentoring</div>
+                    <div class="mobile-drawer-subtitle">Manajemen Biodata Mentor, Tim Mentoring, dan Mentee</div>
+                </div>
+                <button type="button" class="mobile-drawer-close" id="mobile-drawer-close" aria-label="Tutup menu">&times;</button>
+            </div>
+            <nav class="mobile-drawer-links" aria-label="Navigasi Master">
+                <a href="<?= htmlspecialchars(mentoring_base_path(dirname(__DIR__))) ?>">&larr; Kembali ke Form Pelaporan</a>
+                <a href="<?= htmlspecialchars($basePath) ?>backup">Backup Sistem</a>
+                <a href="<?= htmlspecialchars($basePath) ?>restore">Pulihkan / Rollback</a>
+            </nav>
+        </div>
     </div>
 
     <!-- TAB 1: MENTOR -->
     <div id="tab-mentors" class="tab-content <?= $activeTab === 'tab-mentors' ? 'active' : '' ?>">
-        <div class="tab-actions">
-            <a href="<?= htmlspecialchars($basePath) ?>tambah-mentor" class="btn-action">+ Tambah Mentor</a>
-        </div>
-        <div class="card card-paginated" data-page-size="<?= $perPage ?>">
-            <h3 class="card-title">Daftar Mentor Aktif</h3>
-            <div class="table-search-bar">
-                <input type="text" class="table-search-input" placeholder="🔍 Cari nama, ID, WA, kesibukan...">
+        <div class="card card-paginated">
+            <div class="card-toolbar">
+                <h3 class="card-title">Daftar Mentor Aktif</h3>
+                <div class="table-search-bar">
+                    <input type="text" class="table-search-input" placeholder="🔍 Cari nama, ID, WA, kesibukan...">
+                </div>
+                <div class="tab-actions">
+                    <a href="<?= htmlspecialchars($basePath) ?>tambah-mentor" class="btn-action">+ Tambah Mentor</a>
+                </div>
             </div>
-            <table class="attendance-table">
-                <thead>
-                    <tr><th>Foto</th><th>Nama</th><th>WhatsApp</th><th>Status</th><th>Kesibukan</th><th>Aksi</th></tr>
-                </thead>
-                <tbody class="paginated-tbody">
-                    <?php foreach ($master['mentors'] as $m): ?>
-                        <tr>
-                            <?= $renderAvatar('mentor', $m['id'], $m['foto_profil'] ?? null, $m['nama_lengkap']) ?>
-                            <td><b><?= htmlspecialchars($m['nama_lengkap']) ?></b><br><small><?= htmlspecialchars($m['id']) ?></small></td>
-                            <td><?= htmlspecialchars($m['nomor_whatsapp']) ?></td>
-                            <td><span class="badge-status aktif"><?= htmlspecialchars($m['status']) ?></span></td>
-                            <td><?= htmlspecialchars($m['status_kesibukan']) ?></td>
-                            <?= $renderActions('mentor', 'mentor', $m['id']) ?>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+            <div class="table-scroll">
+                <table class="attendance-table">
+                    <thead>
+                        <tr><th>Foto</th><th>Nama</th><th>WhatsApp</th><th>Status</th><th>Kesibukan</th><th>Aksi</th></tr>
+                    </thead>
+                    <tbody class="paginated-tbody">
+                        <?php foreach (array_reverse($master['mentors']) as $m): ?>
+                            <tr>
+                                <?= $renderAvatar('mentor', $m['id'], $m['foto_profil'] ?? null, $m['nama_lengkap']) ?>
+                                <td><b><?= htmlspecialchars($m['nama_lengkap']) ?></b><br><small><?= htmlspecialchars($m['id']) ?></small></td>
+                                <td><?= htmlspecialchars($m['nomor_whatsapp']) ?></td>
+                                <td><span class="badge-status aktif"><?= htmlspecialchars($m['status']) ?></span></td>
+                                <td><?= htmlspecialchars($m['status_kesibukan']) ?></td>
+                                <?= $renderActions('mentor', 'mentor', $m['id']) ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- TAB 2: TEAMS -->
     <div id="tab-teams" class="tab-content <?= $activeTab === 'tab-teams' ? 'active' : '' ?>">
-        <div class="tab-actions">
-            <a href="<?= htmlspecialchars($basePath) ?>tambah-tim" class="btn-action">+ Tambah Tim</a>
-        </div>
-        <div class="card card-paginated" data-page-size="<?= $perPage ?>">
-            <h3 class="card-title">Daftar Tim Mentoring</h3>
-            <div class="table-search-bar">
-                <input type="text" class="table-search-input" placeholder="🔍 Cari nama tim, ID mentor...">
+        <div class="card card-paginated">
+            <div class="card-toolbar">
+                <h3 class="card-title">Daftar Tim Mentoring</h3>
+                <div class="table-search-bar">
+                    <input type="text" class="table-search-input" placeholder="🔍 Cari nama tim, ID mentor...">
+                </div>
+                <div class="tab-actions">
+                    <a href="<?= htmlspecialchars($basePath) ?>tambah-tim" class="btn-action">+ Tambah Tim</a>
+                </div>
             </div>
-            <table class="attendance-table">
-                <thead>
-                    <tr><th>Foto</th><th>Nama Tim</th><th>Mentor ID</th><th>Status</th><th>Aksi</th></tr>
-                </thead>
-                <tbody class="paginated-tbody">
-                    <?php foreach ($master['teams'] as $t): ?>
-                        <tr>
-                            <?= $renderAvatar('team', $t['id'], $t['foto_profil'] ?? null, $t['nama_tim']) ?>
-                            <td><b><?= htmlspecialchars($t['nama_tim']) ?></b></td>
-                            <td><?= htmlspecialchars($t['mentor_id']) ?></td>
-                            <td><span class="badge-status aktif"><?= htmlspecialchars($t['status']) ?></span></td>
-                            <?= $renderActions('team', 'tim', $t['id']) ?>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+            <div class="table-scroll">
+                <table class="attendance-table">
+                    <thead>
+                        <tr><th>Foto</th><th>Nama Tim</th><th>Mentor ID</th><th>Status</th><th>Aksi</th></tr>
+                    </thead>
+                    <tbody class="paginated-tbody">
+                        <?php foreach (array_reverse($master['teams']) as $t): ?>
+                            <tr>
+                                <?= $renderAvatar('team', $t['id'], $t['foto_profil'] ?? null, $t['nama_tim']) ?>
+                                <td><b><?= htmlspecialchars($t['nama_tim']) ?></b></td>
+                                <td><?= htmlspecialchars($t['mentor_id']) ?></td>
+                                <td><span class="badge-status aktif"><?= htmlspecialchars($t['status']) ?></span></td>
+                                <?= $renderActions('team', 'tim', $t['id']) ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- TAB 3: MENTEES -->
     <div id="tab-mentees" class="tab-content <?= $activeTab === 'tab-mentees' ? 'active' : '' ?>">
-        <div class="tab-actions">
-            <a href="<?= htmlspecialchars($basePath) ?>tambah-mentee" class="btn-action">+ Tambah Mentee</a>
-        </div>
-        <div class="card card-paginated" data-page-size="<?= $perPage ?>">
-            <h3 class="card-title">Daftar Mentee &amp; Tracking Keaktifan</h3>
-            <div class="table-search-bar">
-                <input type="text" class="table-search-input" placeholder="🔍 Cari nama mentee, NIM, kelas, tim...">
+        <div class="card card-paginated">
+            <div class="card-toolbar">
+                <h3 class="card-title">Daftar Mentee &amp; Tracking Keaktifan</h3>
+                <div class="table-search-bar">
+                    <input type="text" class="table-search-input" placeholder="🔍 Cari nama mentee, NIM, kelas, tim...">
+                </div>
+                <div class="tab-actions">
+                    <a href="<?= htmlspecialchars($basePath) ?>tambah-mentee" class="btn-action">+ Tambah Mentee</a>
+                </div>
             </div>
-            <table class="attendance-table">
-                <thead>
-                    <tr><th>Foto</th><th>Nama Mentee</th><th>NIM & Kelas</th><th>Tim ID</th><th>Status Keaktifan</th><th>Absen Beruntun</th><th>Aksi</th></tr>
-                </thead>
-                <tbody class="paginated-tbody">
-                    <?php foreach ($master['mentees'] as $me): ?>
-                        <?php 
-                            $statusBadgeClass = ($me['status_keaktifan'] === 'Peringatan') ? 'peringatan' : (($me['status_keaktifan'] === 'Tidak Aktif') ? 'tidak_aktif' : 'aktif');
-                        ?>
-                        <tr>
-                            <?= $renderAvatar('mentee', $me['id'], $me['foto_profil'] ?? null, $me['nama_lengkap']) ?>
-                            <td><b><?= htmlspecialchars($me['nama_lengkap']) ?></b></td>
-                            <?php $kelasTampil = Academic::formatClass($me['kelas'] ?? '', $me['nim'] ?? ''); ?>
-                            <td><?= htmlspecialchars($me['nim'] ?? '-') ?><?= $kelasTampil !== '' ? ' • ' . htmlspecialchars($kelasTampil) : '' ?></td>
-                            <td><?= htmlspecialchars($me['tim_id'] ?? '-') ?></td>
-                            <td><span class="badge-status <?= $statusBadgeClass ?>"><?= htmlspecialchars($me['status_keaktifan'] ?? 'Aktif') ?></span></td>
-                            <td><?= (int)($me['consecutive_absent'] ?? 0) ?>x</td>
-                            <?= $renderActions('mentee', 'mentee', $me['id']) ?>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+            <div class="table-scroll">
+                <table class="attendance-table">
+                    <thead>
+                        <tr><th>Foto</th><th>Nama Mentee</th><th>NIM & Kelas</th><th>Tim ID</th><th>Status Keaktifan</th><th>Absen Beruntun</th><th>Aksi</th></tr>
+                    </thead>
+                    <tbody class="paginated-tbody">
+                        <?php foreach (array_reverse($master['mentees']) as $me): ?>
+                            <?php 
+                                $statusBadgeClass = ($me['status_keaktifan'] === 'Peringatan') ? 'peringatan' : (($me['status_keaktifan'] === 'Tidak Aktif') ? 'tidak_aktif' : 'aktif');
+                            ?>
+                            <tr>
+                                <?= $renderAvatar('mentee', $me['id'], $me['foto_profil'] ?? null, $me['nama_lengkap']) ?>
+                                <td><b><?= htmlspecialchars($me['nama_lengkap']) ?></b></td>
+                                <?php $kelasTampil = Academic::formatClass($me['kelas'] ?? '', $me['nim'] ?? ''); ?>
+                                <td><?= htmlspecialchars($me['nim'] ?? '-') ?><?= $kelasTampil !== '' ? ' • ' . htmlspecialchars($kelasTampil) : '' ?></td>
+                                <td><?= htmlspecialchars($me['tim_id'] ?? '-') ?></td>
+                                <td><span class="badge-status <?= $statusBadgeClass ?>"><?= htmlspecialchars($me['status_keaktifan'] ?? 'Aktif') ?></span></td>
+                                <td><?= (int)($me['consecutive_absent'] ?? 0) ?>x</td>
+                                <?= $renderActions('mentee', 'mentee', $me['id']) ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- TAB 5: ARSIP PURNA -->
     <div id="tab-archive" class="tab-content <?= $activeTab === 'tab-archive' ? 'active' : '' ?>">
-        <div class="card">
-            <h3 class="card-title">Arsip Purna — Mentor &amp; Mentee yang Telah Pergi</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 16px;">
-                Tempat khusus data mentor dan mentee yang sudah dikeluarkan dari UKMI. Data di sini
-                tidak lagi muncul pada daftar aktif, tetapi riwayat biodatanya tetap tersimpan.
-            </p>
-            <?php
-            $archivedRows = [];
-            foreach ($master['archived_mentors'] ?? [] as $row) {
-                $archivedRows[] = ['jenis' => 'Mentor', 'row' => $row];
-            }
-            foreach ($master['archived_mentees'] ?? [] as $row) {
-                $archivedRows[] = ['jenis' => 'Mentee', 'row' => $row];
-            }
-            usort($archivedRows, static fn(array $a, array $b): int =>
-                strcmp((string)($b['row']['archived_at'] ?? ''), (string)($a['row']['archived_at'] ?? ''))
-            );
-            ?>
+        <div class="card card-paginated">
             <?php if ($archivedRows === []): ?>
+                <h3 class="card-title">Arsip Purna — Mentor &amp; Mentee yang Telah Pergi</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 16px;">
+                    Tempat khusus data mentor dan mentee yang sudah dikeluarkan dari UKMI. Data di sini
+                    tidak lagi muncul pada daftar aktif, tetapi riwayat biodatanya tetap tersimpan.
+                </p>
                 <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
                     Belum ada data di Arsip Purna.
                 </div>
             <?php else: ?>
-                <div class="table-search-bar">
-                    <input type="text" class="table-search-input" id="archive-search" placeholder="🔍 Cari nama, jenis, atau alasan...">
+                <div class="card-toolbar">
+                    <h3 class="card-title">Arsip Purna</h3>
+                    <div class="table-search-bar">
+                        <input type="text" class="table-search-input" id="archive-search" placeholder="🔍 Cari nama, jenis, atau alasan...">
+                    </div>
                 </div>
-                <table class="attendance-table">
-                    <thead>
-                        <tr><th>Foto</th><th>Nama</th><th>Jenis</th><th>Alasan</th><th>Catatan</th><th>Diarsipkan</th></tr>
-                    </thead>
-                    <tbody id="archive-tbody">
-                        <?php foreach ($archivedRows as $entry): ?>
-                            <?php $row = $entry['row']; $nama = $row['nama_lengkap'] ?? $row['nama_tim'] ?? '-'; ?>
-                            <tr>
-                                <?= $renderAvatar($entry['jenis'], $row['id'] ?? '', $row['foto_profil'] ?? null, (string)$nama) ?>
-                                <td><b><?= htmlspecialchars((string)$nama) ?></b><br><small><?= htmlspecialchars((string)($row['id'] ?? '')) ?></small></td>
-                                <td><span class="badge-status <?= $entry['jenis'] === 'Mentor' ? 'aktif' : 'peringatan' ?>"><?= htmlspecialchars($entry['jenis']) ?></span></td>
-                                <td><?= htmlspecialchars((string)($row['archive_reason'] ?? 'Dikeluarkan dari UKMI')) ?></td>
-                                <td><?= htmlspecialchars((string)($row['archive_note'] ?? '')) !== '' ? htmlspecialchars((string)$row['archive_note']) : '-' ?></td>
-                                <td>
-                                    <?php
-                                    $archivedAt = (string)($row['archived_at'] ?? '');
-                                    $ts = $archivedAt !== '' ? strtotime($archivedAt) : false;
-                                    echo htmlspecialchars($ts ? date('d M Y', $ts) : '-');
-                                    ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <div class="table-scroll">
+                    <table class="attendance-table">
+                        <thead>
+                            <tr><th>Foto</th><th>Nama</th><th>Jenis</th><th>Alasan</th><th>Catatan</th><th>Diarsipkan</th></tr>
+                        </thead>
+                        <tbody id="archive-tbody" class="paginated-tbody">
+                            <?php foreach ($archivedRows as $entry): ?>
+                                <?php $row = $entry['row']; $nama = $row['nama_lengkap'] ?? $row['nama_tim'] ?? '-'; ?>
+                                <tr>
+                                    <?= $renderAvatar($entry['jenis'], $row['id'] ?? '', $row['foto_profil'] ?? null, (string)$nama) ?>
+                                    <td><b><?= htmlspecialchars((string)$nama) ?></b><br><small><?= htmlspecialchars((string)($row['id'] ?? '')) ?></small></td>
+                                    <td><span class="badge-status <?= $entry['jenis'] === 'Mentor' ? 'aktif' : 'peringatan' ?>"><?= htmlspecialchars($entry['jenis']) ?></span></td>
+                                    <td><?= htmlspecialchars((string)($row['archive_reason'] ?? 'Dikeluarkan dari UKMI')) ?></td>
+                                    <td><?= htmlspecialchars((string)($row['archive_note'] ?? '')) !== '' ? htmlspecialchars((string)$row['archive_note']) : '-' ?></td>
+                                    <td>
+                                        <?php
+                                        $archivedAt = (string)($row['archived_at'] ?? '');
+                                        $ts = $archivedAt !== '' ? strtotime($archivedAt) : false;
+                                        echo htmlspecialchars($ts ? date('d M Y', $ts) : '-');
+                                        ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
         </div>
     </div>
 
     <!-- TAB 6: KELOLA LAPORAN -->
     <div id="tab-laporan" class="tab-content <?= $activeTab === 'tab-laporan' ? 'active' : '' ?>">
+        <div class="tab-split-desktop">
         <div class="card">
             <h3 class="card-title">Rekap Laporan Mentoring</h3>
-            <form class="laporan-filter" method="get" action="" id="laporan-filter-form">
-                <input type="hidden" name="tab" value="tab-laporan">
-                <div class="filter-field">
-                    <label for="laporan-bulan">Periode</label>
-                    <select name="laporan_bulan" id="laporan-bulan" data-searchable>
-                        <option value="">Semua Periode</option>
-                        <?php foreach (array_keys($opsiBulan) as $ym): ?>
-                            <option value="<?= htmlspecialchars($ym) ?>" <?= $laporanBulan === $ym ? 'selected' : '' ?>><?= htmlspecialchars($formatBulan($ym)) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="filter-field">
-                    <label for="laporan-tim">Tim</label>
-                    <select name="laporan_tim" id="laporan-tim" data-searchable>
-                        <option value="">Semua Tim</option>
-                        <?php foreach ($opsiTim as $key => $nama): ?>
-                            <option value="<?= htmlspecialchars($key) ?>" <?= $laporanTim === $key ? 'selected' : '' ?>><?= htmlspecialchars($nama) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <a class="btn-cancel" href="<?= htmlspecialchars($basePath) ?>?tab=tab-laporan">Reset</a>
-            </form>
 
             <div class="recap-grid">
                 <div class="stat-box">
@@ -644,76 +975,76 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             </div>
         </div>
 
-        <div class="card card-paginated" data-page-size="<?= $perPage ?>">
-            <h3 class="card-title">Daftar Laporan Masuk</h3>
-            <div class="table-search-bar">
-                <input type="text" class="table-search-input" placeholder="🔍 Cari tim, tema, tanggal, atau ID laporan...">
+        <div class="card card-paginated">
+            <div class="card-toolbar">
+                <h3 class="card-title">Daftar Laporan Masuk</h3>
+                <div class="table-search-bar">
+                    <input type="text" class="table-search-input" placeholder="🔍 Cari tim, tema, tanggal, atau ID laporan...">
+                </div>
+                <form class="laporan-filter" method="get" action="" id="laporan-filter-form">
+                    <input type="hidden" name="tab" value="tab-laporan">
+                    <div class="filter-field">
+                        <select name="laporan_bulan" id="laporan-bulan" data-searchable aria-label="Filter Periode">
+                            <option value="">Semua Periode</option>
+                            <?php foreach (array_keys($opsiBulan) as $ym): ?>
+                                <option value="<?= htmlspecialchars($ym) ?>" <?= $laporanBulan === $ym ? 'selected' : '' ?>><?= htmlspecialchars($formatBulan($ym)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <select name="laporan_tim" id="laporan-tim" data-searchable aria-label="Filter Tim">
+                            <option value="">Semua Tim</option>
+                            <?php foreach ($opsiTim as $key => $nama): ?>
+                                <option value="<?= htmlspecialchars($key) ?>" <?= $laporanTim === $key ? 'selected' : '' ?>><?= htmlspecialchars($nama) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <a class="btn-cancel" href="<?= htmlspecialchars($basePath) ?>?tab=tab-laporan">Reset</a>
+                </form>
             </div>
-            <table class="attendance-table">
-                <thead>
-                    <tr><th>Tim</th><th>Tanggal</th><th>Tema</th><th>Kehadiran</th><th>Aksi</th></tr>
-                </thead>
-                <tbody class="paginated-tbody">
-                    <?php if ($laporanRecap['rows'] === []): ?>
-                        <tr>
-                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
-                                Belum ada laporan masuk pada filter ini.
-                            </td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($laporanRecap['rows'] as $row): ?>
-                            <?php
-                                $rowTanggal = (string)($row['tanggal'] !== '' ? $row['tanggal'] : substr((string)$row['created_at'], 0, 10));
-                                $rowTanggalText = $rowTanggal !== '' ? Watobot::formatTanggalIndonesia($rowTanggal) : '-';
-                            ?>
+            <div class="table-scroll">
+                <table class="attendance-table">
+                    <thead>
+                        <tr><th>Tim</th><th>Tanggal</th><th>Tema</th><th>Kehadiran</th><th>Aksi</th></tr>
+                    </thead>
+                    <tbody class="paginated-tbody">
+                        <?php if ($laporanRecap['rows'] === []): ?>
                             <tr>
-                                <td><b><?= htmlspecialchars((string)$row['nama_tim']) ?></b><br><small><?= htmlspecialchars((string)$row['id']) ?></small></td>
-                                <td><?= htmlspecialchars($rowTanggalText) ?></td>
-                                <td><?= htmlspecialchars((string)($row['tema'] !== '' ? $row['tema'] : '-')) ?></td>
-                                <td>
-                                    <span class="badge-status aktif">H <?= (int)$row['hadir'] ?></span>
-                                    <span class="badge-status peringatan">I <?= (int)$row['izin'] ?></span>
-                                    <span class="badge-status tidak_aktif">A <?= (int)$row['absen'] ?></span>
-                                </td>
-                                <td>
-                                    <a class="row-action manage" href="<?= htmlspecialchars($basePath) ?>laporan?id=<?= urlencode((string)$row['id']) ?>">&#9881; Kelola</a>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                                    Belum ada laporan masuk pada filter ini.
                                 </td>
                             </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                        <?php else: ?>
+                            <?php foreach ($laporanRecap['rows'] as $row): ?>
+                                <?php
+                                    $rowTanggal = (string)($row['tanggal'] !== '' ? $row['tanggal'] : substr((string)$row['created_at'], 0, 10));
+                                    $rowTanggalText = $rowTanggal !== '' ? Watobot::formatTanggalIndonesia($rowTanggal) : '-';
+                                ?>
+                                <tr>
+                                    <td><b><?= htmlspecialchars((string)$row['nama_tim']) ?></b><br><small><?= htmlspecialchars((string)$row['id']) ?></small></td>
+                                    <td><?= htmlspecialchars($rowTanggalText) ?></td>
+                                    <td><?= htmlspecialchars((string)($row['tema'] !== '' ? $row['tema'] : '-')) ?></td>
+                                    <td>
+                                        <span class="badge-status aktif">H <?= (int)$row['hadir'] ?></span>
+                                        <span class="badge-status peringatan">I <?= (int)$row['izin'] ?></span>
+                                        <span class="badge-status tidak_aktif">A <?= (int)$row['absen'] ?></span>
+                                    </td>
+                                    <td>
+                                        <a class="row-action manage" href="<?= htmlspecialchars($basePath) ?>laporan?id=<?= urlencode((string)$row['id']) ?>">&#9881; Kelola</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         </div>
     </div>
 
     <!-- TAB 7: PENDAFTAR -->
     <div id="tab-pendaftar" class="tab-content <?= $activeTab === 'tab-pendaftar' ? 'active' : '' ?>">
-        <?php
-        $registrants = array_values(array_filter($master['registrants'] ?? [], 'is_array'));
-        usort($registrants, static fn(array $a, array $b): int =>
-            strcmp((string)($b['created_at'] ?? ''), (string)($a['created_at'] ?? ''))
-        );
-        $regStats = ['total' => count($registrants), 'Menunggu' => 0, 'Disetujui' => 0, 'Cadangan' => 0, 'Ditolak' => 0, 'ikhwan' => 0, 'akhwat' => 0];
-        foreach ($registrants as $reg) {
-            $st = (string)($reg['status_pendaftaran'] ?? 'Menunggu');
-            if (isset($regStats[$st])) {
-                $regStats[$st]++;
-            }
-            if (($reg['gender'] ?? '') === 'Laki-laki') {
-                $regStats['ikhwan']++;
-            } elseif (($reg['gender'] ?? '') === 'Perempuan') {
-                $regStats['akhwat']++;
-            }
-        }
-        $publicDaftarUrl = mentoring_request_origin() . $appBase . 'daftar';
-        ?>
-        <div class="tab-actions" style="justify-content: space-between; align-items: center;">
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <a href="<?= htmlspecialchars($appBase) ?>daftar" target="_blank" rel="noopener noreferrer" class="btn-action secondary">Buka Form Pendaftaran &nearr;</a>
-                <button type="button" class="btn-action secondary" onclick="copyDaftarLink(<?= htmlspecialchars(json_encode($publicDaftarUrl), ENT_QUOTES) ?>, this)">Salin Link Pendaftaran</button>
-            </div>
-        </div>
-
+        <div class="tab-split-desktop">
         <div class="card">
             <h3 class="card-title">Ringkasan Pendaftar (Waiting List)</h3>
             <div class="recap-grid" style="margin-bottom: 0;">
@@ -733,60 +1064,73 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
                     <div class="stat-label">Disetujui</div>
                     <div class="stat-value" style="color: #34d399;"><?= (int)$regStats['Disetujui'] ?></div>
                 </div>
+                <div class="stat-box">
+                    <div class="stat-label">Ditolak</div>
+                    <div class="stat-value" style="color: #f87171;"><?= (int)$regStats['Ditolak'] ?></div>
+                </div>
             </div>
         </div>
 
-        <div class="card card-paginated" data-page-size="<?= $perPage ?>">
-            <h3 class="card-title">Daftar Calon Mentee</h3>
-            <div class="table-search-bar">
-                <input type="text" class="table-search-input" placeholder="🔍 Cari nama, NIM, kelas, WA, mentor, atau status...">
+        <div class="card card-paginated">
+            <div class="card-toolbar">
+                <h3 class="card-title">Daftar Calon Mentee</h3>
+                <div class="table-search-bar">
+                    <input type="text" class="table-search-input" placeholder="🔍 Cari nama, NIM, kelas, WA, mentor, atau status...">
+                </div>
+                <div class="tab-actions">
+                    <a href="<?= htmlspecialchars($appBase) ?>daftar" target="_blank" rel="noopener noreferrer" class="btn-action secondary">Buka Form &nearr;</a>
+                    <button type="button" class="btn-action secondary" onclick="copyDaftarLink(<?= htmlspecialchars(json_encode($publicDaftarUrl), ENT_QUOTES) ?>, this)">Salin Link</button>
+                </div>
             </div>
-            <table class="attendance-table">
-                <thead>
-                    <tr><th>Foto</th><th>Nama &amp; Gender</th><th>NIM &amp; Kelas</th><th>WhatsApp</th><th>Preferensi Mentor</th><th>Status</th><th>Aksi</th></tr>
-                </thead>
-                <tbody class="paginated-tbody">
-                    <?php if ($registrants === []): ?>
-                        <tr>
-                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">
-                                Belum ada pendaftar yang masuk. Bagikan link form pendaftaran publik kepada calon peserta.
-                            </td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($registrants as $reg): ?>
-                            <?php
-                                $regId = (string)($reg['id'] ?? '');
-                                $regStatus = (string)($reg['status_pendaftaran'] ?? 'Menunggu');
-                                $regBadgeClass = match ($regStatus) {
-                                    'Disetujui' => 'aktif',
-                                    'Ditolak' => 'tidak_aktif',
-                                    default => 'peringatan',
-                                };
-                                $regKelas = Academic::formatClass($reg['kelas'] ?? '', $reg['nim'] ?? '');
-                                $regCreated = !empty($reg['created_at']) ? date('d M Y', strtotime((string)$reg['created_at'])) : '-';
-                                $prefMentor = trim((string)($reg['preferred_mentor_nama'] ?? ''));
-                            ?>
+            <div class="table-scroll">
+                <table class="attendance-table">
+                    <thead>
+                        <tr><th>Foto</th><th>Nama &amp; Gender</th><th>NIM &amp; Kelas</th><th>WhatsApp</th><th>Preferensi Mentor</th><th>Status</th><th>Aksi</th></tr>
+                    </thead>
+                    <tbody class="paginated-tbody">
+                        <?php if ($registrants === []): ?>
                             <tr>
-                                <?= $renderAvatar('pendaftar', $regId, $reg['foto_profil'] ?? null, (string)($reg['nama_lengkap'] ?? '')) ?>
-                                <td>
-                                    <b><?= htmlspecialchars((string)($reg['nama_lengkap'] ?? '-')) ?></b>
-                                    <br><small><?= htmlspecialchars((string)($reg['gender'] ?? '-')) ?> &bull; <?= htmlspecialchars($regCreated) ?></small>
-                                </td>
-                                <td>
-                                    <?= htmlspecialchars((string)($reg['nim'] ?? '-')) ?>
-                                    <?= $regKelas !== '' ? '<br><small>' . htmlspecialchars($regKelas) . ' (' . htmlspecialchars((string)($reg['jadwal_kuliah'] ?? '-')) . ')</small>' : '' ?>
-                                </td>
-                                <td><?= htmlspecialchars((string)($reg['nomor_whatsapp'] ?? '-')) ?></td>
-                                <td><?= $prefMentor !== '' ? htmlspecialchars($prefMentor) : '<span style="color:var(--text-muted);">Bebas / Divisi</span>' ?></td>
-                                <td><span class="badge-status <?= $regBadgeClass ?>"><?= htmlspecialchars($regStatus) ?></span></td>
-                                <td>
-                                    <a class="row-action manage" href="<?= htmlspecialchars($basePath) ?>pendaftar?id=<?= urlencode($regId) ?>">&#9881; Kelola</a>
+                                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                                    Belum ada pendaftar yang masuk. Bagikan link form pendaftaran publik kepada calon peserta.
                                 </td>
                             </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                        <?php else: ?>
+                            <?php foreach ($registrants as $reg): ?>
+                                <?php
+                                    $regId = (string)($reg['id'] ?? '');
+                                    $regStatus = (string)($reg['status_pendaftaran'] ?? 'Menunggu');
+                                    $regBadgeClass = match ($regStatus) {
+                                        'Disetujui' => 'aktif',
+                                        'Ditolak' => 'tidak_aktif',
+                                        default => 'peringatan',
+                                    };
+                                    $regKelas = Academic::formatClass($reg['kelas'] ?? '', $reg['nim'] ?? '');
+                                    $regCreated = !empty($reg['created_at']) ? date('d M Y', strtotime((string)$reg['created_at'])) : '-';
+                                    $prefMentor = trim((string)($reg['preferred_mentor_nama'] ?? ''));
+                                ?>
+                                <tr>
+                                    <?= $renderAvatar('pendaftar', $regId, $reg['foto_profil'] ?? null, (string)($reg['nama_lengkap'] ?? '')) ?>
+                                    <td>
+                                        <b><?= htmlspecialchars((string)($reg['nama_lengkap'] ?? '-')) ?></b>
+                                        <br><small><?= htmlspecialchars((string)($reg['gender'] ?? '-')) ?> &bull; <?= htmlspecialchars($regCreated) ?></small>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars((string)($reg['nim'] ?? '-')) ?>
+                                        <?= $regKelas !== '' ? '<br><small>' . htmlspecialchars($regKelas) . ' (' . htmlspecialchars((string)($reg['jadwal_kuliah'] ?? '-')) . ')</small>' : '' ?>
+                                    </td>
+                                    <td><?= htmlspecialchars((string)($reg['nomor_whatsapp'] ?? '-')) ?></td>
+                                    <td><?= $prefMentor !== '' ? htmlspecialchars($prefMentor) : '<span style="color:var(--text-muted);">Bebas / Divisi</span>' ?></td>
+                                    <td><span class="badge-status <?= $regBadgeClass ?>"><?= htmlspecialchars($regStatus) ?></span></td>
+                                    <td>
+                                        <a class="row-action manage" href="<?= htmlspecialchars($basePath) ?>pendaftar?id=<?= urlencode($regId) ?>">&#9881; Kelola</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         </div>
     </div>
 
@@ -1079,10 +1423,61 @@ function switchTab(tabId, btn) {
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
     if (history.replaceState) history.replaceState(null, '', '#' + tabId);
+    if (typeof window.recalcAllPaginatedCards === 'function') {
+        window.recalcAllPaginatedCards();
+    }
 }
 
 // Inisialisasi Pencarian & Pagination untuk semua card yang memiliki judul "Daftar"
 document.addEventListener('DOMContentLoaded', () => {
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobileMenuDrawer = document.getElementById('mobile-menu-drawer');
+    const mobileDrawerClose = document.getElementById('mobile-drawer-close');
+    const setMobileDrawerOpen = (open) => {
+        if (!mobileMenuDrawer || !mobileMenuBtn) return;
+        mobileMenuDrawer.classList.toggle('active', open);
+        mobileMenuDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+        mobileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    if (mobileMenuBtn && mobileMenuDrawer) {
+        mobileMenuBtn.addEventListener('click', () => setMobileDrawerOpen(true));
+        if (mobileDrawerClose) {
+            mobileDrawerClose.addEventListener('click', () => setMobileDrawerOpen(false));
+        }
+        mobileMenuDrawer.addEventListener('click', (e) => {
+            if (e.target === mobileMenuDrawer) setMobileDrawerOpen(false);
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mobileMenuDrawer.classList.contains('active')) {
+                setMobileDrawerOpen(false);
+            }
+        });
+    }
+
+    const mobilePendaftarIndicator = document.getElementById('mobile-pendaftar-indicator');
+    const tabsContainer = document.querySelector('.master-nav-row .tabs');
+    const pendaftarTabBtn = document.querySelector('.tab-btn[onclick*="tab-pendaftar"]');
+    const updatePendaftarIndicatorVisibility = () => {
+        if (!mobilePendaftarIndicator || !tabsContainer || !pendaftarTabBtn) return;
+        const tabsRect = tabsContainer.getBoundingClientRect();
+        const btnRect = pendaftarTabBtn.getBoundingClientRect();
+        const isVisible = btnRect.left < tabsRect.right - 24 && btnRect.right > tabsRect.left;
+        mobilePendaftarIndicator.classList.toggle('is-hidden', isVisible);
+    };
+    if (mobilePendaftarIndicator) {
+        mobilePendaftarIndicator.addEventListener('click', () => {
+            if (pendaftarTabBtn) {
+                switchTab('tab-pendaftar', pendaftarTabBtn);
+                pendaftarTabBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        });
+        if (tabsContainer) {
+            tabsContainer.addEventListener('scroll', updatePendaftarIndicatorVisibility, { passive: true });
+        }
+        window.addEventListener('resize', updatePendaftarIndicatorVisibility);
+        updatePendaftarIndicatorVisibility();
+    }
+
     // Searchable select untuk filter rekap laporan
     document.querySelectorAll('select[data-searchable]').forEach(select => initSearchableSelect(select));
 
@@ -1105,6 +1500,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const paginatedRecalcFns = [];
+    window.recalcAllPaginatedCards = () => {
+        paginatedRecalcFns.forEach(fn => fn());
+    };
+
+    function computeAutoPageSize(card, tbody, allRows) {
+        const isDesktop = window.innerWidth >= 1024;
+        const firstVisibleRow = allRows.find(r => r.offsetHeight > 0);
+        const rowHeight = firstVisibleRow ? Math.max(48, firstVisibleRow.offsetHeight) : 64;
+        let tbodyTop = tbody.getBoundingClientRect().top;
+        if (tbodyTop <= 0) {
+            const tabsEl = document.querySelector('.tabs');
+            tbodyTop = tabsEl ? (tabsEl.getBoundingClientRect().bottom + 130) : 280;
+        }
+        const availableHeight = window.innerHeight - tbodyTop - 78 - 24;
+        const autoCount = Math.floor(availableHeight / rowHeight);
+        return isDesktop ? Math.max(2, Math.min(15, autoCount)) : Math.max(3, Math.min(8, autoCount));
+    }
+
     document.querySelectorAll('.card-paginated').forEach(card => {
         const tbody = card.querySelector('.paginated-tbody');
         const searchInput = card.querySelector('.table-search-input');
@@ -1112,7 +1526,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const allRows = Array.from(tbody.querySelectorAll('tr'));
         let filteredRows = [...allRows];
-        const pageSize = parseInt(card.dataset.pageSize, 10) || 5;
+        let pageSize = computeAutoPageSize(card, tbody, allRows);
         let totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
         let currentPage = 1;
 
@@ -1131,10 +1545,13 @@ document.addEventListener('DOMContentLoaded', () => {
         card.appendChild(paginationContainer);
 
         function updatePagination() {
+            pageSize = computeAutoPageSize(card, tbody, allRows);
             totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
             if (currentPage > totalPages) currentPage = 1;
             renderPage(currentPage);
         }
+
+        paginatedRecalcFns.push(updatePagination);
 
         function renderPage(page) {
             currentPage = page;
@@ -1154,7 +1571,71 @@ document.addEventListener('DOMContentLoaded', () => {
             renderControls();
         }
 
-        function renderControls() {
+        function buildPaginationItems(current, total, maxSlots) {
+            if (total <= maxSlots) {
+                return Array.from({ length: total }, (_, idx) => idx + 1);
+            }
+            if (maxSlots <= 1) {
+                return [current];
+            }
+            if (maxSlots === 2) {
+                return current > 1 ? ['...', current] : [current, '...'];
+            }
+            if (maxSlots === 3) {
+                if (current === 1 || current === total) {
+                    return [1, '...', total];
+                }
+                return ['...', current, '...'];
+            }
+            if (maxSlots === 4) {
+                if (current <= 2) return [1, 2, '...', total];
+                if (current >= total - 1) return [1, '...', total - 1, total];
+                return [1, '...', current, '...'];
+            }
+
+            if (current <= maxSlots - 2) {
+                const items = [];
+                for (let i = 1; i <= maxSlots - 2; i++) items.push(i);
+                items.push('...', total);
+                return items;
+            }
+            if (current >= total - (maxSlots - 3)) {
+                const items = [1, '...'];
+                for (let i = total - (maxSlots - 3); i <= total; i++) items.push(i);
+                return items;
+            }
+
+            const innerCount = maxSlots - 4;
+            const half = Math.floor(innerCount / 2);
+            let start = current - half;
+            let end = start + innerCount - 1;
+            if (start < 2) {
+                start = 2;
+                end = start + innerCount - 1;
+            }
+            if (end > total - 1) {
+                end = total - 1;
+                start = end - innerCount + 1;
+            }
+            const items = [1, '...'];
+            for (let i = start; i <= end; i++) items.push(i);
+            items.push('...', total);
+            return items;
+        }
+
+        function getAvailableControlsWidth() {
+            const containerWidth = paginationContainer.clientWidth;
+            if (containerWidth <= 0) {
+                return Math.max(200, (card.clientWidth || window.innerWidth) - 48);
+            }
+            const infoWidth = infoSpan.offsetWidth || 0;
+            if (containerWidth - infoWidth - 16 >= 320) {
+                return containerWidth - infoWidth - 16;
+            }
+            return containerWidth;
+        }
+
+        function renderControlsWithSlots(maxSlots) {
             controlsDiv.innerHTML = '';
 
             // Tombol Prev
@@ -1167,14 +1648,23 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             controlsDiv.appendChild(prevBtn);
 
-            // Tombol nomor halaman
-            for (let i = 1; i <= totalPages; i++) {
-                const numBtn = document.createElement('button');
-                numBtn.className = 'page-nav-btn' + (i === currentPage ? ' active' : '');
-                numBtn.textContent = i;
-                numBtn.addEventListener('click', () => renderPage(i));
-                controlsDiv.appendChild(numBtn);
-            }
+            // Tombol nomor halaman & ellipsis
+            const items = buildPaginationItems(currentPage, totalPages, maxSlots);
+            items.forEach(item => {
+                if (item === '...') {
+                    const ellipsis = document.createElement('span');
+                    ellipsis.className = 'page-nav-ellipsis';
+                    ellipsis.textContent = '...';
+                    ellipsis.setAttribute('aria-hidden', 'true');
+                    controlsDiv.appendChild(ellipsis);
+                } else {
+                    const numBtn = document.createElement('button');
+                    numBtn.className = 'page-nav-btn' + (item === currentPage ? ' active' : '');
+                    numBtn.textContent = item;
+                    numBtn.addEventListener('click', () => renderPage(item));
+                    controlsDiv.appendChild(numBtn);
+                }
+            });
 
             // Tombol Next
             const nextBtn = document.createElement('button');
@@ -1185,6 +1675,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentPage < totalPages) renderPage(currentPage + 1);
             });
             controlsDiv.appendChild(nextBtn);
+        }
+
+        function renderControls() {
+            const availableWidth = getAvailableControlsWidth();
+            let maxSlots = Math.max(1, Math.min(totalPages, Math.floor((availableWidth - 148) / 42)));
+            renderControlsWithSlots(maxSlots);
+
+            while (availableWidth > 0 && controlsDiv.scrollWidth > availableWidth && maxSlots > 1) {
+                maxSlots -= 1;
+                renderControlsWithSlots(maxSlots);
+            }
         }
 
         // Event listener kolom pencarian
@@ -1200,6 +1701,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         updatePagination();
+    });
+
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (typeof window.recalcAllPaginatedCards === 'function') {
+                window.recalcAllPaginatedCards();
+            }
+        }, 120);
     });
 
     // Pencarian sederhana pada Arsip Purna

@@ -12,9 +12,29 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 session_start();
 
+use Mentoring\BirthdayReminder;
 use Mentoring\MasterData;
 
 $teams = MasterData::getTeamsForForm();
+$masterData = MasterData::loadAll();
+$todayBirthdays = BirthdayReminder::getTodayBirthdays($masterData);
+
+$mentors = [];
+$seenMentorNames = [];
+foreach (($masterData['mentors'] ?? []) as $m) {
+    $nama = trim((string)($m['nama_lengkap'] ?? ''));
+    $status = (string)($m['status'] ?? 'Aktif');
+    if ($nama === '' || ($status !== '' && $status !== 'Aktif')) {
+        continue;
+    }
+    $key = mb_strtolower($nama);
+    if (isset($seenMentorNames[$key])) {
+        continue;
+    }
+    $seenMentorNames[$key] = true;
+    $mentors[] = $nama;
+}
+usort($mentors, static fn(string $a, string $b): int => strcasecmp($a, $b));
 
 $formError = match ((string)($_GET['error'] ?? '')) {
     'wajib' => 'Data pertemuan belum lengkap. Isi tempat dan tema terlebih dahulu.',
@@ -30,7 +50,7 @@ $formError = match ((string)($_GET['error'] ?? '')) {
     <title>Formulir Pelaporan Mentoring Agama Islam</title>
     <link rel="icon" type="image/jpeg" href="public/assets/img/favicon.jpeg">
     <!-- PWA Metadata (Input Laporan) -->
-    <link rel="manifest" href="https://laporan-mai.krasyid822.workers.dev/pwa/manifest-laporan.webmanifest">
+    <link rel="manifest" href="app-manifest-laporan.webmanifest">
     <meta name="theme-color" content="#0284c7">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -41,7 +61,7 @@ $formError = match ((string)($_GET['error'] ?? '')) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="public/assets/css/style.css?v=4">
+    <link rel="stylesheet" href="public/assets/css/style.css?v=7">
     <link rel="stylesheet" href="public/assets/css/biometric.css?v=6">
     <link rel="stylesheet" href="public/assets/css/pwa.css?v=1">
 </head>
@@ -111,6 +131,8 @@ $formError = match ((string)($_GET['error'] ?? '')) {
         <h1 class="page-title">Pelaporan Mentoring Agama Islam</h1>
         <p class="page-subtitle">Unit Kegiatan Mahasiswa Islam (UKMI) Politeknik Negeri Medan</p>
     </header>
+
+    <?= BirthdayReminder::renderBanner($todayBirthdays, 'ultah') ?>
 
     <!-- PWA Status, Install Banner, iOS Guide & Offline Queue -->
     <div id="pwaStatusBar" class="pwa-status-bar">
@@ -199,7 +221,15 @@ $formError = match ((string)($_GET['error'] ?? '')) {
 
                 <div class="form-group">
                     <label for="mentor_nama">Nama Pendamping / Mentor:</label>
-                    <input type="text" name="mentor_nama" id="mentor_nama" class="form-control" placeholder="Otomatis terisi saat tim dipilih" readonly required>
+                    <select name="mentor_nama" id="mentor_nama" class="form-control searchable" required>
+                        <option value="">-- Pilih Pendamping / Mentor --</option>
+                        <?php foreach ($mentors as $mentorNama): ?>
+                            <option value="<?= htmlspecialchars($mentorNama) ?>"><?= htmlspecialchars($mentorNama) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small style="color: var(--text-muted); font-size: 0.78rem; margin-top: 4px; display: block;">
+                        Otomatis terisi sesuai kelompok; dapat diganti jika mentor berhalangan / titip kelompok lain.
+                    </small>
                 </div>
 
                 <div class="form-group col-span-2">
@@ -313,17 +343,12 @@ $formError = match ((string)($_GET['error'] ?? '')) {
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.update())).catch(() => {});
 }
-if ('caches' in window) {
-    caches.keys().then(keys => keys.forEach(k => {
-        if ((k.startsWith('app-shell-') || k.startsWith('runtime-')) && !k.endsWith('mai-pwa-v20261122-1')) {
-            caches.delete(k);
-        }
-    })).catch(() => {});
-}
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Inisialisasi Searchable Select untuk semua select.searchable
+    const searchableControllers = new Map();
     document.querySelectorAll('select.searchable').forEach(sel => {
-        initSearchableSelect(sel);
+        const ctrl = initSearchableSelect(sel);
+        if (ctrl) searchableControllers.set(sel, ctrl);
     });
 
     // 2. Inisialisasi Image Compressor & Live Preview
@@ -334,17 +359,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Dynamic loading saat tim dipilih
     const timSelect = document.getElementById('tim_id');
-    const mentorInput = document.getElementById('mentor_nama');
+    const initialTeamOptions = Array.from(timSelect.options)
+        .filter(opt => opt.value !== '')
+        .map(opt => ({ value: opt.value, text: opt.textContent }));
+
+    function filterTeamsForBiometric(allowedTeamIds) {
+        if (!Array.isArray(allowedTeamIds)) return;
+        const allowedSet = new Set(allowedTeamIds.map(String));
+        const matched = initialTeamOptions.filter(opt => allowedSet.has(String(opt.value)));
+
+        timSelect.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = matched.length > 0
+            ? '-- Pilih Kelompok Mentoring --'
+            : '-- Tidak ada kelompok yang terhubung dengan identitas Anda --';
+        timSelect.appendChild(placeholder);
+
+        matched.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt.value;
+            el.textContent = opt.text;
+            timSelect.appendChild(el);
+        });
+
+        if (matched.length === 1) {
+            timSelect.value = matched[0].value;
+            searchableControllers.get(timSelect)?.update();
+            timSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            timSelect.value = '';
+            searchableControllers.get(timSelect)?.update();
+            if (matched.length === 0) {
+                attendanceContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: #f87171;">Identitas Anda belum terhubung ke kelompok mentoring mana pun.</div>';
+            }
+        }
+    }
+
+    const mentorSelect = document.getElementById('mentor_nama');
     const attendanceContainer = document.getElementById('attendanceContainer');
     const memberSelects = document.querySelectorAll('.member-select');
+
+    mentorSelect.addEventListener('change', () => {
+        const currentMentor = mentorSelect.value;
+        memberSelects.forEach(sel => {
+            const optMentor = sel.querySelector('option[data-role="mentor"]');
+            if (!optMentor) return;
+            const wasSelected = sel.value === optMentor.value && optMentor.value !== '';
+            optMentor.value = currentMentor;
+            optMentor.textContent = currentMentor ? `${currentMentor} (Mentor)` : '-- Mentor --';
+            if (wasSelected) {
+                sel.value = currentMentor;
+            }
+            searchableControllers.get(sel)?.update();
+        });
+    });
 
     // Keterangan izin hanya aktif saat Izin; "Tidak jelas kabarnya" hanya saat Absen.
     attendanceContainer.addEventListener('change', (e) => {
         const radio = e.target;
-        if (!radio.matches('input[type="radio"][name^="kehadiran["]')) return;
-        const match = radio.name.match(/^kehadiran\[(.+)\]$/);
-        if (!match) return;
-        const menteeId = match[1];
+        if (!radio.matches('input[type="radio"][data-attendance-mentee]')) return;
+        const menteeId = radio.dataset.attendanceMentee;
+        if (!menteeId) return;
+
+        // Sinkronkan pilihan antara tampilan desktop (kehadiran[]) dan mobile (kehadiran_mobile[])
+        attendanceContainer.querySelectorAll(`input[type="radio"][data-attendance-mentee="${menteeId}"]`).forEach(other => {
+            if (other !== radio) {
+                other.checked = (other.value === radio.value);
+            }
+        });
+
         const isIzin = radio.value === 'Izin';
         const isAbsen = radio.value === 'Absen';
         attendanceContainer.querySelectorAll(`input[data-izin-note="${menteeId}"]`).forEach(note => {
@@ -364,7 +448,8 @@ document.addEventListener('DOMContentLoaded', () => {
     timSelect.addEventListener('change', async (e) => {
         const teamId = e.target.value;
         if (!teamId) {
-            mentorInput.value = '';
+            mentorSelect.value = '';
+            searchableControllers.get(mentorSelect)?.update();
             attendanceContainer.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-muted);">Silakan pilih Kelompok Mentoring terlebih dahulu.</div>';
             return;
         }
@@ -381,23 +466,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     team = data.data;
                 }
             } catch (netErr) {
-                if (window.MaiPwa) {
-                    team = await MaiPwa.getCachedTeamById(teamId);
-                }
+                // Abaikan error jaringan; fallback ke cache di bawah
+            }
+            if (!team && window.MaiPwa) {
+                team = await MaiPwa.getCachedTeamById(teamId);
             }
             if (!team) {
                 Modal.error('Gagal mengambil data tim. Pastikan perangkat pernah memuat data saat online.');
                 return;
             }
-            mentorInput.value = team.mentor_nama;
+            const teamMentorNama = team.mentor_nama || '';
+            if (teamMentorNama && !Array.from(mentorSelect.options).some(o => o.value === teamMentorNama)) {
+                const extraOpt = document.createElement('option');
+                extraOpt.value = teamMentorNama;
+                extraOpt.textContent = teamMentorNama;
+                mentorSelect.appendChild(extraOpt);
+            }
+            mentorSelect.value = teamMentorNama;
+            searchableControllers.get(mentorSelect)?.update();
 
             // Populate member dropdowns (Moderator, Tadabbur, Kultum, Do'a)
             const members = team.mentees || [];
             memberSelects.forEach(sel => {
                 sel.innerHTML = '<option value="">-- Pilih Anggota --</option>';
                 const optMentor = document.createElement('option');
-                optMentor.value = team.mentor_nama;
-                optMentor.textContent = `${team.mentor_nama} (Mentor)`;
+                optMentor.dataset.role = 'mentor';
+                optMentor.value = teamMentorNama;
+                optMentor.textContent = teamMentorNama ? `${teamMentorNama} (Mentor)` : '-- Mentor --';
                 sel.appendChild(optMentor);
 
                 members.forEach(m => {
@@ -437,13 +532,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>
                             <div class="attendance-options">
                                 <label class="radio-label">
-                                    <input type="radio" name="kehadiran[${m.id}]" value="Hadir" checked> Hadir
+                                    <input type="radio" name="kehadiran[${m.id}]" data-attendance-mentee="${m.id}" value="Hadir" checked> Hadir
                                 </label>
                                 <label class="radio-label">
-                                    <input type="radio" name="kehadiran[${m.id}]" value="Izin"> Izin
+                                    <input type="radio" name="kehadiran[${m.id}]" data-attendance-mentee="${m.id}" value="Izin"> Izin
                                 </label>
                                 <label class="radio-label">
-                                    <input type="radio" name="kehadiran[${m.id}]" value="Absen"> Absen
+                                    <input type="radio" name="kehadiran[${m.id}]" data-attendance-mentee="${m.id}" value="Absen"> Absen
                                 </label>
                             </div>
                             <input type="text" name="keterangan_izin[${m.id}][]" data-izin-note="${m.id}" class="form-control" placeholder="Keterangan izin (opsional)" style="margin-top:8px; display:none;" disabled>
@@ -475,15 +570,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="mentee-card-body">
                             <div class="attendance-options-mobile">
                                 <label class="radio-btn-pill">
-                                    <input type="radio" name="kehadiran[${m.id}]" value="Hadir" checked>
+                                    <input type="radio" name="kehadiran_mobile[${m.id}]" data-attendance-mentee="${m.id}" value="Hadir" checked>
                                     <span>Hadir</span>
                                 </label>
                                 <label class="radio-btn-pill">
-                                    <input type="radio" name="kehadiran[${m.id}]" value="Izin">
+                                    <input type="radio" name="kehadiran_mobile[${m.id}]" data-attendance-mentee="${m.id}" value="Izin">
                                     <span>Izin</span>
                                 </label>
                                 <label class="radio-btn-pill">
-                                    <input type="radio" name="kehadiran[${m.id}]" value="Absen">
+                                    <input type="radio" name="kehadiran_mobile[${m.id}]" data-attendance-mentee="${m.id}" value="Absen">
                                     <span>Absen</span>
                                 </label>
                             </div>
@@ -709,7 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     matchedName.textContent = name + ' (' + role + ')';
                     hideResult();
                     showState('bioStateMatched');
-                    setTimeout(() => { unlockForm(); }, 1200);
+                    setTimeout(() => { unlockForm(who); }, 1200);
                     return true;
                 }
                 show(data.message || 'Verifikasi biometrik gagal', 'error');
@@ -748,7 +843,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     matchedName.textContent = name + ' (' + role + ')';
                     hideResult();
                     showState('bioStateMatched');
-                    setTimeout(() => { unlockForm(); }, 1200);
+                    setTimeout(() => { unlockForm(who); }, 1200);
                 } else {
                     show(data.message || 'Verifikasi pola gagal', 'error');
                     if (onFail) onFail();
@@ -763,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        function unlockForm() {
+        function unlockForm(verifiedData) {
             hideResult();
             blocker.style.display = 'none';
             modal.setAttribute('aria-hidden', 'true');
@@ -775,6 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     el.disabled = false;
                 });
             }
+            filterTeamsForBiometric(verifiedData?.allowed_team_ids);
             form.scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -789,9 +885,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.querySelectorAll('input, select, button, textarea').forEach(el => el.disabled = true);
             }
 
-            identities = await loadIdentities();
             const offlineGrant = window.MaiPwa ? MaiPwa.getBioOfflineGrant() : null;
-            if ((!navigator.onLine || identities.length === 0) && offlineGrant) {
+            if (!navigator.onLine) {
+                if (offlineGrant) {
+                    showState('bioStateMatched');
+                    matchedName.textContent = `${offlineGrant.entity_name || 'Mentor'} (${offlineGrant.role || 'Offline'})`;
+                    show('Mode Offline aktif: menggunakan verifikasi perangkat tersimpan.', 'info');
+                    setTimeout(() => { unlockForm(offlineGrant); }, 800);
+                    return;
+                }
+                showState('bioStateIdentities');
+                divIdentities.innerHTML = '<p class="biometric-hint" style="color:#f87171">Anda sedang offline dan perangkat ini belum pernah melakukan verifikasi biometrik saat online.</p>';
+                hintIdentities.textContent = 'Hubungkan ke internet sekali untuk verifikasi pertama kali agar mode offline aktif.';
+                return;
+            }
+
+            identities = await loadIdentities();
+            if (identities.length === 0 && offlineGrant) {
                 showState('bioStateMatched');
                 matchedName.textContent = `${offlineGrant.entity_name || 'Mentor'} (${offlineGrant.role || 'Offline'})`;
                 show('Mode Offline aktif: menggunakan verifikasi perangkat tersimpan.', 'info');
