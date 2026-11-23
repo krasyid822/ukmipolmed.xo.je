@@ -57,7 +57,7 @@ die()  { printf '\033[1;31m ✗ %s\033[0m\n' "$*" >&2; exit 1; }
 cd "$REPO_DIR"
 
 RUNTIME_SKIP=( "data.json" "insights.json" "authors.json" "assessments.json" "s3_config.php" ".s3_usage.json" ".s3_uploads.json" ".hosting_usage.json" )
-DEV_SKIP=( ".gitignore" "syn.sh" "router.php" "localhost.sh" ".my-idea.txt" "AGENTS.md" "TEMUAN.TXT" "readme.md" "LICENSE" ".syn_manifest" "slimrepo.sh" ".netrc" ".env" )
+DEV_SKIP=( ".gitignore" "syn.sh" "router.php" "localhost.sh" ".my-idea.txt" "AGENTS.md" "TEMUAN.TXT" "readme.md" "LICENSE" ".syn_manifest" "slimrepo.sh" ".netrc" ".env" "migrate_store.php" "migrate_s3.php" "migrate_optimize.php" "cleanup_inodes.php" "migrate_data_shards.php" "migrate_assessments_shards.php" )
 in_list() { local n="$1"; shift; local x; for x in "$@"; do [ "$x" = "$n" ] && return 0; done; return 1; }
 
 lftp_header() {
