@@ -573,6 +573,93 @@ switch ($action) {
         break;
     }
 
+    case 'bot_clear_queue': {
+        if (!AdminAuth::isAdmin()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
+            break;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Metode tidak valid']);
+            break;
+        }
+
+        $allowedChannels = AdminAuth::isSuperAdmin()
+            ? ['ikhwan', 'akhwat']
+            : [(AdminAuth::allowedExportScope() === 'akhwat' ? 'akhwat' : 'ikhwan')];
+
+        $input = json_decode((string)file_get_contents('php://input'), true);
+        if (!is_array($input)) {
+            $input = $_POST;
+        }
+        if (!AdminAuth::verifyCsrfToken(isset($input['_csrf']) ? (string)$input['_csrf'] : null)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Token CSRF tidak valid. Muat ulang halaman lalu coba lagi.']);
+            break;
+        }
+
+        $itemId = trim((string)($input['id'] ?? ''));
+        $removed = 0;
+
+        if ($itemId !== '') {
+            $foundItem = null;
+            foreach (BotQueue::items() as $item) {
+                if ((string)($item['id'] ?? '') === $itemId) {
+                    $foundItem = $item;
+                    break;
+                }
+            }
+            if ($foundItem === null) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Item antrean tidak ditemukan.']);
+                break;
+            }
+            $itemChannel = Watobot::normalizeChannel($foundItem['channel'] ?? 'ikhwan');
+            if (!in_array($itemChannel, $allowedChannels, true)) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Akses ditolak untuk channel ini']);
+                break;
+            }
+            if (BotQueue::remove($itemId)) {
+                $removed = 1;
+            }
+        } else {
+            $requestedChannel = trim((string)($input['channel'] ?? ''));
+            if ($requestedChannel !== '') {
+                $ch = Watobot::normalizeChannel($requestedChannel);
+                if (!in_array($ch, $allowedChannels, true)) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'message' => 'Akses ditolak untuk channel ini']);
+                    break;
+                }
+                $targetChannels = [$ch];
+            } else {
+                $targetChannels = $allowedChannels;
+            }
+
+            foreach ($targetChannels as $ch) {
+                $removed += BotQueue::clear($ch);
+            }
+        }
+
+        $pendingCount = 0;
+        foreach ($allowedChannels as $ch) {
+            $pendingCount += BotQueue::pendingCount($ch);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => $removed > 0 ? "{$removed} pesan berhasil dihapus dari antrean." : 'Tidak ada antrean yang dihapus.',
+            'data' => [
+                'removed' => $removed,
+                'pending_count' => $pendingCount,
+                'state' => BotQueue::state($allowedChannels[0] ?? 'ikhwan'),
+            ],
+        ]);
+        break;
+    }
+
     default:
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Aksi tidak valid']);

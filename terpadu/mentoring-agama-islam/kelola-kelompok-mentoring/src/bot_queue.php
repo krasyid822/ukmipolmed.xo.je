@@ -252,6 +252,44 @@ class BotQueue {
         return self::saveItems($filtered);
     }
 
+    public static function removeByReportId(string $reportId): bool {
+        $items = self::items();
+        $filtered = array_values(array_filter(
+            $items,
+            static fn(array $item): bool => (string)($item['report_id'] ?? '') !== $reportId
+        ));
+
+        if (count($filtered) === count($items)) {
+            return false;
+        }
+
+        return self::saveItems($filtered);
+    }
+
+    public static function clear(?string $channel = null): int {
+        $items = self::items();
+        if ($items === []) {
+            return 0;
+        }
+
+        if ($channel === null) {
+            self::saveItems([]);
+            return count($items);
+        }
+
+        $target = Watobot::normalizeChannel($channel);
+        $remaining = array_values(array_filter(
+            $items,
+            static fn(array $item): bool => Watobot::normalizeChannel($item['channel'] ?? 'ikhwan') !== $target
+        ));
+
+        $removed = count($items) - count($remaining);
+        if ($removed > 0) {
+            self::saveItems($remaining);
+        }
+        return $removed;
+    }
+
     /**
      * Proses pesan yang sudah jatuh tempo.
      *

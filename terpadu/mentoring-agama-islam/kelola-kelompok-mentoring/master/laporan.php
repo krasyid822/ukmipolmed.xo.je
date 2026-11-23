@@ -155,6 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'delete') {
         ReportRepository::delete($reportId);
+        BotQueue::removeByReportId($reportId);
         header('Location: ' . $basePath . '?msg=report_deleted&tab=tab-laporan', true, 303);
         exit;
     }

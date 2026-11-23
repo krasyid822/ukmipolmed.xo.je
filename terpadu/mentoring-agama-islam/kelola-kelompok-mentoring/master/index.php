@@ -447,6 +447,23 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             line-height: 1.45;
         }
         .bot-queue-list .queue-error { color: #f87171; display: block; margin-top: 2px; }
+        .bot-queue-item-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+        .bot-queue-item-info { flex: 1; min-width: 0; }
+        .bot-queue-del-btn {
+            flex-shrink: 0;
+            background: rgba(239, 68, 68, 0.14);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .bot-queue-del-btn:hover { background: rgba(239, 68, 68, 0.28); color: #fecaca; }
+        .bot-queue-del-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .bot-modal .modal-btn.danger { background: #dc2626; color: #fff; border: 1px solid #ef4444; }
+        .bot-modal .modal-btn.danger:hover { background: #b91c1c; }
         .bot-modal .form-group { margin-bottom: 12px; text-align: left; }
         .bot-modal .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px; }
         .bot-modal .form-control {
@@ -1278,12 +1295,19 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             <ul class="bot-queue-list">
                 <?php foreach (array_slice($botQueueItems, 0, 5) as $item): ?>
                     <li>
-                        <b><?= htmlspecialchars((string)($item['meta']['nama_tim'] ?? $item['report_id'] ?? '-')) ?></b>
-                        &bull; <?= htmlspecialchars((string)($item['report_id'] ?? '-')) ?>
-                        &bull; percobaan ke-<?= (int)($item['attempts'] ?? 0) ?>
-                        <?php if (!empty($item['last_error'])): ?>
-                            <span class="queue-error"><?= htmlspecialchars((string)$item['last_error']) ?></span>
-                        <?php endif; ?>
+                        <div class="bot-queue-item-row">
+                            <div class="bot-queue-item-info">
+                                <b><?= htmlspecialchars((string)($item['meta']['nama_tim'] ?? $item['report_id'] ?? '-')) ?></b>
+                                &bull; <?= htmlspecialchars((string)($item['report_id'] ?? '-')) ?>
+                                &bull; percobaan ke-<?= (int)($item['attempts'] ?? 0) ?>
+                                <?php if (!empty($item['last_error'])): ?>
+                                    <span class="queue-error"><?= htmlspecialchars((string)$item['last_error']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($item['id'])): ?>
+                                <button type="button" class="bot-queue-del-btn" onclick="deleteBotQueueItem(<?= htmlspecialchars(json_encode((string)$item['id']), ENT_QUOTES) ?>, this)">Hapus</button>
+                            <?php endif; ?>
+                        </div>
                     </li>
                 <?php endforeach; ?>
             </ul>
@@ -1340,6 +1364,7 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
             <div class="modal-actions">
                 <button type="button" class="modal-btn secondary" onclick="closeBotModal()">Tutup</button>
                 <?php if ($botPendingCount > 0): ?>
+                    <button type="button" class="modal-btn danger" id="bot-clear-btn" onclick="clearBotQueue(this)">Hapus Antrean</button>
                     <button type="button" class="modal-btn secondary" id="bot-retry-btn" onclick="processBotQueue(this)">Kirim Sekarang</button>
                 <?php endif; ?>
                 <button type="submit" class="modal-btn primary" id="bot-save-btn">Simpan Pengaturan</button>
@@ -1354,6 +1379,7 @@ $renderActions = function (string $entity, string $editSlug, string $id) use ($b
 const BOT_API_SAVE_URL = <?= json_encode($appBase . 'api?action=bot_save_api') ?>;
 const BOT_API_TOGGLE_URL = <?= json_encode($appBase . 'api?action=bot_toggle') ?>;
 const BOT_API_PROCESS_URL = <?= json_encode($appBase . 'api?action=bot_process_queue') ?>;
+const BOT_API_CLEAR_URL = <?= json_encode($appBase . 'api?action=bot_clear_queue') ?>;
 const BOT_CSRF_TOKEN = <?= json_encode(AdminAuth::csrfToken()) ?>;
 const BOT_CHANNELS_DATA = <?= json_encode($botChannels) ?>;
 
@@ -1549,6 +1575,92 @@ async function processBotQueue(btn) {
         if (btn) {
             btn.disabled = false;
             btn.textContent = 'Kirim Sekarang';
+        }
+    }
+}
+
+async function clearBotQueue(btn) {
+    const confirmed = (typeof window.Modal !== 'undefined' && typeof window.Modal.confirm === 'function')
+        ? await window.Modal.confirm('Hapus seluruh antrean pengiriman bot? Pesan yang dihapus tidak akan dikirim ulang otomatis.', 'Hapus Antrean Bot')
+        : window.confirm('Hapus seluruh antrean pengiriman bot? Pesan yang dihapus tidak akan dikirim ulang otomatis.');
+    if (!confirmed) return;
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Menghapus...';
+    }
+    showBotFormMessage('Menghapus antrean pengiriman bot...', 'info');
+    if (typeof window.ukmiShowLoadingOverlay === 'function') {
+        window.ukmiShowLoadingOverlay('Menghapus antrean pengiriman bot...');
+    }
+
+    try {
+        const response = await fetch(BOT_API_CLEAR_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': BOT_CSRF_TOKEN },
+            body: JSON.stringify({ _csrf: BOT_CSRF_TOKEN })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            showBotFormMessage(data.message || 'Gagal menghapus antrean.', 'error');
+            return;
+        }
+        if (typeof window.Modal !== 'undefined') {
+            await window.Modal.success(data.message || 'Antrean bot berhasil dihapus.', 'Antrean Dihapus');
+        }
+        reloadMaster();
+    } catch (error) {
+        showBotFormMessage('Tidak dapat menghubungi server. Periksa koneksi lalu coba lagi.', 'error');
+    } finally {
+        if (typeof window.ukmiHideLoadingOverlay === 'function') {
+            window.ukmiHideLoadingOverlay();
+        }
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Hapus Antrean';
+        }
+    }
+}
+
+async function deleteBotQueueItem(itemId, btn) {
+    const confirmed = (typeof window.Modal !== 'undefined' && typeof window.Modal.confirm === 'function')
+        ? await window.Modal.confirm('Hapus item ini dari antrean pengiriman bot?', 'Hapus Item Antrean')
+        : window.confirm('Hapus item ini dari antrean pengiriman bot?');
+    if (!confirmed) return;
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Menghapus...';
+    }
+    showBotFormMessage('Menghapus item dari antrean...', 'info');
+    if (typeof window.ukmiShowLoadingOverlay === 'function') {
+        window.ukmiShowLoadingOverlay('Menghapus item antrean...');
+    }
+
+    try {
+        const response = await fetch(BOT_API_CLEAR_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': BOT_CSRF_TOKEN },
+            body: JSON.stringify({ id: itemId, _csrf: BOT_CSRF_TOKEN })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            showBotFormMessage(data.message || 'Gagal menghapus item antrean.', 'error');
+            return;
+        }
+        if (typeof window.Modal !== 'undefined') {
+            await window.Modal.success(data.message || 'Item antrean berhasil dihapus.', 'Item Dihapus');
+        }
+        reloadMaster();
+    } catch (error) {
+        showBotFormMessage('Tidak dapat menghubungi server. Periksa koneksi lalu coba lagi.', 'error');
+    } finally {
+        if (typeof window.ukmiHideLoadingOverlay === 'function') {
+            window.ukmiHideLoadingOverlay();
+        }
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Hapus';
         }
     }
 }
