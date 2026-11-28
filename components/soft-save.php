@@ -1,4 +1,13 @@
 <?php
+$__ukmiErrText = !empty($error) ? (string) $error : (!empty($err) ? (string) $err : '');
+$__ukmiMsgText = !empty($message) ? (string) $message : (!empty($msg) ? (string) $msg : '');
+$__ukmiNotifyText = $__ukmiErrText !== '' ? $__ukmiErrText : $__ukmiMsgText;
+$__ukmiNotifyKind = $__ukmiErrText !== '' ? 'danger' : 'success';
+if ($__ukmiNotifyText !== ''):
+?>
+<div id="ukmi-toast-payload" hidden data-message="<?php echo htmlspecialchars($__ukmiNotifyText, ENT_QUOTES, 'UTF-8'); ?>" data-kind="<?php echo $__ukmiNotifyKind; ?>"></div>
+<?php
+endif;
 if (!defined('UKMI_SOFT_SAVE')) {
 	define('UKMI_SOFT_SAVE', true);
 	?>
@@ -8,7 +17,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 	top: 0;
 	left: 0;
 	right: 0;
-	z-index: 2147482100;
+	z-index: 2147483500;
 	padding: 6px 14px;
 	text-align: center;
 	font-size: 12px;
@@ -317,8 +326,9 @@ if (!defined('UKMI_SOFT_SAVE')) {
 			.then(function (payload) {
 				if (!payload) return;
 				var doc = new DOMParser().parseFromString(payload.html, 'text/html');
-				if (!doc || !doc.body) {
-					swapBody(payload.html, payload.url);
+				if (!doc || !doc.body || !doc.querySelector('meta[name="csrf-token"]')) {
+					window.ukmiNotify('Sesi server/hosting telah kedaluwarsa. Data yang Anda input tetap dipertahankan—buka halaman ini di tab baru lalu klik Simpan lagi.', 'danger', 10000);
+					form.dispatchEvent(new CustomEvent('ukmi:softsave-failed', { bubbles: true }));
 					return;
 				}
 				var isUnlockForm = !!form.querySelector('input[name="unlock_credential_code"], input[name="unlock_division_code"], input[name="unlock_insights_code"]');
@@ -394,11 +404,4 @@ if (!defined('UKMI_SOFT_SAVE')) {
 </script>
 	<?php
 }
-$__ukmiErrText = !empty($error) ? (string) $error : (!empty($err) ? (string) $err : '');
-$__ukmiMsgText = !empty($message) ? (string) $message : (!empty($msg) ? (string) $msg : '');
-$__ukmiNotifyText = $__ukmiErrText !== '' ? $__ukmiErrText : $__ukmiMsgText;
-$__ukmiNotifyKind = $__ukmiErrText !== '' ? 'danger' : 'success';
-if ($__ukmiNotifyText !== ''):
 ?>
-<div id="ukmi-toast-payload" hidden data-message="<?php echo htmlspecialchars($__ukmiNotifyText, ENT_QUOTES, 'UTF-8'); ?>" data-kind="<?php echo $__ukmiNotifyKind; ?>"></div>
-<?php endif; ?>
