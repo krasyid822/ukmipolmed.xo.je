@@ -334,7 +334,16 @@ $__adminBodyClass = $__adminEarlyLoad
 
 				form.addEventListener('input', triggerSave);
 				form.addEventListener('change', triggerSave);
-				form.addEventListener('submit', () => localStorage.removeItem(storageKey));
+				form.addEventListener('ukmi:softsave-success', () => {
+					try { localStorage.removeItem(storageKey); } catch (_) {}
+				});
+				form.addEventListener('ukmi:softsave-failed', () => {
+					clearTimeout(saveTimer);
+					try {
+						localStorage.setItem(storageKey, JSON.stringify(serialize(form)));
+						ensureBanner('Simpan gagal — draf lokal tetap dipertahankan.');
+					} catch (_) {}
+				});
 			});
 		})();
 

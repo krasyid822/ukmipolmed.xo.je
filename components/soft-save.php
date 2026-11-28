@@ -191,6 +191,22 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		}
 	}
 
+	function syncCsrfTokens(doc) {
+		if (!doc) return;
+		var newCsrf = doc.querySelector('meta[name="csrf-token"]');
+		if (!newCsrf) return;
+		var token = newCsrf.getAttribute('content') || '';
+		var curCsrf = document.querySelector('meta[name="csrf-token"]');
+		if (curCsrf) {
+			curCsrf.setAttribute('content', token);
+		}
+		if (token) {
+			document.querySelectorAll('input[name="csrf_token"]').forEach(function (inp) {
+				inp.value = token;
+			});
+		}
+	}
+
 	function swapBody(html, finalUrl) {
 		var doc = new DOMParser().parseFromString(html, 'text/html');
 		if (!doc || !doc.body) {
@@ -203,13 +219,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		document.body.innerHTML = doc.body.innerHTML;
 		indicator = null;
 		if (doc.title) document.title = doc.title;
-		var newCsrf = doc.querySelector('meta[name="csrf-token"]');
-		if (newCsrf) {
-			var curCsrf = document.querySelector('meta[name="csrf-token"]');
-			if (curCsrf) {
-				curCsrf.setAttribute('content', newCsrf.getAttribute('content') || '');
-			}
-		}
+		syncCsrfTokens(doc);
 		var overlay = document.getElementById('ukmi-loading-overlay');
 		if (overlay) overlay.remove();
 		consumeNotifyPayload();
@@ -306,6 +316,49 @@ if (!defined('UKMI_SOFT_SAVE')) {
 			})
 			.then(function (payload) {
 				if (!payload) return;
+				var doc = new DOMParser().parseFromString(payload.html, 'text/html');
+				if (!doc || !doc.body) {
+					swapBody(payload.html, payload.url);
+					return;
+				}
+				var isUnlockForm = !!form.querySelector('input[name="unlock_credential_code"], input[name="unlock_division_code"], input[name="unlock_insights_code"]');
+				var isAuthTransition = !!(form.querySelector('input[name="logout_all"], input[name="recover_credentials"]') || (form.querySelector('input[name="user"]') && form.querySelector('input[name="key"]')));
+				var toastEl = doc.getElementById('ukmi-toast-payload');
+				var toastMsg = toastEl ? (toastEl.getAttribute('data-message') || '') : '';
+				var toastKind = toastEl ? (toastEl.getAttribute('data-kind') || 'success') : '';
+
+				if (document.body.classList.contains('is-auth') && doc.body.classList.contains('is-guest') && !isAuthTransition) {
+					syncCsrfTokens(doc);
+					window.ukmiNotify(toastMsg || 'Sesi admin telah berakhir. Data yang Anda input tetap dipertahankan—silakan login ulang di tab baru lalu simpan lagi.', 'danger', 9000);
+					form.dispatchEvent(new CustomEvent('ukmi:softsave-failed', { bubbles: true }));
+					return;
+				}
+
+				if (toastKind === 'danger' && !isAuthTransition) {
+					syncCsrfTokens(doc);
+					window.ukmiNotify(toastMsg || 'Gagal menyimpan perubahan.', 'danger', 8000);
+					form.dispatchEvent(new CustomEvent('ukmi:softsave-failed', { bubbles: true }));
+					return;
+				}
+
+				if (isUnlockForm && doc.body.classList.contains('is-auth') && toastKind !== 'danger') {
+					syncCsrfTokens(doc);
+					var nextForm = form.nextElementSibling;
+					if (nextForm && nextForm.tagName === 'FORM') {
+						nextForm.removeAttribute('inert');
+						nextForm.style.opacity = '';
+						nextForm.style.pointerEvents = '';
+					}
+					var codeInput = form.querySelector('input[name="unlock_credential_code"], input[name="unlock_division_code"], input[name="unlock_insights_code"]');
+					if (codeInput) codeInput.value = '';
+					window.ukmiNotify(toastMsg || 'Mode superadmin aktif.', 'success');
+					return;
+				}
+
+				form.dispatchEvent(new CustomEvent('ukmi:softsave-success', {
+					bubbles: true,
+					detail: { autosaveKey: form.getAttribute('data-autosave-key') || '' }
+				}));
 				swapBody(payload.html, payload.url);
 			})
 			.catch(function (err) {

@@ -18,13 +18,13 @@ AddType application/manifest+json .webmanifest
 </FilesMatch>
 
 # 1. Jika pengguna mengakses URL yang secara eksplisit mengetikkan /index.php atau /index, redirect 301 ke direktori /
-RewriteCond %{THE_REQUEST} \s/+(.+/)?index\.php[?\s] [OR]
-RewriteCond %{THE_REQUEST} \s/+(.+/)?index[?\s]
-RewriteRule ^(.+/)?index(?:\.php)?$ $1 [R=301,L]
+RewriteCond %{THE_REQUEST} \s/+(.+/)?index(?:\.php)?[?\s] [NC]
+RewriteRule ^ /%1 [R=301,L]
 
 # 2. Jika pengguna tidak sengaja mengetik ekstensi .php pada URL apa pun, redirect 301 ke URL bersih tanpa .php
-RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
-RewriteRule ^(.+?)\.php$ $1 [R=301,L]
+RewriteCond %{REQUEST_METHOD} =GET
+RewriteCond %{THE_REQUEST} \s/+([^?\s]+?)\.php(?:[\s?]|$) [NC]
+RewriteRule ^ /%1 [R=301,L]
 
 # 3. Routing internal: arahkan URL bersih ke file .php di belakang layar
 RewriteCond %{REQUEST_FILENAME} !-f

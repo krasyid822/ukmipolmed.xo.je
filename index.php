@@ -214,8 +214,8 @@ if ($docsSettings['mentoring_enabled']) {
                         'tag' => 'Mentoring',
                         'title' => $tema,
                         'description' => $desc,
-                        'url' => $docsSettings['mentoring_clickable'] ? ($mentoringBaseUrl . '/view.php?id=' . rawurlencode($pId)) : '',
-                        'thumb' => $mentoringBaseUrl . '/media.php?key=' . rawurlencode((string) $p['dokumentasi_path']),
+                        'url' => $docsSettings['mentoring_clickable'] ? ($mentoringBaseUrl . '/view?id=' . rawurlencode($pId)) : '',
+                        'thumb' => $mentoringBaseUrl . '/media?key=' . rawurlencode((string) $p['dokumentasi_path']),
                         'is_mentoring' => true,
                     ];
                 }

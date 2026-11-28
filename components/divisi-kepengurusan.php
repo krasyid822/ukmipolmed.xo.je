@@ -13,22 +13,16 @@ if (($adminComponentMode ?? '') === 'handle') {
 	}
 
 	if ($loggedIn && isset($_POST['division_name'], $_POST['division_desc'])) {
-		if (!$divisionUnlocked) {
-			$error = 'Masukkan kode superadmin sebelum mengubah divisi.';
-		} else {
-			$names = (array) $_POST['division_name'];
-			$descs = (array) $_POST['division_desc'];
-			$avatars = (array) ($_POST['division_avatar'] ?? []);
-			$programsList = (array) ($_POST['division_programs'] ?? []);
-			$oldRefs = [];
-			if (!empty($divisions) && is_array($divisions)) {
-				s3_gc_collect_refs($divisions, $oldRefs);
-			}
-			$newDivisions = [];
-			foreach ($names as $i => $nameVal) {
-				$name = trim((string) $nameVal);
-				$desc = trim((string) ($descs[$i] ?? ''));
-				$avatar = trim((string) ($avatars[$i] ?? ''));
+		$names = (array) $_POST['division_name'];
+		$descs = (array) $_POST['division_desc'];
+		$avatars = (array) ($_POST['division_avatar'] ?? []);
+		$programsList = (array) ($_POST['division_programs'] ?? []);
+		$submittedDivisions = [];
+		foreach ($names as $i => $nameVal) {
+			$name = trim((string) $nameVal);
+			$desc = trim((string) ($descs[$i] ?? ''));
+			$avatar = trim((string) ($avatars[$i] ?? ''));
+			if ($divisionUnlocked) {
 				if (stripos($avatar, 'data:') === 0 && function_exists('s3_put_data_uri')) {
 					$s3url = s3_put_data_uri($avatar);
 					if ($s3url) $avatar = $s3url;
@@ -36,32 +30,42 @@ if (($adminComponentMode ?? '') === 'handle') {
 				if (function_exists('s3_to_relative_url')) {
 					$avatar = s3_to_relative_url($avatar);
 				}
-				if ($name === '' && $desc === '') continue;
-				$rawPrograms = json_decode((string) ($programsList[$i] ?? '[]'), true);
-				$programs = [];
-				if (is_array($rawPrograms)) {
-					foreach ($rawPrograms as $prog) {
-						if (!is_array($prog)) continue;
-						$pTitle = trim((string) ($prog['title'] ?? ''));
-						$pDesc = trim((string) ($prog['description'] ?? ''));
-						if ($pTitle === '' && $pDesc === '') continue;
-						$programs[] = [
-							'title' => $pTitle ?: 'Program Kerja',
-							'description' => $pDesc,
-						];
-						if (count($programs) >= 20) break;
-					}
+			}
+			if ($name === '' && $desc === '') continue;
+			$rawPrograms = json_decode((string) ($programsList[$i] ?? '[]'), true);
+			$programs = [];
+			if (is_array($rawPrograms)) {
+				foreach ($rawPrograms as $prog) {
+					if (!is_array($prog)) continue;
+					$pTitle = trim((string) ($prog['title'] ?? ''));
+					$pDesc = trim((string) ($prog['description'] ?? ''));
+					if ($pTitle === '' && $pDesc === '') continue;
+					$programs[] = [
+						'title' => $pTitle ?: 'Program Kerja',
+						'description' => $pDesc,
+					];
+					if (count($programs) >= 20) break;
 				}
-				$newDivisions[] = [
-					'name' => $name ?: 'Divisi',
-					'description' => $desc ?: 'Deskripsi divisi.',
-					'avatar' => $avatar,
-					'programs' => $programs,
-				];
 			}
-			if (empty($newDivisions)) {
-				$newDivisions = $divisionDefaults;
+			$submittedDivisions[] = [
+				'name' => $name ?: 'Divisi',
+				'description' => $desc ?: 'Deskripsi divisi.',
+				'avatar' => $avatar,
+				'programs' => $programs,
+			];
+		}
+
+		if (!$divisionUnlocked) {
+			if (!empty($submittedDivisions)) {
+				$divisions = $submittedDivisions;
 			}
+			$error = 'Masukkan kode superadmin sebelum mengubah divisi.';
+		} else {
+			$oldRefs = [];
+			if (!empty($divisions) && is_array($divisions)) {
+				s3_gc_collect_refs($divisions, $oldRefs);
+			}
+			$newDivisions = !empty($submittedDivisions) ? $submittedDivisions : $divisionDefaults;
 			$divisions = $newDivisions;
 			$config['divisions'] = $divisions;
 			$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
