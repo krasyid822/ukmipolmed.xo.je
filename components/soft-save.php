@@ -75,7 +75,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		var el = ensureIndicator();
 		el.classList.remove('is-success', 'is-danger');
 		el.classList.add('is-notify', kind === 'danger' ? 'is-danger' : 'is-success');
-		el.textContent = String(text) + '  ×';
+		el.textContent = String(text);
 		requestAnimationFrame(function () { el.classList.add('is-on'); });
 		var wait = typeof duration === 'number' ? duration : (kind === 'danger' ? 8000 : 4500);
 		notifyTimer = setTimeout(function () {
