@@ -338,9 +338,9 @@ $pageDescription = 'Cari jawaban resmi seputar UKMI POLMED, termasuk AD/ART, STK
     <?php endif; ?>
     <script type="application/ld+json"><?php echo json_encode($breadcrumbSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?></script>
     <script type="application/ld+json"><?php echo json_encode($webPageSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?></script>
-    <?php require __DIR__ . '/components/faq-styles.php'; ?>
+    <link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="page-faq">
     <?php require __DIR__ . '/components/loading-overlay.php'; ?>
     <div class="wrap">
         <div class="topbar">

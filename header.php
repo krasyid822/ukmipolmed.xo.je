@@ -1,176 +1,12 @@
 <?php require_once __DIR__ . '/components/brand.php'; ?>
-<style>
-header.header {
-	position: sticky;
-	top: 0;
-	z-index: 10;
-	backdrop-filter: blur(12px);
-	background: linear-gradient(180deg, rgba(7, 11, 26, 0.9), rgba(7, 11, 26, 0.65));
-	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-	transition: transform 0.25s ease;
-}
-
-.header.hide { transform: translateY(-100%); }
-
-.nav {
-	max-width: 1080px;
-	margin: 0 auto;
-	padding: 16px 24px;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	flex-wrap: wrap;
-}
-
-@media (min-width: 641px) {
-	.nav {
-		max-width: none;
-		padding-left: 18px;
-		padding-right: 18px;
-	}
-}
-
-.brand {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	font-weight: 700;
-	letter-spacing: 0.4px;
-	flex: 1 1 auto;
-	min-width: 0;
-}
-
-.brand-main {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	flex: 1 1 auto;
-	min-width: 0;
-}
-
-.brand-title {
-	font-weight: 900;
-	flex: 1 1 auto;
-	min-width: 0;
-}
-
-.logo {
-	width: 34px;
-	height: 34px;
-	border-radius: 50%;
-	object-fit: contain;
-	aspect-ratio: 1 / 1;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.pulse-dot {
-	width: 14px;
-	height: 14px;
-	border-radius: 50%;
-	background: linear-gradient(135deg, var(--accent), var(--accent-2));
-	box-shadow: 0 0 0 0 rgba(108, 247, 197, 0.4);
-	animation: pulse 2.2s ease-out infinite;
-}
-
-@keyframes pulse {
-	0% { box-shadow: 0 0 0 0 rgba(108, 247, 197, 0.4); }
-	70% { box-shadow: 0 0 0 18px rgba(108, 247, 197, 0); }
-	100% { box-shadow: 0 0 0 0 rgba(108, 247, 197, 0); }
-}
-
-.nav-actions {
-	display: flex;
-	gap: 12px;
-	align-items: center;
-}
-
-.menu-toggle {
-	display: none;
-	background: rgba(255, 255, 255, 0.07);
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	color: var(--text);
-	border-radius: 12px;
-	padding: 12px 16px;
-	cursor: pointer;
-	font-weight: 700;
-	font-size: 15px;
-	min-height: 48px;
-	min-width: 48px;
-	align-items: center;
-	gap: 8px;
-	-webkit-tap-highlight-color: transparent;
-}
-
-.menu-toggle:hover {
-	background: rgba(255, 255, 255, 0.1);
-}
-
-@media (max-width: 640px) {
-	.nav { padding: 12px 16px; }
-	.brand {
-		width: 100%;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-	.nav-actions {
-		width: 100%;
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		overflow: hidden;
-		max-height: 0;
-		opacity: 0;
-		transform: translateY(-8px);
-		pointer-events: none;
-		transition: max-height 300ms ease, opacity 220ms ease, transform 260ms ease;
-	}
-	.nav.is-open .nav-actions {
-		max-height: 420px;
-		opacity: 1;
-		transform: translateY(0);
-		pointer-events: auto;
-	}
-	.nav-actions a {
-		width: 100%;
-		justify-content: center;
-		min-height: 48px;
-		font-size: 15px;
-		opacity: 0;
-		transform: translateY(-6px);
-		transition: transform 220ms ease, opacity 180ms ease;
-	}
-	.nav.is-open .nav-actions a {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	.nav.is-open .nav-actions a:nth-child(1) { transition-delay: 40ms; }
-	.nav.is-open .nav-actions a:nth-child(2) { transition-delay: 70ms; }
-	.nav.is-open .nav-actions a:nth-child(3) { transition-delay: 100ms; }
-	.nav.is-open .nav-actions a:nth-child(4) { transition-delay: 130ms; }
-	.nav.is-open .nav-actions a:nth-child(5) { transition-delay: 160ms; }
-	.nav.is-open .nav-actions a:nth-child(6) { transition-delay: 190ms; }
-	.menu-toggle {
-		display: inline-flex;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.nav-actions,
-	.nav-actions a {
-		transition: none !important;
-		animation: none !important;
-	}
-}
-</style>
 
 <header class="header">
 	<div class="nav" id="site-nav">
 		<div class="brand">
 			<div class="brand-main">
-				<img class="logo" src="/logo-ukmi.png" alt="Logo UKMI POLMED">
-				<span class="pulse-dot"></span>
+				<a class="logo-pulse" href="https://share.google/BuCPuMmJQqGoRqHQp" target="_blank" rel="noopener" aria-label="Lokasi &amp; Profil UKMI POLMED">
+					<img class="logo" src="/logo-ukmi.png" alt="Logo UKMI POLMED">
+				</a>
 				<?php echo ukmi_brand_auto('span', 'brand-title'); ?>
 			</div>
 			<button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-actions">☰ Menu</button>
@@ -188,11 +24,11 @@ header.header {
 			</script>
 		</div>
 		<div class="nav-actions" id="nav-actions">
-			<a class="btn ghost" href="/">Home</a>
-			<a class="btn ghost" href="/#program">Program</a>
-			<a class="btn ghost" href="/#divisi">Divisi</a>
-			<a class="btn ghost" href="/#dokumentasi">Dokumentasi</a>
-			<a class="btn ghost" href="/blog">Blog</a>
+			<a class="nav-link" href="/">Home</a>
+			<a class="nav-link" href="/#program" data-random-division="1">Program</a>
+			<a class="nav-link" href="/#divisi">Divisi</a>
+			<a class="nav-link" href="/#dokumentasi">Dokumentasi</a>
+			<a class="nav-link" href="/blog">Blog</a>
 			<a class="btn primary" href="/#daftar" data-scroll-cta="cta-daftar-primary" data-insight="nav_daftar">Daftar sekarang</a>
 		</div>
 	</div>
@@ -202,12 +38,62 @@ header.header {
 
 <script>
 (() => {
-	const dot = document.querySelector('.pulse-dot');
-	if (dot) {
-		dot.style.cursor = 'pointer';
-		dot.addEventListener('click', () => {
-			window.open('https://share.google/BuCPuMmJQqGoRqHQp', '_blank', 'noopener');
+	const THEME_KEY = 'ukmi-theme';
+	const metaTheme = document.querySelector('meta[name="theme-color"]');
+	const applyTheme = (theme) => {
+		const t = theme === 'light' ? 'light' : 'dark';
+		document.documentElement.setAttribute('data-theme', t);
+		if (metaTheme) metaTheme.setAttribute('content', t === 'light' ? '#1E824C' : '#0f172a');
+		const themeBtn = document.getElementById('ukmi-theme-toggle');
+		if (themeBtn) {
+			themeBtn.setAttribute('aria-checked', t === 'light' ? 'true' : 'false');
+			themeBtn.title = t === 'light' ? 'Beralih ke tema gelap' : 'Beralih ke tema terang';
+			const thumb = themeBtn.querySelector('.theme-switch-thumb');
+			const label = themeBtn.querySelector('.theme-switch-label');
+			if (thumb) thumb.textContent = t === 'light' ? '☀️' : '🌙';
+			if (label) label.textContent = t === 'light' ? 'Tema Terang' : 'Tema Gelap';
+		}
+	};
+	let savedTheme = 'dark';
+	try { savedTheme = localStorage.getItem(THEME_KEY) || 'dark'; } catch (_) {}
+	applyTheme(savedTheme);
+	const bindThemeToggle = () => {
+		const themeBtn = document.getElementById('ukmi-theme-toggle');
+		if (!themeBtn || themeBtn.dataset.bound) return;
+		themeBtn.dataset.bound = '1';
+		applyTheme(document.documentElement.getAttribute('data-theme') || savedTheme);
+		themeBtn.addEventListener('click', () => {
+			const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+			const commit = () => {
+				try { localStorage.setItem(THEME_KEY, next); } catch (_) {}
+				applyTheme(next);
+			};
+			const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			if (!document.startViewTransition || reduced) {
+				commit();
+				return;
+			}
+			const rect = themeBtn.getBoundingClientRect();
+			const x = rect.left + rect.width / 2;
+			const y = rect.top + rect.height / 2;
+			const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+			document.documentElement.classList.add('is-theme-transitioning');
+			const transition = document.startViewTransition(commit);
+			transition.ready.then(() => {
+				document.documentElement.animate(
+					{ clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+					{ duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', pseudoElement: '::view-transition-new(root)' }
+				);
+			}).catch(() => {});
+			transition.finished.finally(() => {
+				document.documentElement.classList.remove('is-theme-transitioning');
+			});
 		});
+	};
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', bindThemeToggle);
+	} else {
+		bindThemeToggle();
 	}
 
 	const nav = document.getElementById('site-nav');
@@ -230,6 +116,10 @@ header.header {
 		actions.addEventListener('click', (event) => {
 			const link = event.target.closest('a[href]');
 			if (!link) return;
+			if (link.classList.contains('nav-link')) {
+				actions.querySelectorAll('.nav-link.is-active').forEach((el) => el.classList.remove('is-active'));
+				link.classList.add('is-active');
+			}
 
 			const scrollCta = link.getAttribute('data-scroll-cta');
 			const ctaHref = link.getAttribute('href') || '';
@@ -237,6 +127,13 @@ header.header {
 				event.preventDefault();
 				const sectionId = ctaHref.includes('#') ? ctaHref.split('#')[1] : '';
 				window.ukmiScrollToCta(scrollCta, sectionId);
+				closeMenu();
+				return;
+			}
+
+			if (link.hasAttribute('data-random-division') && typeof window.ukmiOpenRandomDivision === 'function') {
+				event.preventDefault();
+				window.ukmiOpenRandomDivision();
 				closeMenu();
 				return;
 			}

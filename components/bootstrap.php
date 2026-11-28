@@ -144,14 +144,33 @@ foreach ($config['divisions'] as $item) {
 	$desc = trim((string) ($item['description'] ?? ''));
 	$avatar = trim((string) ($item['avatar'] ?? ''));
 	if ($name === '' && $desc === '') continue;
+	$programs = [];
+	if (!empty($item['programs']) && is_array($item['programs'])) {
+		foreach ($item['programs'] as $prog) {
+			if (!is_array($prog)) continue;
+			$pTitle = trim((string) ($prog['title'] ?? ''));
+			$pDesc = trim((string) ($prog['description'] ?? ''));
+			if ($pTitle === '' && $pDesc === '') continue;
+			$programs[] = [
+				'title' => $pTitle ?: 'Program Kerja',
+				'description' => $pDesc,
+			];
+			if (count($programs) >= 20) break;
+		}
+	}
 	$divisions[] = [
 		'name' => $name ?: 'Divisi',
 		'description' => $desc ?: 'Deskripsi divisi.',
 		'avatar' => $avatar,
+		'programs' => $programs,
 	];
 }
 if (empty($divisions)) {
-	$divisions = $divisionDefaults;
+	$divisions = array_map(static function ($item) {
+		if (!is_array($item)) return ['name' => 'Divisi', 'description' => 'Deskripsi divisi.', 'avatar' => '', 'programs' => []];
+		$item['programs'] = is_array($item['programs'] ?? null) ? $item['programs'] : [];
+		return $item;
+	}, $divisionDefaults);
 }
 $divisionYearStart = (int) date('Y');
 $divisionYearLabel = $divisionYearStart . '-' . ($divisionYearStart + 1);
@@ -171,6 +190,24 @@ foreach ($config['docs'] as $item) {
 if (empty($docs)) {
 	$docs = $docDefaults;
 }
+
+$rawDocsSettings = is_array($config['docs_settings'] ?? null) ? $config['docs_settings'] : [];
+$speedMode = ($rawDocsSettings['speed_mode'] ?? 'preset') === 'custom' ? 'custom' : 'preset';
+$speedPreset = in_array($rawDocsSettings['speed_preset'] ?? 'normal', ['slow', 'normal', 'fast'], true)
+	? (string) ($rawDocsSettings['speed_preset'] ?? 'normal')
+	: 'normal';
+$speedCustom = max(10, min(200, (int) ($rawDocsSettings['speed_custom'] ?? 52)));
+$mentoringCount = max(1, min(20, (int) ($rawDocsSettings['mentoring_count'] ?? 4)));
+$docsSettings = [
+	'auto_scroll' => array_key_exists('auto_scroll', $rawDocsSettings) ? (bool) $rawDocsSettings['auto_scroll'] : true,
+	'speed_mode' => $speedMode,
+	'speed_preset' => $speedPreset,
+	'speed_custom' => $speedCustom,
+	'mentoring_enabled' => !empty($rawDocsSettings['mentoring_enabled']),
+	'mentoring_count' => $mentoringCount,
+	'mentoring_clickable' => !empty($rawDocsSettings['mentoring_clickable']),
+];
+$config['docs_settings'] = $docsSettings;
 
 $shortcutCards = [];
 foreach ($config['shortcut_cards'] as $card) {

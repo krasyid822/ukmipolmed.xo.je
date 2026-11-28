@@ -19,6 +19,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			$names = (array) $_POST['division_name'];
 			$descs = (array) $_POST['division_desc'];
 			$avatars = (array) ($_POST['division_avatar'] ?? []);
+			$programsList = (array) ($_POST['division_programs'] ?? []);
 			$oldRefs = [];
 			if (!empty($divisions) && is_array($divisions)) {
 				s3_gc_collect_refs($divisions, $oldRefs);
@@ -36,10 +37,26 @@ if (($adminComponentMode ?? '') === 'handle') {
 					$avatar = s3_to_relative_url($avatar);
 				}
 				if ($name === '' && $desc === '') continue;
+				$rawPrograms = json_decode((string) ($programsList[$i] ?? '[]'), true);
+				$programs = [];
+				if (is_array($rawPrograms)) {
+					foreach ($rawPrograms as $prog) {
+						if (!is_array($prog)) continue;
+						$pTitle = trim((string) ($prog['title'] ?? ''));
+						$pDesc = trim((string) ($prog['description'] ?? ''));
+						if ($pTitle === '' && $pDesc === '') continue;
+						$programs[] = [
+							'title' => $pTitle ?: 'Program Kerja',
+							'description' => $pDesc,
+						];
+						if (count($programs) >= 20) break;
+					}
+				}
 				$newDivisions[] = [
 					'name' => $name ?: 'Divisi',
 					'description' => $desc ?: 'Deskripsi divisi.',
 					'avatar' => $avatar,
+					'programs' => $programs,
 				];
 			}
 			if (empty($newDivisions)) {
@@ -69,7 +86,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<button type="submit" style="max-width:180px;">Buka</button>
 		</div>
 	</form>
-	<form method="post" class="stack-sm" id="divisions-form" data-autosave-key="divisions" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?><?php echo ukmi_csrf_field(); ?>">
+	<form method="post" class="stack-sm" id="divisions-form" data-autosave-key="divisions" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>"><?php echo ukmi_csrf_field(); ?>
 		<div id="division-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
 			<?php foreach ($divisions as $idx => $div): ?>
 			<div class="division-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
@@ -85,6 +102,21 @@ if (($adminComponentMode ?? '') === 'handle') {
 					<img src="<?php echo htmlspecialchars($divisionAvatar, ENT_QUOTES, 'UTF-8'); ?>" alt="Preview avatar <?php echo htmlspecialchars($div['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:48px; height:48px; border-radius:50%; object-fit:cover; background:rgba(255,255,255,0.08); border:1px solid rgba(148,163,184,0.3);">
 					<button type="button" class="clear-division-avatar" style="width:auto; min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus avatar</button>
 				</div>
+				<?php $divPrograms = is_array($div['programs'] ?? null) ? $div['programs'] : []; ?>
+				<label style="display:block; font-size:13px; color: var(--muted); margin:10px 0 4px;">Program Kerja</label>
+				<input type="hidden" name="division_programs[]" class="division-programs-json" value="<?php echo htmlspecialchars(json_encode($divPrograms, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>">
+				<div class="division-programs-list" style="display:flex; flex-direction:column; gap:8px;">
+					<?php foreach ($divPrograms as $prog): ?>
+					<div class="division-program-row" style="border:1px solid rgba(148,163,184,0.2); border-radius:8px; padding:8px; background:rgba(15,23,42,0.25); display:flex; flex-direction:column; gap:6px;">
+						<input type="text" class="division-program-title" placeholder="Nama program kerja" value="<?php echo htmlspecialchars($prog['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); font-size:13px;">
+						<textarea class="division-program-desc" placeholder="Deskripsi singkat (opsional)" rows="2" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); font-size:13px; resize:vertical;"><?php echo htmlspecialchars($prog['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+						<div style="text-align:right;">
+							<button type="button" class="remove-division-program" style="width:auto; padding:5px 10px; font-size:12px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus program</button>
+						</div>
+					</div>
+					<?php endforeach; ?>
+				</div>
+				<button type="button" class="add-division-program" style="margin-top:6px; width:auto; padding:6px 12px; font-size:13px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">+ Tambah program kerja</button>
 				<div style="text-align:right; margin-top:6px;">
 					<button type="button" class="remove-division" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
 				</div>
@@ -116,6 +148,10 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<img src="" alt="Preview avatar" style="width:48px; height:48px; border-radius:50%; object-fit:cover; background:rgba(255,255,255,0.08); border:1px solid rgba(148,163,184,0.3);">
 				<button type="button" class="clear-division-avatar" style="width:auto; min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus avatar</button>
 			</div>
+			<label style="display:block; font-size:13px; color: var(--muted); margin:10px 0 4px;">Program Kerja</label>
+			<input type="hidden" name="division_programs[]" class="division-programs-json" value="[]">
+			<div class="division-programs-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+			<button type="button" class="add-division-program" style="margin-top:6px; width:auto; padding:6px 12px; font-size:13px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">+ Tambah program kerja</button>
 			<div style="text-align:right; margin-top:6px;">
 				<button type="button" class="remove-division" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
 			</div>
@@ -170,14 +206,74 @@ if (($adminComponentMode ?? '') === 'handle') {
 			}
 		});
 	}
+	const programRowHtml = () => `
+		<div class="division-program-row" style="border:1px solid rgba(148,163,184,0.2); border-radius:8px; padding:8px; background:rgba(15,23,42,0.25); display:flex; flex-direction:column; gap:6px;">
+			<input type="text" class="division-program-title" placeholder="Nama program kerja" value="" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); font-size:13px;">
+			<textarea class="division-program-desc" placeholder="Deskripsi singkat (opsional)" rows="2" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); font-size:13px; resize:vertical;"></textarea>
+			<div style="text-align:right;">
+				<button type="button" class="remove-division-program" style="width:auto; padding:5px 10px; font-size:12px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus program</button>
+			</div>
+		</div>`;
+	function syncDivisionPrograms(item) {
+		const hidden = item.querySelector('.division-programs-json');
+		if (!hidden) return;
+		const rows = Array.from(item.querySelectorAll('.division-program-row'));
+		const list = [];
+		rows.forEach((row) => {
+			const title = (row.querySelector('.division-program-title')?.value || '').trim();
+			const description = (row.querySelector('.division-program-desc')?.value || '').trim();
+			if (!title && !description) return;
+			list.push({ title: title || 'Program Kerja', description });
+		});
+		hidden.value = JSON.stringify(list);
+	}
+	function attachProgramHandlers() {
+		divisionList.querySelectorAll('.division-item').forEach((item) => {
+			const listEl = item.querySelector('.division-programs-list');
+			const addProgBtn = item.querySelector('.add-division-program');
+			if (!listEl || !addProgBtn) return;
+			const bindRows = () => {
+				listEl.querySelectorAll('.division-program-row').forEach((row) => {
+					const titleEl = row.querySelector('.division-program-title');
+					const descEl = row.querySelector('.division-program-desc');
+					const rmBtn = row.querySelector('.remove-division-program');
+					if (titleEl) titleEl.oninput = () => syncDivisionPrograms(item);
+					if (descEl) descEl.oninput = () => syncDivisionPrograms(item);
+					if (rmBtn) {
+						rmBtn.onclick = () => {
+							row.remove();
+							syncDivisionPrograms(item);
+						};
+					}
+				});
+			};
+			addProgBtn.onclick = () => {
+				const wrapper = document.createElement('div');
+				wrapper.innerHTML = programRowHtml();
+				listEl.appendChild(wrapper.firstElementChild);
+				bindRows();
+				syncDivisionPrograms(item);
+			};
+			bindRows();
+			syncDivisionPrograms(item);
+		});
+	}
+	const divisionsForm = document.getElementById('divisions-form');
+	if (divisionsForm) {
+		divisionsForm.addEventListener('submit', () => {
+			divisionList.querySelectorAll('.division-item').forEach(syncDivisionPrograms);
+		});
+	}
 	addDivision.addEventListener('click', () => {
 		const wrapper = document.createElement('div');
 		wrapper.innerHTML = templateHtml();
 		divisionList.appendChild(wrapper.firstElementChild);
 		attachRemoveHandlers();
 		attachAvatarHandlers();
+		attachProgramHandlers();
 	});
 	attachRemoveHandlers();
 	attachAvatarHandlers();
+	attachProgramHandlers();
 })();
 </script>

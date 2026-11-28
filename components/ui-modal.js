@@ -33,6 +33,18 @@
       '.uim-btn.uim-primary:hover{background:#7dd3fc;border-color:#7dd3fc;}' +
       '.uim-btn.uim-danger{background:#f87171;border-color:#f87171;color:#0f172a;}' +
       '.uim-btn.uim-danger:hover{background:#fca5a5;border-color:#fca5a5;}' +
+      '[data-theme="light"] .uim-overlay{background:rgba(34,40,37,.45);}' +
+      '[data-theme="light"] .uim-box{background:#FFFFFF;color:#222825;border-color:rgba(34,40,37,.14);box-shadow:0 24px 60px rgba(34,40,37,.18);}' +
+      '[data-theme="light"] .uim-title{color:#1E824C;}' +
+      '[data-theme="light"] .uim-message{color:#222825;}' +
+      '[data-theme="light"] .uim-input{border-color:rgba(34,40,37,.2);background:#FAF9F6;color:#222825;}' +
+      '[data-theme="light"] .uim-input:focus{border-color:#1E824C;box-shadow:0 0 0 3px rgba(30,130,76,.18);}' +
+      '[data-theme="light"] .uim-btn{border-color:rgba(34,40,37,.18);background:#FAF9F6;color:#222825;}' +
+      '[data-theme="light"] .uim-btn:hover{background:#D8EFE2;}' +
+      '[data-theme="light"] .uim-btn.uim-primary{background:#1E824C;border-color:#1E824C;color:#FFFFFF;}' +
+      '[data-theme="light"] .uim-btn.uim-primary:hover{background:#16653A;border-color:#16653A;}' +
+      '[data-theme="light"] .uim-btn.uim-danger{background:#DC2626;border-color:#DC2626;color:#FFFFFF;}' +
+      '[data-theme="light"] .uim-btn.uim-danger:hover{background:#B91C1C;border-color:#B91C1C;}' +
       '@media (max-width:480px){.uim-box{padding:18px 16px 14px}.uim-actions{gap:8px}.uim-btn{flex:1;padding:10px 12px}}';
     var style = document.createElement('style');
     style.id = STYLE_ID;

@@ -312,6 +312,11 @@ foreach ($master['mentors'] ?? [] as $mentor) {
     $mentorNames[$mentor['id'] ?? ''] = $mentor['nama_lengkap'] ?? '';
 }
 
+$teamNames = [];
+foreach ($master['teams'] ?? [] as $team) {
+    $teamNames[$team['id'] ?? ''] = $team['nama_tim'] ?? '';
+}
+
 /**
  * Render avatar bulat (tanpa form unggah) untuk daftar pengaturan.
  */
@@ -393,7 +398,7 @@ if ($record !== null) {
             'Semester' => $semester !== null
                 ? $semester . ($stambuk !== null ? ' (stambuk ' . $stambuk . ')' : '')
                 : '-',
-            'Tim' => $record['tim_id'] ?? '-',
+            'Tim' => ($teamNames[$record['tim_id'] ?? ''] ?? '') !== '' ? $teamNames[$record['tim_id'] ?? ''] : ($record['tim_id'] ?? '-'),
             'Mentor' => $mentorNames[$record['mentor_id'] ?? ''] ?? ($record['mentor_id'] ?? '-'),
             'Status Keaktifan' => $record['status_keaktifan'] ?? 'Aktif',
         ];

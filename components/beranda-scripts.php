@@ -55,6 +55,10 @@
 
         // Pulse the canonical CTA when landing with a hash (e.g. nav from /blog).
         window.addEventListener('load', () => {
+            if (window.location.hash === '#program' && typeof window.ukmiOpenRandomDivision === 'function') {
+                window.ukmiOpenRandomDivision();
+                return;
+            }
             const hashMap = { '#daftar': 'cta-daftar-primary', '#dokumentasi': 'doc-arsip-ig' };
             const pulseId = hashMap[window.location.hash];
             if (!pulseId) return;
@@ -350,4 +354,202 @@
             el.addEventListener('click', () => sendInsight(el.getAttribute('data-insight')));
         });
 
+        // Division program kerja modal & random division selector from "Program" nav link.
+        <?php
+        $divisionsForModal = array_map(static function ($div) {
+            return [
+                'name' => (string) ($div['name'] ?? 'Divisi'),
+                'description' => (string) ($div['description'] ?? ''),
+                'avatar' => s3_to_relative_url($div['avatar'] ?? ''),
+                'programs' => is_array($div['programs'] ?? null) ? array_values($div['programs']) : [],
+            ];
+        }, $divisions);
+        ?>
+        const divisionData = <?php echo json_encode($divisionsForModal, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+        const divisionCards = Array.from(document.querySelectorAll('.division-card-btn[data-division-index]'));
+        const dpmOverlay = document.getElementById('division-program-modal');
+        const dpmAvatar = document.getElementById('dpm-avatar');
+        const dpmTitle = document.getElementById('dpm-title');
+        const dpmDesc = document.getElementById('dpm-desc');
+        const dpmBody = document.getElementById('dpm-body');
+        const dpmClose = document.getElementById('dpm-close');
+        const dpmCloseFooter = document.getElementById('dpm-close-footer');
+        let dpmPreviousFocus = null;
+
+        function closeDivisionModal() {
+            if (!dpmOverlay || dpmOverlay.hidden) return;
+            dpmOverlay.classList.remove('is-open');
+            document.body.style.overflow = '';
+            window.setTimeout(() => {
+                dpmOverlay.hidden = true;
+                if (dpmPreviousFocus && typeof dpmPreviousFocus.focus === 'function') {
+                    try { dpmPreviousFocus.focus(); } catch (_) {}
+                }
+                dpmPreviousFocus = null;
+            }, 180);
+        }
+
+        function openDivisionModal(index) {
+            const div = divisionData[index];
+            if (!div || !dpmOverlay || !dpmTitle || !dpmDesc || !dpmBody || !dpmAvatar) return;
+            dpmPreviousFocus = document.activeElement;
+            dpmTitle.textContent = div.name || 'Divisi';
+            dpmDesc.textContent = div.description || '';
+
+            dpmAvatar.innerHTML = '';
+            dpmAvatar.classList.remove('division-avatar-fallback');
+            if (div.avatar) {
+                const img = document.createElement('img');
+                img.src = div.avatar;
+                img.alt = 'Avatar divisi ' + (div.name || '');
+                dpmAvatar.appendChild(img);
+            } else {
+                dpmAvatar.classList.add('division-avatar-fallback');
+                dpmAvatar.textContent = (div.name || 'D').charAt(0).toUpperCase();
+            }
+
+            dpmBody.innerHTML = '';
+            const programs = Array.isArray(div.programs) ? div.programs : [];
+            if (programs.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'dpm-empty';
+                empty.textContent = 'Belum ada program kerja yang ditambahkan untuk divisi ini.';
+                dpmBody.appendChild(empty);
+            } else {
+                const list = document.createElement('ol');
+                list.className = 'dpm-program-list';
+                programs.forEach((prog) => {
+                    const li = document.createElement('li');
+                    li.className = 'dpm-program-item';
+                    const titleEl = document.createElement('strong');
+                    titleEl.textContent = prog.title || 'Program Kerja';
+                    li.appendChild(titleEl);
+                    if (prog.description) {
+                        const descEl = document.createElement('p');
+                        descEl.textContent = prog.description;
+                        li.appendChild(descEl);
+                    }
+                    list.appendChild(li);
+                });
+                dpmBody.appendChild(list);
+            }
+
+            dpmOverlay.hidden = false;
+            document.body.style.overflow = 'hidden';
+            window.requestAnimationFrame(() => {
+                dpmOverlay.classList.add('is-open');
+                if (dpmClose) dpmClose.focus();
+            });
+        }
+
+        divisionCards.forEach((card) => {
+            card.addEventListener('click', () => {
+                const idx = parseInt(card.getAttribute('data-division-index') || '', 10);
+                if (!Number.isNaN(idx)) openDivisionModal(idx);
+            });
+        });
+
+        dpmClose?.addEventListener('click', closeDivisionModal);
+        dpmCloseFooter?.addEventListener('click', closeDivisionModal);
+        dpmOverlay?.addEventListener('mousedown', (event) => {
+            if (event.target === dpmOverlay) closeDivisionModal();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && dpmOverlay && !dpmOverlay.hidden) {
+                closeDivisionModal();
+            }
+        });
+
+        window.ukmiOpenRandomDivision = function () {
+            const section = document.getElementById('divisi');
+            if (!section || divisionCards.length === 0) return;
+            const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const header = document.querySelector('.header');
+            const offset = (header ? header.offsetHeight : 0) + 16;
+            const top = section.getBoundingClientRect().top + window.scrollY - offset;
+            window.scrollTo({ top: Math.max(0, top), behavior: reduced ? 'auto' : 'smooth' });
+            history.replaceState(null, '', '#program');
+
+            const randomIdx = Math.floor(Math.random() * divisionCards.length);
+            const chosenCard = divisionCards[randomIdx];
+            if (!reduced && chosenCard) {
+                chosenCard.classList.remove('cta-attention');
+                void chosenCard.offsetWidth;
+                chosenCard.classList.add('cta-attention');
+                setTimeout(() => chosenCard.classList.remove('cta-attention'), 1800);
+            }
+            setTimeout(() => {
+                openDivisionModal(randomIdx);
+            }, reduced ? 0 : 450);
+        };
+
+    (function () {
+        const marquee = document.querySelector('.docs-marquee[data-auto-scroll="1"]');
+        if (!marquee) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const track = marquee.querySelector('.docs-track');
+        if (!track || track.children.length === 0) return;
+
+        const originals = Array.from(track.children);
+        const speed = Math.max(10, Math.min(200, Number(marquee.getAttribute('data-speed')) || 52));
+        let singleSetWidth = 0;
+
+        function measureSetWidth() {
+            const first = originals[0];
+            const last = originals[originals.length - 1];
+            if (!first || !last) return 0;
+            const style = window.getComputedStyle(track);
+            const gap = parseFloat(style.columnGap || style.gap || '16') || 16;
+            return (last.offsetLeft + last.offsetWidth) - first.offsetLeft + gap;
+        }
+
+        singleSetWidth = measureSetWidth();
+        if (singleSetWidth <= 0) return;
+
+        const minCopies = Math.max(1, Math.ceil((marquee.clientWidth + singleSetWidth) / singleSetWidth));
+        for (let c = 0; c < minCopies; c++) {
+            originals.forEach((node) => {
+                const clone = node.cloneNode(true);
+                clone.removeAttribute('id');
+                clone.setAttribute('aria-hidden', 'true');
+                clone.setAttribute('tabindex', '-1');
+                clone.querySelectorAll('a, button').forEach((el) => {
+                    el.setAttribute('tabindex', '-1');
+                    el.setAttribute('aria-hidden', 'true');
+                });
+                track.appendChild(clone);
+            });
+        }
+
+        let offset = 0;
+        let lastTs = 0;
+        let paused = false;
+
+        function step(ts) {
+            if (!lastTs) lastTs = ts;
+            const dt = Math.min(0.1, (ts - lastTs) / 1000);
+            lastTs = ts;
+            if (!paused && singleSetWidth > 0) {
+                offset = (offset + dt * speed) % singleSetWidth;
+                track.style.transform = 'translate3d(' + (-offset) + 'px, 0, 0)';
+            }
+            window.requestAnimationFrame(step);
+        }
+
+        marquee.addEventListener('mouseenter', () => { paused = true; });
+        marquee.addEventListener('mouseleave', () => { paused = false; });
+        marquee.addEventListener('focusin', () => { paused = true; });
+        marquee.addEventListener('focusout', () => { paused = false; });
+        marquee.addEventListener('touchstart', () => { paused = true; }, { passive: true });
+        marquee.addEventListener('touchend', () => { paused = false; }, { passive: true });
+        window.addEventListener('resize', () => {
+            const w = measureSetWidth();
+            if (w > 0) {
+                singleSetWidth = w;
+                offset = offset % singleSetWidth;
+            }
+        });
+
+        window.requestAnimationFrame(step);
+    })();
     </script>

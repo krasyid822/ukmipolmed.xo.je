@@ -1,9 +1,11 @@
     <main>
-        <div class="hero-title-wrap">
-            <h2 class="section-title">Portofolio UKMI</h2>
-            <p class="hero-subtitle">Geser untuk melihat kolase lain.</p>
-        </div>
+        <div class="hero-split">
+        <div class="hero-col">
         <section class="hero">
+            <div class="hero-title-wrap hero-title-overlay" id="hero-title-overlay">
+                <h2 class="section-title">Portofolio UKMI</h2>
+                <p class="hero-subtitle">Geser untuk melihat kolase lain.</p>
+            </div>
             <div class="hero-rotator">
                 <div class="hero-carousel" id="hero-carousel" aria-label="Header card presentation">
                     <?php foreach ($heroCards as $card): ?>
@@ -12,11 +14,6 @@
                                 <div class="hero-copy">
                                     <h1>Unit Kegiatan Mahasiswa Islam POLMED <?php echo e($divisionYearLabel); ?></h1>
                                     <p class="lead">Kamu mahasiswa baru Politeknik Negeri Medan? Beruntung, Kamu bisa temukan informasi open recruitment yang terdiri dari <?php echo e($divisionCount); ?> divisi, agenda kegiatan, kelas skill, jalur daftar tercepat, dan dokumentasi UKMI POLMED di sini.</p>
-                                    <div class="cta-row">
-                                        <a class="btn primary" href="#daftar" data-scroll-cta="cta-daftar-primary" data-scroll-fallback="#daftar" data-insight="cta_daftar_hero">Daftar sekarang</a>
-                                        <a class="btn ghost" href="#dokumentasi" data-scroll-cta="doc-arsip-ig" data-scroll-fallback="#dokumentasi" data-insight="cta_arsip_hero">Lihat arsip IG kami</a>
-                                        <a class="btn ghost" href="/blog" data-insight="cta_arsip_hero">Lihat Blog UKMI</a>
-                                    </div>
                                     <div class="metrics">
                                         <div class="metric-card">
                                             <strong><?php echo e($divisionCount); ?> divisi</strong>
@@ -53,6 +50,27 @@
             <button type="button" class="hero-control hero-control-left" id="hero-prev" aria-label="Kartu sebelumnya">‹</button>
             <button type="button" class="hero-control hero-control-right" id="hero-next" aria-label="Kartu berikutnya">›</button>
         </section>
+        <script>
+        (() => {
+            const ov = document.getElementById('hero-title-overlay');
+            if (!ov) return;
+            let done = false;
+            const hide = () => {
+                if (done) return;
+                done = true;
+                ov.classList.add('is-hidden');
+                setTimeout(() => { ov.hidden = true; }, 450);
+            };
+            const timer = setTimeout(hide, 3800);
+            ['hero-carousel', 'hero-prev', 'hero-next'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('pointerdown', () => { clearTimeout(timer); hide(); }, { once: true });
+                el.addEventListener('click', () => { clearTimeout(timer); hide(); }, { once: true });
+            });
+        })();
+        </script>
+        </div>
 
         <section id="shortcut">
             <h2 class="section-title">Baca ini..</h2>
@@ -71,7 +89,10 @@
                 <?php endforeach; ?>
             </div>
         </section>
+        </div>
 
+        <?php // Disabled sementara: ukmi-container (Kenapa Gabung UKMI) ?>
+        <?php if (false): ?>
         <section id="program" class="ukmi-kenapa">
             <div class="ukmi-container">
                 <svg class="ornament-tl" viewBox="0 0 280 220" fill="none" aria-hidden="true">
@@ -180,12 +201,16 @@
                 </div>
             </div>
         </section>
+        <?php endif; ?>
 
         <section id="divisi">
             <h2 class="section-title">Divisi kepengurusan <?php echo e($divisionYearLabel); ?></h2>
             <div class="grid">
-                <?php foreach ($divisions as $div): $avatar = s3_to_relative_url($div['avatar'] ?? ''); ?>
-                    <div class="card division-card">
+                <?php foreach ($divisions as $divIdx => $div):
+                    $avatar = s3_to_relative_url($div['avatar'] ?? '');
+                    $progCount = is_array($div['programs'] ?? null) ? count($div['programs']) : 0;
+                ?>
+                    <button type="button" class="card division-card division-card-btn" data-division-index="<?php echo (int) $divIdx; ?>" aria-haspopup="dialog" aria-controls="division-program-modal">
                         <?php if ($avatar !== ''): ?>
                             <div class="division-avatar"><img src="<?php echo e($avatar); ?>" alt="Avatar divisi <?php echo e($div['name']); ?>" loading="lazy" decoding="async"></div>
                         <?php else: ?>
@@ -193,10 +218,30 @@
                         <?php endif; ?>
                         <h3><?php echo e($div['name']); ?></h3>
                         <p><?php echo e($div['description']); ?></p>
-                    </div>
+                        <span class="division-card-hint"><?php echo $progCount > 0 ? 'Lihat ' . (int) $progCount . ' program kerja →' : 'Lihat program kerja →'; ?></span>
+                    </button>
                 <?php endforeach; ?>
             </div>
         </section>
+
+        <div class="dpm-overlay" id="division-program-modal" role="presentation" hidden>
+            <div class="dpm-dialog" role="dialog" aria-modal="true" aria-labelledby="dpm-title">
+                <div class="dpm-header">
+                    <div class="dpm-header-info">
+                        <div class="division-avatar dpm-avatar" id="dpm-avatar" aria-hidden="true"></div>
+                        <div>
+                            <h3 class="dpm-title" id="dpm-title">Program Kerja Divisi</h3>
+                            <p class="dpm-desc" id="dpm-desc"></p>
+                        </div>
+                    </div>
+                    <button type="button" class="dpm-close" id="dpm-close" aria-label="Tutup modal">&times;</button>
+                </div>
+                <div class="dpm-body" id="dpm-body"></div>
+                <div class="dpm-footer">
+                    <button type="button" class="btn ghost" id="dpm-close-footer">Tutup</button>
+                </div>
+            </div>
+        </div>
 
         <section id="daftar">
             <h2 class="section-title">Jalur cepat daftar</h2>
@@ -230,9 +275,27 @@
 
         <section id="dokumentasi">
             <h2 class="section-title">Dokumentasi kegiatan</h2>
+            <?php
+            $docAutoScroll = !empty($docsSettings['auto_scroll']);
+            $docSpeedPx = (int) ($docScrollSpeedPx ?? 52);
+            ?>
+            <?php if ($docAutoScroll): ?>
+            <div class="docs-marquee" data-auto-scroll="1" data-speed="<?php echo e($docSpeedPx); ?>">
+                <div class="docs-track">
+            <?php else: ?>
             <div class="grid">
-                <?php foreach ($docs as $idx => $doc): $docThumb = doc_thumbnail_url($doc); $docUrl = trim((string) ($doc['url'] ?? '')); $docAnchorId = $docUrl === 'https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/' ? 'doc-arsip-ig' : ($docUrl === 'https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/' ? 'doc-ppi-2024' : 'doc-' . (int) $idx); ?>
-                    <a class="card doc-card" id="<?php echo e($docAnchorId); ?>" href="<?php echo e($doc['url']); ?>" target="_blank" rel="noopener" data-insight="doc_<?php echo e($idx); ?>" aria-label="Buka dokumentasi: <?php echo e($doc['title']); ?>">
+            <?php endif; ?>
+                <?php foreach ($docs as $idx => $doc):
+                    $docThumb = doc_thumbnail_url($doc);
+                    $docUrl = trim((string) ($doc['url'] ?? ''));
+                    $docAnchorId = $docUrl === 'https://krasyid822.github.io/ukmipolmed/ukmipolmed-ig/'
+                        ? 'doc-arsip-ig'
+                        : ($docUrl === 'https://krasyid822.github.io/ukmipolmed/dokumentasi-ppi-2024/'
+                            ? 'doc-ppi-2024'
+                            : 'doc-' . (int) $idx);
+                ?>
+                    <?php if ($docUrl !== ''): ?>
+                    <a class="card doc-card" id="<?php echo e($docAnchorId); ?>" href="<?php echo e($docUrl); ?>" target="_blank" rel="noopener" data-insight="doc_<?php echo e($idx); ?>" aria-label="Buka dokumentasi: <?php echo e($doc['title']); ?>">
                         <?php if ($docThumb !== ''): ?>
                             <img class="doc-thumb" src="<?php echo e($docThumb); ?>" alt="" aria-hidden="true" loading="lazy" decoding="async">
                         <?php endif; ?>
@@ -240,8 +303,23 @@
                         <h3><?php echo e($doc['title']); ?></h3>
                         <p><?php echo e($doc['description']); ?></p>
                     </a>
+                    <?php else: ?>
+                    <article class="card doc-card doc-card--static" id="<?php echo e($docAnchorId); ?>">
+                        <?php if ($docThumb !== ''): ?>
+                            <img class="doc-thumb" src="<?php echo e($docThumb); ?>" alt="" aria-hidden="true" loading="lazy" decoding="async">
+                        <?php endif; ?>
+                        <div class="tag"><?php echo e($doc['tag']); ?></div>
+                        <h3><?php echo e($doc['title']); ?></h3>
+                        <p><?php echo e($doc['description']); ?></p>
+                    </article>
+                    <?php endif; ?>
                 <?php endforeach; ?>
+            <?php if ($docAutoScroll): ?>
+                </div>
             </div>
+            <?php else: ?>
+            </div>
+            <?php endif; ?>
         </section>
 
         <footer>
@@ -268,8 +346,6 @@
             </nav>
             <nav aria-label="Navigasi situs" style="margin-top:10px;">
                 <div class="socials">
-                    <a href="#dokumentasi" data-scroll-cta="doc-arsip-ig" data-scroll-fallback="#dokumentasi">Arsip IG</a>
-                    <a href="#dokumentasi" data-scroll-cta="doc-ppi-2024" data-scroll-fallback="#dokumentasi">PPI 2024</a>
                     <a href="#daftar" data-scroll-cta="cta-daftar-primary" data-scroll-fallback="#daftar">Daftar</a>
                     <a href="/blog">Blog</a>
                     <a href="/faq">FAQ</a>
@@ -279,16 +355,24 @@
             <nav aria-label="Sumber terkait" style="margin-top:10px;">
                 <p style="font-size:13px; color:var(--muted); margin:0 0 6px;">Sumber & referensi terkait:</p>
                 <div class="socials">
-                    <a href="https://polmed.ac.id" target="_blank" rel="noopener"><img alt="Logo Politeknik Negeri Medan" src="/foto?key=ukmipolmed%2Fuploads%2F12e3c93596fc1fa6c8bba0bed8db27220fa3e687.webp" style="width: 24px; height: 24px; margin-right: 5px;">Politeknik Negeri Medan</a>
+                    <a href="https://polmed.ac.id" target="_blank" rel="noopener"><img alt="Logo Politeknik Negeri Medan" src="/foto?key=ukmipolmed%2Fuploads%2Fcc5ff12bb15725123611ff26ff4c7a8e733d79cb.webp" style="width: 24px; height: 24px; margin-right: 5px;">Politeknik Negeri Medan</a>
                    <!-- <a href="https://ldii.or.id" target="_blank" rel="noopener"><img alt="Logo Lembaga Dakwah Islam Indonesia" src="/foto?key=ukmipolmed%2Fuploads%2F022395e1d85db34370ea4e49065537d777917bc6.webp" style="width: 24px; height: 24px; margin-right: 5px;">LDII</a> -->
                     <a href="https://masjidbaitulilmi.polmed.ac.id/" target="_blank" rel="noopener"><img alt="Logo Masjid Baitul Ilmi Politeknik Negeri Medan" src="/foto?key=ukmipolmed%2Fuploads%2F9502a6d477496e78d3a72eacdb15ae5b3e1f66bf.webp" style="width: 24px; height: 24px; margin-right: 5px;">Masjid Baitul Ilmi</a>
                     <a href="https://kemenag.go.id" target="_blank" rel="noopener"><img alt="Logo Kementerian Agama Republik Indonesia" src="/foto?key=ukmipolmed%2Fuploads%2Fd82408ad770460776fcf2e54f292ca311139136c.webp" style="width: 24px; height: 24px; margin-right: 5px;">Kemenag RI</a>
-                    <a href="https://nu.or.id" target="_blank" rel="noopener"><img alt="Logo Nahdlatul Ulama" src="/foto?key=ukmipolmed%2Fuploads%2F09921d5c00a1469f5d4b11dc99d7befeaa72be58.webp" style="width: 24px; height: 24px; margin-right: 5px;">NU Online</a>
-                    <a href="https://muhammadiyah.or.id/" target="_blank" rel="noopener"><img alt="Logo Muhammadiyah" src="/foto?key=ukmipolmed%2Fuploads%2F5d6e20dc098110351e0878817bdf856a881dc4dd.webp" style="width: 24px; height: 24px; margin-right: 5px;">Muhammadiyah</a>
-                    <a href="https://id.wikipedia.org/wiki/Ikhwanul_Muslimin" target="_blank" rel="noopener"><img alt="Ilustrasi referensi Ikhwanul Muslimin dari Wikipedia" src="/foto?key=ukmipolmed%2Fuploads%2F35e13df26de983d583d101c6680abff5bc9d882d.webp" style="width: 24px; height: 24px; margin-right: 5px;">Wiki: Ikhwanul Muslimin</a>
+                    <a href="https://nu.or.id" target="_blank" rel="noopener"><img alt="Logo Nahdlatul Ulama" src="/foto?key=ukmipolmed%2Fuploads%2F24fff8245dd2eefbc5c45301cf2a2a4e0027ffc5.webp" style="width: 24px; height: 24px; margin-right: 5px;">NU Online</a>
+                    <a href="https://muhammadiyah.or.id/" target="_blank" rel="noopener"><img alt="Logo Muhammadiyah" src="/foto?key=ukmipolmed%2Fuploads%2Fb225a66fbb3d679f7033ffdad9c593143f88ba18.webp" style="width: 24px; height: 24px; margin-right: 5px;">Muhammadiyah</a>
+                    <a href="https://id.wikipedia.org/wiki/Ikhwanul_Muslimin" target="_blank" rel="noopener"><img alt="Ilustrasi referensi Ikhwanul Muslimin dari Wikipedia" src="/foto?key=ukmipolmed%2Fuploads%2Fd136a742ade3e82d924ec4d771cc95c0cfc5e5e7.webp" style="width: 24px; height: 24px; margin-right: 5px;">Wiki: Ikhwanul Muslimin</a>
 
                     <!-- <a href="" target="_blank" rel="noopener"><img src="" style="width: 24px; height: 24px; margin-right: 5px;"></a> -->
                 </div>
             </nav>
+            <div class="footer-theme-wrap">
+                <button type="button" class="theme-switch" id="ukmi-theme-toggle" role="switch" aria-checked="false" aria-label="Ganti tema tampilan">
+                    <span class="theme-switch-track" aria-hidden="true">
+                        <span class="theme-switch-thumb">🌙</span>
+                    </span>
+                    <span class="theme-switch-label">Tema Gelap</span>
+                </button>
+            </div>
         </footer>
     </main>

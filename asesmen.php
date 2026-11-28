@@ -230,29 +230,9 @@ $isFileMode = $assessment && !empty($assessment['key_cells']);
 <link rel="icon" type="image/png" href="/logo-ukmi.png">
 <script src="/components/ui-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-<style>
-:root{--bg:#0b1120;--card:#111a2e;--text:#e5e7eb;--muted:#94a3b8;--stroke:rgba(148,163,184,.2);--accent:#38bdf8;--ok:#4ade80}
-*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#13203a,var(--bg));color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6}
-.wrap{max-width:760px;margin:0 auto;padding:24px 16px 60px}
-h1{font-size:20px;margin:0 0 6px}
-.muted{color:var(--muted);font-size:14px}
-.card{background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:16px;margin-top:14px}
-label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
-input[type=text]{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--stroke);background:rgba(15,23,42,.5);color:var(--text)}
-input[type=file]{margin-top:6px;color:var(--text)}
-button{background:linear-gradient(135deg,#38bdf8,#0ea5e9);color:#04202e;border:0;border-radius:9px;padding:9px 16px;font-weight:600;cursor:pointer;margin-top:14px}
-.btn{display:inline-block;text-decoration:none;color:var(--text);border:1px solid var(--stroke);border-radius:9px;padding:8px 12px;font-size:14px;margin-top:8px}
-.btn.danger{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4)}
-.q{margin:14px 0;padding:12px;border:1px solid var(--stroke);border-radius:10px}
-.ok{color:var(--ok)} .err{color:#f87171}
-.review-title{font-size:15px;margin:18px 0 6px}
-ul.review{margin:6px 0 0;padding-left:18px}
-ul.review li{margin:4px 0;font-size:14px}
-.tag-manual{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.45);color:#fca5a5}
-</style>
+<link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="page-asesmen">
 <?php require __DIR__ . '/components/loading-overlay.php'; ?>
 <div class="wrap">
   <div><a class="muted" href="/blog">← Blog</a></div>

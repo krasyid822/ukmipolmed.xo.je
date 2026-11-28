@@ -384,9 +384,9 @@ if ($view === 'ui') {
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
-		<?php require __DIR__ . '/components/status-styles.php'; ?>
+		<link rel="stylesheet" href="/style.css">
 	</head>
-	<body>
+	<body class="page-status">
 		<?php require __DIR__ . '/components/loading-overlay.php'; ?>
 		<main>
 			<div class="cards-2">

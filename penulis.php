@@ -99,27 +99,9 @@ $absMetaImage = (strpos($metaImage, 'http') === 0) ? $metaImage : ($base . $meta
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT); ?></script>
 <?php endif; ?>
 <link rel="icon" type="image/png" href="/logo-ukmi.png">
-<style>
-:root{--bg:#0b1120;--card:#111a2e;--text:#e5e7eb;--muted:#94a3b8;--stroke:rgba(148,163,184,.2);--accent:#38bdf8}
-*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#13203a,var(--bg));color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.6}
-.wrap{max-width:820px;margin:0 auto;padding:28px 18px 60px}
-.top{display:flex;align-items:center;gap:10px;margin-bottom:22px}
-.top a{color:var(--muted);text-decoration:none;font-size:14px}
-.card{background:var(--card);border:1px solid var(--stroke);border-radius:16px;padding:20px}
-.profile{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-.avatar{width:96px;height:96px;border-radius:50%;object-fit:cover;border:2px solid var(--stroke)}
-h1{margin:0;font-size:22px}
-.bio{color:var(--muted);margin:6px 0 0;font-size:15px}
-.social a{display:inline-block;margin-top:8px;color:var(--accent);text-decoration:none;font-size:14px}
-.posts{margin-top:22px;display:flex;flex-direction:column;gap:12px}
-.pcard{display:block;background:var(--card);border:1px solid var(--stroke);border-radius:14px;padding:14px 16px;text-decoration:none;color:inherit}
-.pcard h3{margin:0 0 4px;font-size:16px}
-.pcard .m{color:var(--muted);font-size:13px}
-.empty{color:var(--muted)}
-</style>
+<link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="page-penulis">
 <?php require __DIR__ . '/components/loading-overlay.php'; ?>
 <div class="wrap">
   <div class="top"><a href="/">← Beranda</a><span style="color:var(--muted)">·</span><a href="/blog">Blog</a></div>

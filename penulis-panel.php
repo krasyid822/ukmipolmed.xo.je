@@ -577,14 +577,14 @@ $profileView = isset($_GET['profile']);
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="/logo-ukmi.png">
 <script src="/components/ui-modal.js"></script>
-<?php require __DIR__ . '/components/penulis-panel-styles.php'; ?>
+<link rel="stylesheet" href="/style.css">
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/turndown-plugin-gfm@1.0.2/dist/turndown-plugin-gfm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 </head>
-<body>
+<body class="page-penulis-panel">
 <?php require __DIR__ . '/components/loading-overlay.php'; ?>
 <div class="wrap">
   <div class="row" style="justify-content:space-between;margin-top:0;">

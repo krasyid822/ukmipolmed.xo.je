@@ -31,6 +31,24 @@ if (($adminComponentMode ?? '') === 'handle') {
 
 		$docs = array_merge($protected, $newDocs);
 		$config['docs'] = $docs;
+
+		$postedSpeedMode = (($_POST['doc_speed_mode'] ?? 'preset') === 'custom') ? 'custom' : 'preset';
+		$postedSpeedPreset = in_array($_POST['doc_speed_preset'] ?? 'normal', ['slow', 'normal', 'fast'], true)
+			? (string) $_POST['doc_speed_preset']
+			: 'normal';
+		$postedSpeedCustom = max(10, min(200, (int) ($_POST['doc_speed_custom'] ?? 52)));
+		$postedMentoringCount = max(1, min(20, (int) ($_POST['doc_mentoring_count'] ?? 4)));
+		$docsSettings = [
+			'auto_scroll' => isset($_POST['doc_auto_scroll']),
+			'speed_mode' => $postedSpeedMode,
+			'speed_preset' => $postedSpeedPreset,
+			'speed_custom' => $postedSpeedCustom,
+			'mentoring_enabled' => isset($_POST['doc_mentoring_enabled']),
+			'mentoring_count' => $postedMentoringCount,
+			'mentoring_clickable' => isset($_POST['doc_mentoring_clickable']),
+		];
+		$config['docs_settings'] = $docsSettings;
+
 		$encoded = json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 		if ($encoded === false || store_save_raw($configPath, $encoded) === false) {
 			$error = 'Gagal menyimpan dokumentasi.';
@@ -45,6 +63,58 @@ if (($adminComponentMode ?? '') === 'handle') {
 <div class="section" style="margin-top: 10px;">
 	<h2 style="margin:0 0 8px; font-size:16px;">Kartu dokumentasi kegiatan (maks 10)</h2>
 	<form method="post" class="stack-sm" id="docs-form" data-autosave-key="docs"><?php echo ukmi_csrf_field(); ?>
+		<?php
+		$dsAutoScroll = !isset($docsSettings) || !empty($docsSettings['auto_scroll']);
+		$dsSpeedMode = ($docsSettings['speed_mode'] ?? 'preset') === 'custom' ? 'custom' : 'preset';
+		$dsSpeedPreset = in_array($docsSettings['speed_preset'] ?? 'normal', ['slow', 'normal', 'fast'], true) ? $docsSettings['speed_preset'] : 'normal';
+		$dsSpeedCustom = max(10, min(200, (int) ($docsSettings['speed_custom'] ?? 52)));
+		$dsMentoringEnabled = !empty($docsSettings['mentoring_enabled']);
+		$dsMentoringCount = max(1, min(20, (int) ($docsSettings['mentoring_count'] ?? 4)));
+		$dsMentoringClickable = !empty($docsSettings['mentoring_clickable']);
+		?>
+		<div style="border:1px solid rgba(148,163,184,0.25); padding:12px; border-radius:10px; background: rgba(255,255,255,0.02); margin-bottom:10px; display:grid; gap:10px;">
+			<div style="font-size:14px; font-weight:600;">Pengaturan gulir &amp; dokumentasi mentoring</div>
+			<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+				<input type="checkbox" name="doc_auto_scroll" value="1" <?php echo $dsAutoScroll ? 'checked' : ''; ?>>
+				<span>Aktifkan gulir otomatis horizontal (looping)</span>
+			</label>
+			<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+				<div>
+					<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Mode kecepatan gulir</label>
+					<select name="doc_speed_mode" id="doc_speed_mode" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+						<option value="preset" <?php echo $dsSpeedMode === 'preset' ? 'selected' : ''; ?>>Preset (default)</option>
+						<option value="custom" <?php echo $dsSpeedMode === 'custom' ? 'selected' : ''; ?>>Input angka (px/detik)</option>
+					</select>
+				</div>
+				<div id="doc-speed-preset-wrap">
+					<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Preset kecepatan</label>
+					<select name="doc_speed_preset" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+						<option value="slow" <?php echo $dsSpeedPreset === 'slow' ? 'selected' : ''; ?>>Lambat (28 px/s)</option>
+						<option value="normal" <?php echo $dsSpeedPreset === 'normal' ? 'selected' : ''; ?>>Sedang (52 px/s)</option>
+						<option value="fast" <?php echo $dsSpeedPreset === 'fast' ? 'selected' : ''; ?>>Cepat (85 px/s)</option>
+					</select>
+				</div>
+				<div id="doc-speed-custom-wrap">
+					<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Kecepatan kustom (10–200 px/s)</label>
+					<input type="number" name="doc_speed_custom" min="10" max="200" value="<?php echo (int) $dsSpeedCustom; ?>" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+				</div>
+			</div>
+			<hr style="border:0; border-top:1px solid rgba(148,163,184,0.18); margin:2px 0;">
+			<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+				<input type="checkbox" name="doc_mentoring_enabled" id="doc_mentoring_enabled" value="1" <?php echo $dsMentoringEnabled ? 'checked' : ''; ?>>
+				<span>Tarik foto dokumentasi acak dari projek laporan mentoring</span>
+			</label>
+			<div id="doc-mentoring-options" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; align-items:end;">
+				<div>
+					<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Jumlah foto mentoring (1–20)</label>
+					<input type="number" name="doc_mentoring_count" min="1" max="20" value="<?php echo (int) $dsMentoringCount; ?>" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);">
+				</div>
+				<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; padding-bottom:8px;">
+					<input type="checkbox" name="doc_mentoring_clickable" value="1" <?php echo $dsMentoringClickable ? 'checked' : ''; ?>>
+					<span>Izinkan kartu mentoring diklik ke detail laporan (view.php)</span>
+				</label>
+			</div>
+		</div>
 		<div id="doc-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
 			<?php foreach ($docs as $docIdx => $doc): $isProtectedDoc = $docIdx < count($docDefaults); ?>
 			<div class="doc-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
@@ -118,5 +188,33 @@ if (($adminComponentMode ?? '') === 'handle') {
 	});
 	attachDocRemove();
 	updateDocLimitState();
+
+	const speedModeEl = document.getElementById('doc_speed_mode');
+	const speedPresetWrap = document.getElementById('doc-speed-preset-wrap');
+	const speedCustomWrap = document.getElementById('doc-speed-custom-wrap');
+	function syncSpeedModeUI() {
+		if (!speedModeEl || !speedPresetWrap || !speedCustomWrap) return;
+		const isCustom = speedModeEl.value === 'custom';
+		speedPresetWrap.style.display = isCustom ? 'none' : '';
+		speedCustomWrap.style.display = isCustom ? '' : 'none';
+	}
+	if (speedModeEl) {
+		speedModeEl.addEventListener('change', syncSpeedModeUI);
+		syncSpeedModeUI();
+	}
+
+	const mentoringToggleEl = document.getElementById('doc_mentoring_enabled');
+	const mentoringOptsEl = document.getElementById('doc-mentoring-options');
+	function syncMentoringUI() {
+		if (!mentoringToggleEl || !mentoringOptsEl) return;
+		mentoringOptsEl.style.opacity = mentoringToggleEl.checked ? '1' : '0.5';
+		mentoringOptsEl.querySelectorAll('input').forEach((inp) => {
+			inp.disabled = !mentoringToggleEl.checked;
+		});
+	}
+	if (mentoringToggleEl) {
+		mentoringToggleEl.addEventListener('change', syncMentoringUI);
+		syncMentoringUI();
+	}
 })();
 </script>

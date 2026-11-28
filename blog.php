@@ -482,9 +482,9 @@ if ($filterSlug !== '' && count($posts) === 1) {
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT); ?>
 	</script>
 	<?php endif; ?>
-	<?php require __DIR__ . '/components/blog-styles.php'; ?>
+	<link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="page-blog">
 	<?php require __DIR__ . '/components/loading-overlay.php'; ?>
 		<?php include __DIR__ . '/header.php'; ?>
 	<div class="container">

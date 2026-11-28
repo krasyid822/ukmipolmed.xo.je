@@ -97,7 +97,11 @@ if (isset($config) && is_array($config) && !empty($config['registration']) && is
     }
 }
 
-$divisions = $divisionDefaults;
+$divisions = array_map(static function ($item) {
+    if (!is_array($item)) return ['name' => 'Divisi', 'description' => 'Deskripsi divisi.', 'avatar' => '', 'programs' => []];
+    $item['programs'] = is_array($item['programs'] ?? null) ? $item['programs'] : [];
+    return $item;
+}, $divisionDefaults);
 if (isset($config) && is_array($config) && !empty($config['divisions']) && is_array($config['divisions'])) {
     $tmp = [];
     foreach ($config['divisions'] as $item) {
@@ -105,10 +109,25 @@ if (isset($config) && is_array($config) && !empty($config['divisions']) && is_ar
         $name = trim((string) ($item['name'] ?? ''));
         $desc = trim((string) ($item['description'] ?? ''));
         if ($name === '' && $desc === '') continue;
+        $programs = [];
+        if (!empty($item['programs']) && is_array($item['programs'])) {
+            foreach ($item['programs'] as $prog) {
+                if (!is_array($prog)) continue;
+                $pTitle = trim((string) ($prog['title'] ?? ''));
+                $pDesc = trim((string) ($prog['description'] ?? ''));
+                if ($pTitle === '' && $pDesc === '') continue;
+                $programs[] = [
+                    'title' => $pTitle ?: 'Program Kerja',
+                    'description' => $pDesc,
+                ];
+                if (count($programs) >= 20) break;
+            }
+        }
         $tmp[] = [
             'name' => $name ?: 'Divisi',
             'description' => $desc ?: 'Deskripsi divisi.',
             'avatar' => trim((string) ($item['avatar'] ?? '')),
+            'programs' => $programs,
         ];
     }
     if (!empty($tmp)) {
@@ -139,6 +158,69 @@ if (isset($config) && is_array($config) && !empty($config['docs']) && is_array($
     }
     if (!empty($tmpDocs)) {
         $docs = $tmpDocs;
+    }
+}
+
+$rawDocsSettings = (isset($config) && is_array($config) && is_array($config['docs_settings'] ?? null)) ? $config['docs_settings'] : [];
+$docSpeedMode = ($rawDocsSettings['speed_mode'] ?? 'preset') === 'custom' ? 'custom' : 'preset';
+$docSpeedPreset = in_array($rawDocsSettings['speed_preset'] ?? 'normal', ['slow', 'normal', 'fast'], true)
+    ? (string) ($rawDocsSettings['speed_preset'] ?? 'normal')
+    : 'normal';
+$docSpeedCustom = max(10, min(200, (int) ($rawDocsSettings['speed_custom'] ?? 52)));
+$docsSettings = [
+    'auto_scroll' => array_key_exists('auto_scroll', $rawDocsSettings) ? (bool) $rawDocsSettings['auto_scroll'] : true,
+    'speed_mode' => $docSpeedMode,
+    'speed_preset' => $docSpeedPreset,
+    'speed_custom' => $docSpeedCustom,
+    'mentoring_enabled' => !empty($rawDocsSettings['mentoring_enabled']),
+    'mentoring_count' => max(1, min(20, (int) ($rawDocsSettings['mentoring_count'] ?? 4))),
+    'mentoring_clickable' => !empty($rawDocsSettings['mentoring_clickable']),
+];
+$docPresetSpeedMap = ['slow' => 28, 'normal' => 52, 'fast' => 85];
+$docScrollSpeedPx = $docsSettings['speed_mode'] === 'custom'
+    ? $docsSettings['speed_custom']
+    : ($docPresetSpeedMap[$docsSettings['speed_preset']] ?? 52);
+
+if ($docsSettings['mentoring_enabled']) {
+    $mentoringDir = __DIR__ . '/terpadu/mai/mentoring';
+    $mentoringBaseUrl = '/terpadu/mai/mentoring';
+    if (!is_dir($mentoringDir)) {
+        $mentoringDir = __DIR__ . '/terpadu/mentoring-agama-islam/kelola-kelompok-mentoring';
+        $mentoringBaseUrl = '/terpadu/mentoring-agama-islam/kelola-kelompok-mentoring';
+    }
+    $pointerPath = $mentoringDir . '/storage_secure/pointer_laporan.json';
+    if (is_file($pointerPath)) {
+        $rawPointers = @file_get_contents($pointerPath);
+        $decodedPointers = is_string($rawPointers) ? json_decode($rawPointers, true) : null;
+        if (is_array($decodedPointers)) {
+            $eligible = [];
+            foreach ($decodedPointers as $p) {
+                if (!is_array($p) || empty($p['id'])) continue;
+                $dokPath = trim((string) ($p['dokumentasi_path'] ?? ''));
+                if ($dokPath === '' || !str_starts_with($dokPath, 'dokumentasi/')) continue;
+                $eligible[] = $p;
+            }
+            if (!empty($eligible)) {
+                shuffle($eligible);
+                $picked = array_slice($eligible, 0, $docsSettings['mentoring_count']);
+                foreach ($picked as $p) {
+                    $pId = (string) $p['id'];
+                    $tema = trim((string) ($p['tema'] ?? '')) ?: 'Dokumentasi Mentoring';
+                    $namaTim = trim((string) ($p['nama_tim'] ?? ''));
+                    $tanggal = trim((string) ($p['tanggal'] ?? ''));
+                    $metaParts = array_values(array_filter([$namaTim, $tanggal], static fn($v) => $v !== ''));
+                    $desc = !empty($metaParts) ? implode(' · ', $metaParts) : 'Dokumentasi kegiatan mentoring UKMI POLMED.';
+                    $docs[] = [
+                        'tag' => 'Mentoring',
+                        'title' => $tema,
+                        'description' => $desc,
+                        'url' => $docsSettings['mentoring_clickable'] ? ($mentoringBaseUrl . '/view.php?id=' . rawurlencode($pId)) : '',
+                        'thumb' => $mentoringBaseUrl . '/media.php?key=' . rawurlencode((string) $p['dokumentasi_path']),
+                        'is_mentoring' => true,
+                    ];
+                }
+            }
+        }
     }
 }
 
@@ -446,9 +528,9 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
-    <?php require __DIR__ . '/components/beranda-styles.php'; ?>
+    <link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="page-home">
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WS2XLWDK"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
