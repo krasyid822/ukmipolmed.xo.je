@@ -12,7 +12,8 @@
 | :--- | :--- | :--- | :--- | :--- | 
 | **Primary** | `primary` (Leaf Green) | `#1E824C` | `rgb(30, 130, 76)` | Main brand identity, primary buttons, headers, key graphic elements. | 
 | **Secondary** | `secondary` (Sage Mint) | `#D8EFE2` | `rgb(216, 239, 226)` | Secondary backgrounds, cards, badges, subtle illustrations. | 
-| **Background** | `background` (Warm Off-White) | `#FAF9F6` | `rgb(250, 249, 246)` | Primary canvas/page background. Warm tone to reduce eye strain. | 
+| **Background** | `background` (Soft Sage Off-White) | `#ECEEE9` | `rgb(236, 238, 233)` | Primary canvas/page background. Soft tone to reduce white glare and eye strain. | 
+| **Surface** | `surface` (Soft Cream) | `#F5F6F2` | `rgb(245, 246, 242)` | Elevated cards, panels, modals, and form inputs without harsh `#FFFFFF` glare. |
 | **Text / Dark** | `foreground` (Charcoal) | `#222825` | `rgb(34, 40, 37)` | Primary body text, subheadings, dark icons, borders. | 
 | **Accent** | `accent` (Mustard Amber) | `#E6A817` | `rgb(230, 168, 23)` | Call-to-Action (CTA) highlights, active indicators, important badges. | 
 
@@ -37,7 +38,8 @@ Gunakan CSS Custom Properties berikut pada file CSS utama (`style.css` / `variab
 :root {
   --color-primary: #1E824C;
   --color-secondary: #D8EFE2;
-  --color-background: #FAF9F6;
+  --color-background: #ECEEE9;
+  --color-surface: #F5F6F2;
   --color-foreground: #222825;
   --color-accent: #E6A817;
   --color-border: #DCE5E0;
@@ -98,7 +100,7 @@ body {
 
 ## 3. Proportion Rules (60-30-10)
 
-* **60% Neutral Base:** Gunakan `--color-background` (`#FAF9F6` di Light Mode / `#111714` di Dark Mode) sebagai latar belakang dominan untuk menjaga kebersihan tata letak (*whitespace*).
+* **60% Neutral Base:** Gunakan `--color-background` (`#ECEEE9` di Light Mode / `#111714` di Dark Mode) sebagai latar belakang dominan untuk menjaga kebersihan tata letak (*whitespace*), dan `--color-surface` (`#F5F6F2`) untuk kartu/panel di Light Mode.
 * **30% Primary & Secondary:** Gunakan `--color-primary` untuk elemen utama/judul dan `--color-secondary` untuk pembagian blok konten (*cards/sections*).
 * **10% Accent:** Gunakan `--color-accent` secara terbatas hanya untuk penekanan visual, tombol CTA, atau sorotan informasi penting.
 
@@ -106,7 +108,7 @@ body {
 
 * **Light Mode:**
   * Gunakan `--color-foreground` (`#222825`) untuk teks isi (*body text*) dan `--color-primary` (`#1E824C`) untuk judul.
-  * **Larangan:** Jangan gunakan `--color-accent` (`#E6A817`) sebagai warna teks di atas latar terang (`#FAF9F6`) karena rasio kontrasnya rendah.
+  * **Larangan:** Jangan gunakan `--color-accent` (`#E6A817`) sebagai warna teks di atas latar terang (`#ECEEE9`) karena rasio kontrasnya rendah.
 * **Dark Mode:**
   * Gunakan `--color-foreground` (`#F0F4F1`) untuk teks isi di atas latar `#111714` atau `#1A2B22`.
   * Warna `--color-accent` (`#F2B938`) dan `--color-primary` (`#29A863`) aman digunakan sebagai warna teks sorotan maupun ikon di atas latar gelap.

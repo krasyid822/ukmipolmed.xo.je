@@ -205,7 +205,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<button type="submit" style="max-width:180px;">Buka</button>
 		</div>
 	</form>
-	<form method="post" class="stack-sm" style="<?php echo $credentialUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?><?php echo ukmi_csrf_field(); ?>">
+	<form method="post" class="stack-sm" style="<?php echo $credentialUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>" <?php echo $credentialUnlocked ? '' : 'inert'; ?>><?php echo ukmi_csrf_field(); ?>
 		<input type="hidden" name="update_credentials" value="1">
 		<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
 			<div>
@@ -249,7 +249,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 	<form method="post" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items:end;"><?php echo ukmi_csrf_field(); ?>
 		<input type="hidden" name="create_author" value="1">
 		<div><label for="author_username">Username</label><input type="text" id="author_username" name="author_username" required placeholder="penulis1" autocomplete="off"></div>
-		<div><label for="author_password">Password</label><input type="text" id="author_password" name="author_password" required placeholder="kata sandi" autocomplete="off"></div>
+		<div><label for="author_password">Password</label><input type="password" id="author_password" name="author_password" required placeholder="kata sandi" autocomplete="new-password"></div>
 		<div><label for="author_pen_name">Nama pena</label><input type="text" id="author_pen_name" name="author_pen_name" placeholder="Nama Pena"></div>
 		<div style="grid-column:1/-1; display:flex; gap:16px; flex-wrap:wrap;">
 			<label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="feat_assessment" value="1"> Asesmen Excel</label>
@@ -262,23 +262,23 @@ if (($adminComponentMode ?? '') === 'handle') {
 		<p class="muted-text" style="margin:10px 0 0;">Belum ada akun penulis.</p>
 	<?php else: ?>
 		<ul style="margin:10px 0 0; padding:0; list-style:none;">
-			<?php foreach ($authList as $au): ?>
+			<?php foreach ($authList as $au): $auId = htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
 			<li style="padding:8px 0; border-top:1px solid rgba(148,163,184,0.15);">
 				<div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
 					<span><?php echo htmlspecialchars((string) (($au['pen_name'] ?? '') !== '' ? $au['pen_name'] : ($au['username'] ?? '')), ENT_QUOTES, 'UTF-8'); ?> <span class="muted-text">@<?php echo htmlspecialchars((string) ($au['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></span>
 					<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus akun penulis ini?');"><?php echo ukmi_csrf_field(); ?>
-						<input type="hidden" name="delete_author" value="<?php echo htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-						<button type="submit" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
+						<input type="hidden" name="delete_author" value="<?php echo $auId; ?>">
+						<button type="submit" class="btn-danger-outline" style="width:auto; padding:6px 12px; font-size:13px;">Hapus</button>
 					</form>
 				</div>
 				<details style="margin-top:6px;">
 					<summary style="cursor:pointer;color:var(--accent);font-size:13px;">Edit</summary>
 					<form method="post" class="stack-sm" style="margin-top:8px;"><?php echo ukmi_csrf_field(); ?>
-						<input type="hidden" name="edit_author" value="<?php echo htmlspecialchars((string) ($au['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						<input type="hidden" name="edit_author" value="<?php echo $auId; ?>">
 						<div class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px,1fr));">
-							<div><label>Username</label><input type="text" name="edit_username" value="<?php echo htmlspecialchars((string) ($au['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required></div>
-							<div><label>Nama pena</label><input type="text" name="edit_pen_name" value="<?php echo htmlspecialchars((string) ($au['pen_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div>
-							<div><label>Password baru (kosongkan = tetap)</label><input type="text" name="edit_password" placeholder="opsional"></div>
+							<div><label for="edit_username_<?php echo $auId; ?>">Username</label><input type="text" id="edit_username_<?php echo $auId; ?>" name="edit_username" value="<?php echo htmlspecialchars((string) ($au['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required></div>
+							<div><label for="edit_pen_name_<?php echo $auId; ?>">Nama pena</label><input type="text" id="edit_pen_name_<?php echo $auId; ?>" name="edit_pen_name" value="<?php echo htmlspecialchars((string) ($au['pen_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"></div>
+							<div><label for="edit_password_<?php echo $auId; ?>">Password baru (kosongkan = tetap)</label><input type="password" id="edit_password_<?php echo $auId; ?>" name="edit_password" placeholder="opsional" autocomplete="new-password"></div>
 						</div>
 						<?php $f = is_array($au['features'] ?? null) ? $au['features'] : null; ?>
 						<div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:8px;">
@@ -324,22 +324,22 @@ if (($adminComponentMode ?? '') === 'handle') {
 					<input type="hidden" name="save_mentoring_account" value="1">
 					<input type="hidden" name="mentoring_scope" value="<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>">
 					<div>
-						<label>Username</label>
-						<input type="text" name="mentoring_username" required autocomplete="off" placeholder="mentoring_<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>" value="<?php echo htmlspecialchars((string) ($mAcc['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+						<label for="mentoring_username_<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>">Username</label>
+						<input type="text" id="mentoring_username_<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>" name="mentoring_username" required autocomplete="off" placeholder="mentoring_<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>" value="<?php echo htmlspecialchars((string) ($mAcc['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 					</div>
 					<div>
-						<label>Password <?php echo $mHasAcc ? '(kosongkan jika tetap)' : ''; ?></label>
-						<input type="password" name="mentoring_password" <?php echo $mHasAcc ? '' : 'required'; ?> autocomplete="new-password" placeholder="<?php echo $mHasAcc ? '********' : 'kata sandi'; ?>">
+						<label for="mentoring_password_<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>">Password <?php echo $mHasAcc ? '(kosongkan jika tetap)' : ''; ?></label>
+						<input type="password" id="mentoring_password_<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>" name="mentoring_password" <?php echo $mHasAcc ? '' : 'required'; ?> autocomplete="new-password" placeholder="<?php echo $mHasAcc ? '********' : 'kata sandi'; ?>">
 					</div>
 					<div style="display:flex; gap:8px; align-items:center;">
 						<button type="submit"><?php echo $mHasAcc ? 'Perbarui' : 'Aktifkan'; ?></button>
 					</div>
 				</form>
 				<?php if ($mHasAcc): ?>
-				<form method="post" style="margin-top:8px;" onsubmit="return uiConfirm(event, 'Nonaktifkan dan hapus akun <?php echo htmlspecialchars($mMeta['label'], ENT_QUOTES, 'UTF-8'); ?><?php echo ukmi_csrf_field(); ?>?');">
+				<form method="post" style="margin-top:8px;" onsubmit="return uiConfirm(event, 'Nonaktifkan dan hapus akun <?php echo htmlspecialchars($mMeta['label'], ENT_QUOTES, 'UTF-8'); ?>?');"><?php echo ukmi_csrf_field(); ?>
 					<input type="hidden" name="delete_mentoring_account" value="1">
 					<input type="hidden" name="mentoring_scope" value="<?php echo htmlspecialchars($mScope, ENT_QUOTES, 'UTF-8'); ?>">
-					<button type="submit" style="background: rgba(239,68,68,0.12); color: #fca5a5; box-shadow: none; border: 1px solid rgba(239,68,68,0.35);">Hapus Akun</button>
+					<button type="submit" class="btn-danger-outline">Hapus Akun</button>
 				</form>
 				<?php endif; ?>
 			</div>

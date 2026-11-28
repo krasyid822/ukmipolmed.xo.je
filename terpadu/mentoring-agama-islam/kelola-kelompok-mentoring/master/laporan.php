@@ -11,6 +11,7 @@ require_once __DIR__ . '/../bootstrap.php';
 
 use Mentoring\AdminAuth;
 use Mentoring\Config;
+use Mentoring\ImageProcessor;
 use Mentoring\MasterData;
 use Mentoring\ReportRepository;
 use Mentoring\Storage;
@@ -235,7 +236,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $report['absen'] = $absen;
         $report['updated_at'] = date('c');
 
-        if (!ReportRepository::save($report)) {
+        $compressedImages = null;
+        if (isset($_FILES['dokumentasi']) && ($_FILES['dokumentasi']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            if ($_FILES['dokumentasi']['error'] !== UPLOAD_ERR_OK) {
+                header('Location: ' . $detailUrl('', 'foto'), true, 303);
+                exit;
+            }
+            try {
+                $compressedImages = ImageProcessor::processAndCompressDual($_FILES['dokumentasi']['tmp_name'], 1280, 78);
+            } catch (\Throwable $e) {
+                error_log('Gagal kompresi foto dokumentasi saat update: ' . $e->getMessage());
+                $compressedImages = null;
+            }
+            if (!$compressedImages || ($compressedImages['webp'] === null && $compressedImages['jpg'] === '')) {
+                header('Location: ' . $detailUrl('', 'foto'), true, 303);
+                exit;
+            }
+        }
+
+        if (!ReportRepository::save($report, $compressedImages)) {
             header('Location: ' . $detailUrl('', 'simpan'), true, 303);
             exit;
         }
@@ -271,7 +290,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $pointer = Storage::findPointer('laporan', $reportId) ?? [];
 $dokRelativePath = (string)($pointer['dokumentasi_path'] ?? '');
-$dokUrl = $dokRelativePath !== '' ? $appBase . 'media?key=' . rawurlencode($dokRelativePath) : '';
+$dokVersion = (string)($pointer['updated_at'] ?? '');
+$dokUrl = $dokRelativePath !== ''
+    ? $appBase . 'media?key=' . rawurlencode($dokRelativePath) . ($dokVersion !== '' ? '&v=' . rawurlencode($dokVersion) : '')
+    : '';
 
 $botText = Watobot::buildMessageText($report);
 
@@ -285,6 +307,7 @@ $messages = [
 ];
 $errors = [
     'tanggal' => 'Tanggal laporan tidak valid. Gunakan format tanggal yang benar.',
+    'foto' => 'Foto dokumentasi tidak valid atau gagal diproses. Gunakan format JPG, PNG, atau WEBP.',
     'simpan' => 'Laporan gagal disimpan ke storage. Silakan coba lagi.',
     'bot_disabled' => 'Fitur bot WhatsApp untuk kategori tim ini sedang dimatikan. Aktifkan kembali di tab Kelola Laporan.',
 ];
@@ -445,7 +468,7 @@ $attendanceRate = ReportRepository::attendanceRate(
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
             Pilih nama petugas dan status kehadiran langsung dari data tim. Tidak perlu mengetik ulang nama.
         </p>
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
             <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="id" value="<?= $h($reportId) ?>">
             <input type="hidden" name="action" value="update">
@@ -585,6 +608,14 @@ $attendanceRate = ReportRepository::attendanceRate(
                 </div>
             <?php endif; ?>
 
+            <div class="form-section-label">Foto Dokumentasi (Opsional)</div>
+            <div class="form-group">
+                <label for="dokumentasi">Ganti Foto Dokumentasi (Kosongkan jika tidak ingin mengganti, Max 1280px, Otomatis Dikompres):</label>
+                <input type="file" name="dokumentasi" id="dokumentasi" class="form-control" accept="image/jpeg,image/png,image/webp">
+                <div id="compressionInfo" class="file-info"></div>
+                <div id="imagePreviewBox" class="preview-box" style="display:none; margin-top:10px;"></div>
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="submit-btn">Simpan Perubahan</button>
                 <a href="<?= $h($listUrl) ?>" class="btn-cancel">Batal</a>
@@ -598,7 +629,7 @@ $attendanceRate = ReportRepository::attendanceRate(
             Menghapus laporan akan menghapus data terenkripsi, dokumentasi, dan metadata OG
             dari storage. Tindakan ini tidak dapat dibatalkan.
         </p>
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
             <?= AdminAuth::csrfField() ?>
             <input type="hidden" name="id" value="<?= $h($reportId) ?>">
             <input type="hidden" name="action" value="delete">
@@ -610,12 +641,20 @@ $attendanceRate = ReportRepository::attendanceRate(
 <div class="copy-toast" id="toast">✓ Teks laporan berhasil disalin!</div>
 
 <script src="<?= $h($appBase) ?>public/assets/js/searchable-select.js"></script>
+<script src="<?= $h($appBase) ?>public/assets/js/image-compressor.js?v=4"></script>
 <script src="<?= $h($appBase) ?>public/assets/js/modal.js?v=2"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select[data-searchable]').forEach(select => {
         if (typeof initSearchableSelect === 'function') initSearchableSelect(select);
     });
+
+    const fileInput = document.getElementById('dokumentasi');
+    const previewBox = document.getElementById('imagePreviewBox');
+    const compressionInfo = document.getElementById('compressionInfo');
+    if (fileInput && typeof ClientImageCompressor === 'function') {
+        new ClientImageCompressor(fileInput, previewBox, compressionInfo);
+    }
 });
 
 function copyReport() {

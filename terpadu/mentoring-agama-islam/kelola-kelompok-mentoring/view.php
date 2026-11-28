@@ -48,8 +48,11 @@ if (!$report) {
 // Foto dokumentasi disajikan lewat media.php (signed GET; Blomp menolak GET anonim).
 // URL absolut diperlukan agar og:image valid saat halaman dibagikan langsung.
 $dokRelativePath = (string)($pointer['dokumentasi_path'] ?? '');
+$dokVersion = (string)($pointer['updated_at'] ?? '');
 $absBase = mentoring_absolute_app_base('view');
-$dokUrl = $dokRelativePath !== '' ? $absBase . 'media?key=' . rawurlencode($dokRelativePath) : '';
+$dokUrl = $dokRelativePath !== ''
+    ? $absBase . 'media?key=' . rawurlencode($dokRelativePath) . ($dokVersion !== '' ? '&v=' . rawurlencode($dokVersion) : '')
+    : '';
 
 $botText = Watobot::buildMessageText($report);
 $sentStatus = isset($_GET['sent']) ? (bool)$_GET['sent'] : null;

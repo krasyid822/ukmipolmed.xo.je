@@ -311,16 +311,16 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<div id="gdrive_list">
 					<?php $__gd0 = (array) ($blogDraft['gdrive_folders'] ?? []); if (empty($__gd0) && !empty($blogDraft['gdrive_folder'])) { $__gd0 = [['id' => $blogDraft['gdrive_folder'], 'view' => $blogDraft['gdrive_view'] ?? 'grid']]; } if (empty($__gd0)) { $__gd0 = [['id' => '', 'view' => 'grid']]; } foreach ($__gd0 as $__gd): ?>
 					<div class="gdrive-item" style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-						<input type="text" name="blog_gdrive_id[]" value="<?php echo htmlspecialchars((string) ($__gd['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Folder ID" style="flex:1;padding:6px;border-radius:8px;">
-						<select name="blog_gdrive_view[]" style="padding:6px;border-radius:8px;">
+						<input type="text" name="blog_gdrive_id[]" aria-label="Folder ID Google Drive" value="<?php echo htmlspecialchars((string) ($__gd['id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Folder ID" style="flex:1;padding:6px;border-radius:8px;">
+						<select name="blog_gdrive_view[]" aria-label="Tampilan Google Drive" style="padding:6px;border-radius:8px;">
 							<option value="grid" <?php echo (($__gd['view'] ?? 'grid') === 'grid') ? 'selected' : ''; ?>>Grid</option>
 							<option value="list" <?php echo (($__gd['view'] ?? 'grid') === 'list') ? 'selected' : ''; ?>>List</option>
 						</select>
-						<button type="button" class="remove-gdrive" style="background: rgba(255,255,255,0.08); color: var(--text); border:1px solid rgba(148,163,184,0.25); border-radius:8px; padding:6px 10px;">Hapus</button>
+						<button type="button" class="remove-gdrive btn-danger-outline" style="border-radius:8px; padding:6px 10px;">Hapus</button>
 					</div>
 					<?php endforeach; ?>
 				</div>
-				<button type="button" id="add-gdrive" style="margin-top:6px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow:none; border: 1px solid rgba(148,163,184,0.25);">Tambah GDrive</button>
+				<button type="button" id="add-gdrive" class="btn-secondary" style="margin-top:6px;">Tambah GDrive</button>
 				<p class="muted-text" style="margin:6px 0 0; line-height:1.55;">
 					Cara ambil Folder ID: Google Drive → klik kanan folder → <b>Share</b> → <b>General access</b> = <b>Anyone with the link</b> → <b>Copy link</b>; ambil bagian <b>FOLDER-ID</b> dari <code>https://drive.google.com/drive/folders/FOLDER-ID?usp=sharing</code>.
 					Tempatkan dengan token <code>[[GDRIVE0]]</code>, <code>[[GDRIVE1]]</code>, dst; tanpa token muncul di akhir.
@@ -329,7 +329,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<div id="blog_embed_wrap" style="margin-top:6px; <?php echo !empty($blogDraft['embed_enabled']) ? '' : 'display:none;'; ?>">
 				<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
 					<label style="margin:0;">Daftar embed (token: [[EMBED0]], [[EMBED1]], ... — Embed 1 memakai [[EMBED0]])</label>
-					<button type="button" id="add-embed" style="max-width:180px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Tambah embed</button>
+					<button type="button" id="add-embed" class="btn-secondary" style="max-width:180px;">Tambah embed</button>
 				</div>
 				<div id="blog_embed_list" class="stack-sm">
 					<?php
@@ -338,9 +338,9 @@ if (($adminComponentMode ?? '') === 'handle') {
 					foreach ($embedsDraft as $idx => $embHtml): ?>
 					<div class="embed-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
 						<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Embed <?php echo $idx + 1; ?></label>
-						<textarea name="blog_embed_html[]" style="min-height:120px; font-family: 'SFMono-Regular', Consolas, monospace; width:100%; resize: vertical;" placeholder="&lt;iframe ...&gt;&lt;/iframe&gt;"><?php echo htmlspecialchars($embHtml, ENT_QUOTES, 'UTF-8'); ?></textarea>
+						<textarea name="blog_embed_html[]" aria-label="Kode HTML Embed" style="min-height:120px; font-family: 'SFMono-Regular', Consolas, monospace; width:100%; resize: vertical;" placeholder="&lt;iframe ...&gt;&lt;/iframe&gt;"><?php echo htmlspecialchars($embHtml, ENT_QUOTES, 'UTF-8'); ?></textarea>
 						<div style="text-align:right; margin-top:6px;">
-							<button type="button" class="remove-embed" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button>
+							<button type="button" class="remove-embed btn-danger-outline" style="min-width:90px;">Hapus</button>
 						</div>
 					</div>
 					<?php endforeach; ?>
@@ -350,7 +350,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 		</div>
 		<div class="inline-actions" style="margin-top: 6px; align-items:center;">
 			<button type="submit" name="blog_save" value="1" <?php echo $blogLimitReached ? 'disabled' : ''; ?>>Simpan postingan</button>
-			<button type="button" id="blog_reset" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Bersihkan formulir</button>
+			<button type="button" id="blog_reset" class="btn-secondary">Bersihkan formulir</button>
 		</div>
 		<p class="muted-text" style="margin:4px 0 0;">Klik Edit pada daftar untuk memuat postingan ke formulir. Simpan akan overwrite entri terpilih atau menambah baru jika kosong.</p>
 	</form>
@@ -381,7 +381,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 						<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
 							<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 								<input type="hidden" name="blog_edit_idx" value="<?php echo $pIdx; ?>">
-								<button type="submit" style="min-width:80px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Edit</button>
+								<button type="submit" class="btn-secondary" style="min-width:80px;">Edit</button>
 							</form>
 							<?php if (!empty($post['archived'])): ?>
 								<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
@@ -391,12 +391,12 @@ if (($adminComponentMode ?? '') === 'handle') {
 								<?php else: ?>
 									<form method="post" style="margin:0;"><?php echo ukmi_csrf_field(); ?>
 										<input type="hidden" name="archive_blog_idx" value="<?php echo $pIdx; ?>">
-										<button type="submit" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Arsipkan</button>
+										<button type="submit" class="btn-secondary" style="min-width:90px;">Arsipkan</button>
 									</form>
 								<?php endif; ?>
 							<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus postingan ini?');"><?php echo ukmi_csrf_field(); ?>
 								<input type="hidden" name="delete_blog_idx" value="<?php echo $pIdx; ?>">
-								<button type="submit" style="min-width:90px; background: linear-gradient(135deg, #f87171, #ef4444); color: #0b1727; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35); border: none;">Hapus</button>
+								<button type="submit" class="btn-danger" style="min-width:90px; border: none;">Hapus</button>
 							</form>
 						</div>
 					</li>
@@ -558,7 +558,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 		const wrapper = document.createElement('div');
 		wrapper.className = 'embed-item';
 		wrapper.style = 'border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);';
-		wrapper.innerHTML = `<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Embed</label><textarea name="blog_embed_html[]" style="min-height:120px; font-family: 'SFMono-Regular', Consolas, monospace; width:100%; resize: vertical;" placeholder="<iframe ...></iframe>">${String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea><div style="text-align:right; margin-top:6px;"><button type="button" class="remove-embed" style="min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus</button></div>`;
+		wrapper.innerHTML = `<label style="display:block; font-size:13px; color: var(--muted); margin:0 0 4px;">Embed</label><textarea name="blog_embed_html[]" aria-label="Kode HTML Embed" style="min-height:120px; font-family: 'SFMono-Regular', Consolas, monospace; width:100%; resize: vertical;" placeholder="<iframe ...></iframe>">${String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea><div style="text-align:right; margin-top:6px;"><button type="button" class="remove-embed btn-danger-outline" style="min-width:90px;">Hapus</button></div>`;
 		blogEmbedList.appendChild(wrapper);
 		renumberEmbeds();
 		attachEmbedRemoveHandlers();
@@ -573,7 +573,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 		var d = document.createElement('div');
 		d.className = 'gdrive-item';
 		d.style = 'display:flex; gap:8px; align-items:center; margin-top:6px;';
-		d.innerHTML = '<input type="text" name="blog_gdrive_id[]" placeholder="Folder ID" style="flex:1;padding:6px;border-radius:8px;"><select name="blog_gdrive_view[]" style="padding:6px;border-radius:8px;"><option value="grid">Grid</option><option value="list">List</option></select><button type="button" class="remove-gdrive" style="background: rgba(255,255,255,0.08); color: var(--text); border:1px solid rgba(148,163,184,0.25); border-radius:8px; padding:6px 10px;">Hapus</button>';
+		d.innerHTML = '<input type="text" name="blog_gdrive_id[]" aria-label="Folder ID Google Drive" placeholder="Folder ID" style="flex:1;padding:6px;border-radius:8px;"><select name="blog_gdrive_view[]" aria-label="Tampilan Google Drive" style="padding:6px;border-radius:8px;"><option value="grid">Grid</option><option value="list">List</option></select><button type="button" class="remove-gdrive btn-danger-outline" style="border-radius:8px; padding:6px 10px;">Hapus</button>';
 		gdriveList.appendChild(d);
 	}
 	gdriveAdd?.addEventListener('click', addGdriveItem);

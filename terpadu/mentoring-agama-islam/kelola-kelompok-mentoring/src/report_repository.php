@@ -85,7 +85,7 @@ class ReportRepository {
     /**
      * Simpan ulang laporan hasil pengelolaan admin (enkripsi + og_meta + pointer).
      */
-    public static function save(array $report): bool {
+    public static function save(array $report, ?array $compressedImages = null): bool {
         $id = trim((string)($report['id'] ?? ''));
         if ($id === '') {
             return false;
@@ -103,6 +103,23 @@ class ReportRepository {
         $ogPath = $ogFolder . $id . '.json';
 
         $s3 = new S3Client();
+
+        // 0. Jika ada foto dokumentasi baru, unggah ke S3 terlebih dahulu (WebP + salinan JPG)
+        if ($compressedImages !== null) {
+            $primaryExt = ($compressedImages['webp'] ?? null) !== null ? 'webp' : 'jpg';
+            $primaryMime = $primaryExt === 'webp' ? 'image/webp' : 'image/jpeg';
+            $primaryBody = $compressedImages['webp'] ?? ($compressedImages['jpg'] ?? '');
+            if ($primaryBody === '') {
+                return false;
+            }
+            $dokPath = $dokFolder . $id . '.' . $primaryExt;
+            if (!$s3->putObject($dokPath, $primaryBody, $primaryMime, false)) {
+                return false;
+            }
+            if ($primaryExt === 'webp' && ($compressedImages['jpg'] ?? '') !== '') {
+                $s3->putObject($dokFolder . $id . '.jpg', $compressedImages['jpg'], 'image/jpeg', false);
+            }
+        }
 
         // 1. Payload privat: enkripsi & kompresi
         $cryptoResult = Crypto::encryptData($report);

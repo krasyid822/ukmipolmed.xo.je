@@ -54,8 +54,6 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
     display: block;
     width: 100%;
     height: auto;
-    border-radius: 18px;
-    background: #111;
 }
 .ukmi-loading-media picture.ukmi-loading-picture-logo {
     position: absolute;

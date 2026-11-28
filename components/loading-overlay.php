@@ -18,7 +18,7 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
 	if (!el) return;
 	var textEl = document.getElementById('ukmi-loading-text');
 	var defaultText = 'Memuat konten, mohon tunggu...';
-	var minVisible = 420;
+	var minVisible = 120;
 	var shownAt = Date.now();
 	var done = false;
 	var hideTimer = null;
@@ -59,6 +59,13 @@ if (!defined('UKMI_LOADING_OVERLAY')) {
 
 	limitTimer = setTimeout(function () {
 		if (done) return;
+		if (document.body && document.body.classList.contains('page-admin')) {
+			hide();
+			if (typeof window.ukmiNotify === 'function') {
+				window.ukmiNotify('Pemuatan berjalan lambat, silakan coba lagi jika data belum tampil.', 'danger', 7000);
+			}
+			return;
+		}
 		done = true;
 		clearTimers();
 		var code = 'Haduh. Koneksi bre melambat! Coba ganti posisi (408)';

@@ -17,7 +17,6 @@ if (($adminComponentMode ?? '') === 'handle') {
 			'locked' => true,
 		];
 		$hasDefaultCard = false;
-		$heroLimit = 8;
 		$rowCount = max(count($types), count($titles), count($captions), count($contents), count($alts), count($lockedFlags));
 		for ($i = 0; $i < $rowCount; $i++) {
 			$type = strtolower(trim((string) ($types[$i] ?? 'image')));
@@ -29,7 +28,6 @@ if (($adminComponentMode ?? '') === 'handle') {
 				if ($hasDefaultCard) continue;
 				$newHeroCards[] = $protectedDefaultCard;
 				$hasDefaultCard = true;
-				if (count($newHeroCards) >= $heroLimit) break;
 				continue;
 			}
 			$title = trim((string) ($titles[$i] ?? ''));
@@ -46,13 +44,9 @@ if (($adminComponentMode ?? '') === 'handle') {
 				'alt' => $alt,
 				'locked' => false,
 			];
-			if (count($newHeroCards) >= $heroLimit) break;
 		}
 		if (!$hasDefaultCard) {
 			array_unshift($newHeroCards, $protectedDefaultCard);
-			if (count($newHeroCards) > $heroLimit) {
-				$newHeroCards = array_slice($newHeroCards, 0, $heroLimit);
-			}
 		}
 
 		$config['hero_cards'] = $newHeroCards;
@@ -107,7 +101,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<div style="display:flex; gap:6px; justify-content:flex-end; margin-top:6px;">
 					<button type="button" class="move-hero-card-up" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Naik</button>
 					<button type="button" class="move-hero-card-down" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Turun</button>
-					<button type="button" class="remove-hero-card" <?php echo $isLockedCard ? 'disabled' : ''; ?> style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px; opacity: <?php echo $isLockedCard ? '0.6' : '1'; ?>;"><?php echo $isLockedCard ? 'Terkunci' : 'Hapus'; ?></button>
+					<button type="button" class="remove-hero-card btn-danger-outline" <?php echo $isLockedCard ? 'disabled' : ''; ?> style="min-width:70px; opacity: <?php echo $isLockedCard ? '0.6' : '1'; ?>;"><?php echo $isLockedCard ? 'Terkunci' : 'Hapus'; ?></button>
 				</div>
 			</div>
 			<?php endforeach; ?>
@@ -124,7 +118,6 @@ if (($adminComponentMode ?? '') === 'handle') {
 	const heroCardList = document.getElementById('hero-card-list');
 	const addHeroCard = document.getElementById('add-hero-card');
 	if (!heroCardList) return;
-	const HERO_CARD_LIMIT = 8;
 	const MAX_IMAGE_BYTES = 1000000;
 
 	function dataUrlBytes(dataUrl) {
@@ -199,7 +192,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<div style="display:flex; gap:6px; justify-content:flex-end; margin-top:6px;">
 					<button type="button" class="move-hero-card-up" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Naik</button>
 					<button type="button" class="move-hero-card-down" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Turun</button>
-					<button type="button" class="remove-hero-card" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+					<button type="button" class="remove-hero-card btn-danger-outline" style="min-width:70px;">Hapus</button>
 				</div>
 			</div>`;
 	}
@@ -227,11 +220,6 @@ if (($adminComponentMode ?? '') === 'handle') {
 			}
 		});
 		updateHeroMoveButtons();
-	}
-	function updateHeroCardButtons() {
-		if (!addHeroCard) return;
-		addHeroCard.disabled = heroCardList.children.length >= HERO_CARD_LIMIT;
-		addHeroCard.title = addHeroCard.disabled ? 'Maksimal 8 kartu' : '';
 	}
 	function updateHeroFileVisibilityForItem(item) {
 		const sel = item?.querySelector('select[name="hero_card_type[]"]');
@@ -278,7 +266,6 @@ if (($adminComponentMode ?? '') === 'handle') {
 				if (!item || item.dataset.locked === '1') return;
 				item.remove();
 				renumberHeroCards();
-				updateHeroCardButtons();
 				attachHeroCardMoveHandlers();
 			};
 		});
@@ -306,7 +293,6 @@ if (($adminComponentMode ?? '') === 'handle') {
 		});
 	}
 	addHeroCard?.addEventListener('click', () => {
-		if (heroCardList.children.length >= HERO_CARD_LIMIT) return;
 		const wrapper = document.createElement('div');
 		wrapper.innerHTML = heroCardTemplate();
 		heroCardList.appendChild(wrapper.firstElementChild);
@@ -315,7 +301,6 @@ if (($adminComponentMode ?? '') === 'handle') {
 		attachHeroCardMoveHandlers();
 		attachHeroImageFileHandlers();
 		attachHeroTypeChangeHandlers();
-		updateHeroCardButtons();
 	});
 
 	attachHeroCardRemoveHandlers();
@@ -323,6 +308,5 @@ if (($adminComponentMode ?? '') === 'handle') {
 	renumberHeroCards();
 	attachHeroImageFileHandlers();
 	attachHeroTypeChangeHandlers();
-	updateHeroCardButtons();
 })();
 </script>

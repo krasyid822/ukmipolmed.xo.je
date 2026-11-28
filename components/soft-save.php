@@ -22,7 +22,7 @@ if (!defined('UKMI_SOFT_SAVE')) {
 	pointer-events: none;
 }
 .ukmi-save-indicator.is-on { transform: translateY(0); }
-.ukmi-save-indicator.is-notify { pointer-events: auto; cursor: pointer; }
+.ukmi-save-indicator.is-notify { pointer-events: auto; cursor: pointer; padding: 10px 16px; font-size: 13px; }
 .ukmi-save-indicator.is-success {
 	background: linear-gradient(90deg, #4ade80, #22c55e);
 	color: #052e16;
@@ -66,11 +66,12 @@ if (!defined('UKMI_SOFT_SAVE')) {
 		var el = ensureIndicator();
 		el.classList.remove('is-success', 'is-danger');
 		el.classList.add('is-notify', kind === 'danger' ? 'is-danger' : 'is-success');
-		el.textContent = String(text);
+		el.textContent = String(text) + '  ×';
 		requestAnimationFrame(function () { el.classList.add('is-on'); });
+		var wait = typeof duration === 'number' ? duration : (kind === 'danger' ? 8000 : 4500);
 		notifyTimer = setTimeout(function () {
 			hideIndicator(true);
-		}, typeof duration === 'number' ? duration : 4200);
+		}, wait);
 	};
 	window.showAdminToast = window.ukmiNotify;
 

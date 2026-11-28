@@ -55,8 +55,8 @@ if (($adminComponentMode ?? '') === 'handle') {
 		</div>
 		<div class="inline-actions" style="margin-top: 6px;">
 			<button type="submit" name="registration_save" value="1">Simpan link daftar</button>
-			<button type="submit" name="registration_reset" value="1" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Reset ke default</button>
-			<button type="button" id="registration_fill_template" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Tempelkan template</button>
+			<button type="submit" name="registration_reset" value="1" class="btn-secondary">Reset ke default</button>
+			<button type="button" id="registration_fill_template" class="btn-secondary">Tempelkan template</button>
 		</div>
 	</form>
 </div>

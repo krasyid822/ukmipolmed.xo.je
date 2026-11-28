@@ -31,7 +31,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			</select>
 		</label>
 		<label style="font-size:13px; color: var(--muted);">Cari
-			<input id="log-filter-text" type="text" placeholder="IP/UA/keyword" style="margin-left:6px; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); width: 200px;">
+			<input id="log-filter-text" type="text" placeholder="IP/UA/keyword" style="margin-left:6px; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); width: min(100%, 240px);">
 		</label>
 	</div>
 	<?php $recentLogs = array_slice($config['logs'], 0, 10); ?>

@@ -47,8 +47,24 @@
                     <?php endforeach; ?>
                 </div>
             </div>
-            <button type="button" class="hero-control hero-control-left" id="hero-prev" aria-label="Kartu sebelumnya">‹</button>
-            <button type="button" class="hero-control hero-control-right" id="hero-next" aria-label="Kartu berikutnya">›</button>
+            <?php if (count($heroCards) > 1): ?>
+            <div class="hero-nav">
+                <button type="button" class="hero-control hero-control-left" id="hero-prev" aria-label="Kartu sebelumnya">‹</button>
+                <div class="hero-dots" id="hero-dots" role="tablist" aria-label="Navigasi slide portofolio">
+                    <?php foreach ($heroCards as $dotIdx => $dotCard): ?>
+                        <button
+                            type="button"
+                            class="hero-dot<?php echo $dotIdx === 0 ? ' is-active' : ''; ?>"
+                            data-slide="<?php echo (int) $dotIdx; ?>"
+                            role="tab"
+                            aria-selected="<?php echo $dotIdx === 0 ? 'true' : 'false'; ?>"
+                            aria-label="Slide <?php echo (int) ($dotIdx + 1); ?>"
+                        ></button>
+                    <?php endforeach; ?>
+                </div>
+                <button type="button" class="hero-control hero-control-right" id="hero-next" aria-label="Kartu berikutnya">›</button>
+            </div>
+            <?php endif; ?>
         </section>
         <script>
         (() => {
@@ -62,7 +78,7 @@
                 setTimeout(() => { ov.hidden = true; }, 450);
             };
             const timer = setTimeout(hide, 3800);
-            ['hero-carousel', 'hero-prev', 'hero-next'].forEach((id) => {
+            ['hero-carousel', 'hero-prev', 'hero-next', 'hero-dots'].forEach((id) => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.addEventListener('pointerdown', () => { clearTimeout(timer); hide(); }, { once: true });
@@ -237,9 +253,6 @@
                     <button type="button" class="dpm-close" id="dpm-close" aria-label="Tutup modal">&times;</button>
                 </div>
                 <div class="dpm-body" id="dpm-body"></div>
-                <div class="dpm-footer">
-                    <button type="button" class="btn ghost" id="dpm-close-footer">Tutup</button>
-                </div>
             </div>
         </div>
 
@@ -265,9 +278,8 @@
                 <strong>Siap gas? Klik sekali untuk daftar.</strong>
                 <div class="cta-row">
                     <a class="btn primary" id="cta-daftar-primary" href="<?php echo e($registration['url']); ?>" target="_blank" rel="noopener" data-insight="cta_daftar_banner">Buka form pendaftaran</a>
-                    <a class="btn ghost" href="#footer-instagram" data-scroll-cta="footer-instagram" data-scroll-fallback="#footer-instagram" data-insight="cta_dm_ig">Tanya via DM IG</a>
-                    <a class="btn ghost" href="#dokumentasi" data-scroll-cta="doc-arsip-ig" data-scroll-fallback="#dokumentasi" data-insight="cta_dokumentasi">Lihat dokumentasi kegiatan</a>
-                    <a class="btn ghost" href="https://krasyid822.github.io/ukmipolmed/what-they-said/" target="_blank" rel="noopener" data-insight="cta_testimoni">Testimoni</a>
+                    <a class="nav-link" href="#footer-instagram" data-scroll-cta="footer-instagram" data-scroll-fallback="#footer-instagram" data-insight="cta_dm_ig">Tanya via DM IG</a>
+                    <a class="nav-link" href="https://krasyid822.github.io/ukmipolmed/what-they-said/" target="_blank" rel="noopener" data-insight="cta_testimoni">Testimoni</a>
                 </div>
                 <!-- <small style="color: var(--muted);">Form utama mengarah ke Google Forms mentoring UKMI. Link cadangan tersedia di halaman testimoni.</small> -->
             </div>
@@ -338,7 +350,7 @@
             <nav aria-label="Media sosial UKMI POLMED" style="margin-top:8px;">
                 <div class="socials">
                     <a id="footer-instagram" href="https://www.instagram.com/ukmipolmed/" target="_blank" rel="noopener"><img alt="Ikon Instagram Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="/foto?key=ukmipolmed%2Fuploads%2F460e25a7e6dce46da1c7467a4f89fa575e36b598.webp" style="width: 24px; height: 24px; margin-right: 5px;">Instagram</a>
-                    <a href="https://www.youtube.com/c/UKMIPolmedTV" target="_blank" rel="noopener"><img alt="Ikon YouTube Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="/foto?key=ukmipolmed%2Fuploads%2F17342d1f7b206c79f21e40eb6411c86ed82c8d5e.svg" style="width: 24px; height: 24px; margin-right: 5px;">YouTube</a>
+                    <a href="https://www.youtube.com/@UKMIPolmedTV" target="_blank" rel="noopener"><img alt="Ikon YouTube Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="/foto?key=ukmipolmed%2Fuploads%2F17342d1f7b206c79f21e40eb6411c86ed82c8d5e.svg" style="width: 24px; height: 24px; margin-right: 5px;">YouTube</a>
                     <a href="https://web.facebook.com/ukmipolmedmedan/" target="_blank" rel="noopener"><img alt="Ikon Facebook Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36' height='40' width='40'%3E%3Cpath fill='%230866FF' d='M20.181 35.87C29.094 34.791 36 27.202 36 18c0-9.941-8.059-18-18-18S0 8.059 0 18c0 8.442 5.811 15.526 13.652 17.471L14 34h5.5l.681 1.87Z'/%3E%3Cpath fill='%23FFFFFF' d='M13.651 35.471v-11.97H9.936V18h3.715v-2.37c0-6.127 2.772-8.964 8.784-8.964 1.138 0 3.103.223 3.91.446v4.983c-.425-.043-1.167-.065-2.081-.065-2.952 0-4.09 1.116-4.09 4.025V18h5.883l-1.008 5.5h-4.867v12.37a18.183 18.183 0 0 1-6.53-.399Z'/%3E%3C/svg%3E" style="width: 24px; height: 24px; margin-right: 5px;">Facebook</a>
                     <a href="https://x.com/ukmipolmed" target="_blank" rel="noopener"><img alt="Ikon X atau Twitter Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg%3E%3Cpath fill='%23000000' d='M21.742 21.75l-7.563-11.179 7.056-8.321h-2.456l-5.691 6.714-4.54-6.714H2.359l7.29 10.776L2.25 21.75h2.456l6.035-7.118 4.818 7.118h6.191-.008zM7.739 3.818L18.81 20.182h-2.447L5.29 3.818h2.447z'/%3E%3C/g%3E%3C/svg%3E" style="width: 24px; height: 24px; margin-right: 5px;">X (Twitter)</a>
                     <a href="https://www.linkedin.com/company/unit-kegiatan-mahasiswa-islam-ukmi-politeknik-negeri-medan" target="_blank" rel="noopener"><img alt="Ikon LinkedIn Unit Kegiatan Mahasiswa Islam Politeknik Negeri Medan" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath fill='%230a66c2' d='M34 2.5v29a2.5 2.5 0 0 1-2.5 2.5h-29A2.5 2.5 0 0 1 0 31.5v-29A2.5 2.5 0 0 1 2.5 0h29A2.5 2.5 0 0 1 34 2.5M10 13H5v16h5zm.45-5.5a2.88 2.88 0 0 0-2.86-2.9H7.5a2.9 2.9 0 0 0 0 5.8 2.88 2.88 0 0 0 2.95-2.81zM29 19.28c0-4.81-3.06-6.68-6.1-6.68a5.7 5.7 0 0 0-5.06 2.58h-.14V13H13v16h5v-8.51a3.32 3.32 0 0 1 3-3.58h.19c1.59 0 2.77 1 2.77 3.52V29h5z'/%3E%3C/svg%3E" style="width: 24px; height: 24px; margin-right: 5px;">LinkedIn</a>

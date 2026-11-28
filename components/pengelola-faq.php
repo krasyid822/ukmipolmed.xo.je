@@ -100,7 +100,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 					</div>
 				</div>
 				<div style="text-align:right; margin-top:6px;">
-					<button type="button" class="remove-faq" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+					<button type="button" class="remove-faq btn-danger-outline" style="min-width:70px;">Hapus</button>
 				</div>
 			</div>
 			<?php endforeach; ?>
@@ -143,7 +143,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 				</div>
 			</div>
 			<div style="text-align:right; margin-top:6px;">
-				<button type="button" class="remove-faq" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+				<button type="button" class="remove-faq btn-danger-outline" style="min-width:70px;">Hapus</button>
 			</div>
 		</div>`;
 

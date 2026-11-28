@@ -129,7 +129,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Thumbnail (opsional)</label>
 				<input type="text" name="doc_thumb[]" value="<?php echo htmlspecialchars($doc['thumb'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" <?php echo $isProtectedDoc ? 'readonly' : ''; ?> style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="Kosongkan untuk otomatis dari link tujuan">
 				<div style="text-align:right; margin-top:6px;">
-					<button type="button" class="remove-doc" <?php echo ($docIdx < count($docDefaults)) ? 'disabled' : ''; ?> style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+					<button type="button" class="remove-doc btn-danger-outline" <?php echo ($docIdx < count($docDefaults)) ? 'disabled' : ''; ?> style="min-width:70px;">Hapus</button>
 				</div>
 			</div>
 			<?php endforeach; ?>
@@ -159,7 +159,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Thumbnail (opsional)</label>
 			<input type="text" name="doc_thumb[]" value="" style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text);" placeholder="Kosongkan untuk otomatis dari link tujuan">
 			<div style="text-align:right; margin-top:6px;">
-				<button type="button" class="remove-doc" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+				<button type="button" class="remove-doc btn-danger-outline" style="min-width:70px;">Hapus</button>
 			</div>
 		</div>`;
 	function updateDocLimitState() {

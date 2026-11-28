@@ -96,7 +96,7 @@
             logo: <?php echo json_encode($logoAbsoluteUrl, JSON_UNESCAPED_SLASHES); ?>,
             sameAs: [
                 'https://www.instagram.com/ukmipolmed/',
-                'https://www.youtube.com/c/UKMIPolmedTV',
+                'https://www.youtube.com/@UKMIPolmedTV',
                 'https://web.facebook.com/ukmipolmedmedan/',
                 'https://x.com/ukmipolmed',
                 'https://www.linkedin.com/company/unit-kegiatan-mahasiswa-islam-ukmi-politeknik-negeri-medan',
@@ -118,23 +118,34 @@
         ld.textContent = JSON.stringify(orgSchema);
         document.head.appendChild(ld);
 
+        function flipCard(card, onMidpoint) {
+            if (!card) return;
+            card.classList.add('flipping-out');
+            setTimeout(() => {
+                onMidpoint();
+                card.classList.remove('flipping-out');
+                card.classList.add('flipping-in');
+                void card.offsetWidth;
+                card.classList.remove('flipping-in');
+            }, 280);
+        }
+
         // Rotasi agenda pada kartu shortcut (satu kartu, bergantian jika lebih dari satu entri).
         const agendas = <?php echo json_encode($agendas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
         const tagEl = document.getElementById('agenda-tag');
         const titleEl = document.getElementById('agenda-title');
         const detailEl = document.getElementById('agenda-detail');
+        const agendaCard = tagEl ? tagEl.closest('.agenda-rotator') : null;
 
         let agendaIndex = 0;
         function swapAgenda(next) {
-            if (!tagEl || !titleEl || !detailEl) return;
+            if (!tagEl || !titleEl || !detailEl || !agendaCard) return;
             sendInsight('agenda_view');
-            [tagEl, titleEl, detailEl].forEach(el => el.classList.add('flipping'));
-            setTimeout(() => {
+            flipCard(agendaCard, () => {
                 tagEl.textContent = next.tag || '';
                 titleEl.textContent = next.title || '';
                 detailEl.textContent = next.detail || '';
-                [tagEl, titleEl, detailEl].forEach(el => el.classList.remove('flipping'));
-            }, 230);
+            });
         }
 
         if (agendas.length > 1) {
@@ -157,20 +168,20 @@
             } catch (_) {
                 slides = [];
             }
-            if (!Array.isArray(slides) || slides.length < 2) return;
+            if (!Array.isArray(slides)) return;
+            slides = slides.slice(0, 2);
+            if (slides.length < 2) return;
             const cardTag = card.querySelector('.shortcut-tag');
             const cardTitle = card.querySelector('.shortcut-title');
             const cardDetail = card.querySelector('.shortcut-detail');
             if (!cardTag || !cardTitle || !cardDetail) return;
             let slideIndex = 0;
             function swapSlide(next) {
-                [cardTag, cardTitle, cardDetail].forEach(el => el.classList.add('flipping'));
-                setTimeout(() => {
+                flipCard(card, () => {
                     cardTag.textContent = next.tag || '';
                     cardTitle.textContent = next.title || '';
                     cardDetail.textContent = next.detail || '';
-                    [cardTag, cardTitle, cardDetail].forEach(el => el.classList.remove('flipping'));
-                }, 230);
+                });
             }
             setInterval(() => {
                 slideIndex = (slideIndex + 1) % slides.length;
@@ -182,6 +193,17 @@
         const heroPrev = document.getElementById('hero-prev');
         const heroNext = document.getElementById('hero-next');
         const heroEl = document.querySelector('.hero');
+        const heroDots = document.getElementById('hero-dots');
+        const heroDotButtons = heroDots ? Array.from(heroDots.querySelectorAll('.hero-dot')) : [];
+
+        function updateHeroDots(activeIndex) {
+            if (heroDotButtons.length === 0) return;
+            heroDotButtons.forEach((btn, idx) => {
+                const isActive = idx === activeIndex;
+                btn.classList.toggle('is-active', isActive);
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+        }
 
         function updateHeroNav() {
             if (!heroCarousel) return;
@@ -206,31 +228,31 @@
             const rect = heroCarousel.getBoundingClientRect();
             const centerX = rect.left + (rect.width / 2);
             let active = slides[0];
+            let activeIndex = 0;
             let minDist = Infinity;
-            slides.forEach(slide => {
+            slides.forEach((slide, idx) => {
                 const r = slide.getBoundingClientRect();
                 const mid = (r.left + r.right) / 2;
                 const d = Math.abs(mid - centerX);
-                if (d < minDist) { minDist = d; active = slide; }
+                if (d < minDist) { minDist = d; active = slide; activeIndex = idx; }
             });
             slides.forEach(slide => slide.classList.toggle('is-active', slide === active));
+            updateHeroDots(activeIndex);
             heroCarousel.classList.add('has-glass');
-        }
-
-        let heroScrollIdleTimer = 0;
-        function markHeroScrolling() {
-            if (!heroCarousel) return;
-            heroCarousel.classList.add('is-scrolling');
-            window.clearTimeout(heroScrollIdleTimer);
-            heroScrollIdleTimer = window.setTimeout(() => {
-                heroCarousel.classList.remove('is-scrolling');
-            }, 180);
         }
 
         heroPrev?.addEventListener('click', () => scrollHero(-1));
         heroNext?.addEventListener('click', () => scrollHero(1));
+        heroDotButtons.forEach((btn, idx) => {
+            btn.addEventListener('click', () => {
+                if (!heroCarousel) return;
+                const slides = heroCarousel.querySelectorAll('.hero-slide');
+                const target = slides[idx];
+                if (!target) return;
+                heroCarousel.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+            });
+        });
         heroCarousel?.addEventListener('scroll', () => {
-            markHeroScrolling();
             window.requestAnimationFrame(() => { updateHeroNav(); updateHeroActive(); updateHeroHeight(); });
         }, { passive: true });
         window.addEventListener('resize', () => { updateHeroNav(); updateHeroActive(); adaptHeroFrames(); updateHeroHeight(); });
@@ -373,7 +395,6 @@
         const dpmDesc = document.getElementById('dpm-desc');
         const dpmBody = document.getElementById('dpm-body');
         const dpmClose = document.getElementById('dpm-close');
-        const dpmCloseFooter = document.getElementById('dpm-close-footer');
         let dpmPreviousFocus = null;
 
         function closeDivisionModal() {
@@ -450,7 +471,6 @@
         });
 
         dpmClose?.addEventListener('click', closeDivisionModal);
-        dpmCloseFooter?.addEventListener('click', closeDivisionModal);
         dpmOverlay?.addEventListener('mousedown', (event) => {
             if (event.target === dpmOverlay) closeDivisionModal();
         });

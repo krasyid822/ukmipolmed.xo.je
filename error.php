@@ -60,7 +60,7 @@ function e($value) {
 			<p class="hint"><a href="/">← Kembali ke Beranda</a> · <a href="/blog">Blog</a></p>
 			<div class="social-row">
 				<a href="https://www.instagram.com/ukmipolmed/" target="_blank" rel="noopener">Instagram</a>
-				<a href="https://www.youtube.com/c/UKMIPolmedTV" target="_blank" rel="noopener">YouTube</a>
+				<a href="https://www.youtube.com/@UKMIPolmedTV" target="_blank" rel="noopener">YouTube</a>
 				<a href="https://web.facebook.com/ukmipolmedmedan/" target="_blank" rel="noopener">Facebook</a>
 				<a href="https://x.com/ukmipolmed" target="_blank" rel="noopener">X</a>
 				<a href="https://www.linkedin.com/company/unit-kegiatan-mahasiswa-islam-ukmi-politeknik-negeri-medan" target="_blank" rel="noopener">LinkedIn</a>

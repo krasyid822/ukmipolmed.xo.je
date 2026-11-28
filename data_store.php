@@ -313,7 +313,7 @@ function data_store_index_entry(array $post, bool $archived): array
 function data_store_split(array $data)
 {
     $metaKeys = ['user', 'key', 'session_version', 'fb_app_id', 'yel_yel'];
-    $siteKeys = ['agenda', 'agendas', 'agenda_archive', 'registration', 'docs', 'shortcut_cards', 'divisions', 'hero_cards'];
+    $siteKeys = ['agenda', 'agendas', 'agenda_archive', 'registration', 'docs', 'docs_settings', 'shortcut_cards', 'divisions', 'hero_cards'];
     $logKeys = ['logs', 'logs_archive'];
     $known = array_merge($metaKeys, $siteKeys, $logKeys, ['posts', 'posts_archived', 'faqs']);
 

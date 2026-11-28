@@ -79,68 +79,78 @@ $__adminBodyClass = $__adminEarlyLoad
 			</div>
 			<div class="admin-header-actions">
 				<?php if ($loggedIn): ?>
-				<a class="button-link" href="?logout=1" style="width:auto; padding:8px 14px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148, 163, 184, 0.25);">Keluar</a>
+				<span class="admin-user-badge" title="Akun aktif"><?php echo htmlspecialchars((string) ($_SESSION['admin_user'] ?? $config['user'] ?? 'Admin'), ENT_QUOTES, 'UTF-8'); ?></span>
+				<a class="button-link btn-secondary" href="/" target="_blank" rel="noopener" style="width:auto; padding:8px 14px;">Lihat Situs</a>
+				<a class="button-link btn-secondary" href="?logout=1" style="width:auto; padding:8px 14px;">Keluar</a>
+				<?php else: ?>
+				<a class="button-link btn-secondary" href="/" target="_blank" rel="noopener" style="width:auto; padding:8px 14px;">Lihat Situs</a>
 				<?php endif; ?>
-				<a href="https://github.com/krasyid822/ukmipolmed.xo.je" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; font-size:13px;" title="Sisi belakang aplikasi ini!"><svg aria-hidden="true" focusable="false" class="octicon octicon-mark-github" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom"><path d="M12 1C5.923 1 1 5.923 1 12c0 4.867 3.149 8.979 7.521 10.436.55.096.756-.233.756-.522 0-.262-.013-1.128-.013-2.049-2.764.509-3.479-.674-3.699-1.292-.124-.317-.66-1.293-1.127-1.554-.385-.207-.936-.715-.014-.729.866-.014 1.485.797 1.691 1.128.99 1.663 2.571 1.196 3.204.907.096-.715.385-1.196.701-1.471-2.448-.275-5.005-1.224-5.005-5.432 0-1.196.426-2.186 1.128-2.956-.111-.275-.496-1.402.11-2.915 0 0 .921-.288 3.024 1.128a10.193 10.193 0 0 1 2.75-.371c.936 0 1.871.123 2.75.371 2.104-1.43 3.025-1.128 3.025-1.128.605 1.513.221 2.64.111 2.915.701.77 1.127 1.747 1.127 2.956 0 4.222-2.571 5.157-5.019 5.432.399.344.743 1.004.743 2.035 0 1.471-.014 2.654-.014 3.025 0 .289.206.632.756.522C19.851 20.979 23 16.854 23 12c0-6.077-4.922-11-11-11Z"></path></svg></a>
+				<a href="https://github.com/krasyid822/ukmipolmed.xo.je" target="_blank" rel="noopener" aria-label="Repositori GitHub" style="color:inherit; text-decoration:underline; font-size:13px;" title="Sisi belakang aplikasi ini!"><svg aria-hidden="true" focusable="false" class="octicon octicon-mark-github" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom"><path d="M12 1C5.923 1 1 5.923 1 12c0 4.867 3.149 8.979 7.521 10.436.55.096.756-.233.756-.522 0-.262-.013-1.128-.013-2.049-2.764.509-3.479-.674-3.699-1.292-.124-.317-.66-1.293-1.127-1.554-.385-.207-.936-.715-.014-.729.866-.014 1.485.797 1.691 1.128.99 1.663 2.571 1.196 3.204.907.096-.715.385-1.196.701-1.471-2.448-.275-5.005-1.224-5.005-5.432 0-1.196.426-2.186 1.128-2.956-.111-.275-.496-1.402.11-2.915 0 0 .921-.288 3.024 1.128a10.193 10.193 0 0 1 2.75-.371c.936 0 1.871.123 2.75.371 2.104-1.43 3.025-1.128 3.025-1.128.605 1.513.221 2.64.111 2.915.701.77 1.127 1.747 1.127 2.956 0 4.222-2.571 5.157-5.019 5.432.399.344.743 1.004.743 2.035 0 1.471-.014 2.654-.014 3.025 0 .289.206.632.756.522C19.851 20.979 23 16.854 23 12c0-6.077-4.922-11-11-11Z"></path></svg></a>
 			</div>
 		</div>
 		<?php if ($loggedIn): ?>
 			<h1>Panel Admin</h1>
-			<p>Kelola, Anda adalah admin.</p>
+			<p>Kelola konten, akun, dan pengaturan situs UKMI POLMED.</p>
+			<nav class="admin-quick-nav" id="admin-quick-nav" aria-label="Navigasi cepat modul admin"></nav>
 			<div class="section feature-visibility-panel" id="feature-visibility-panel">
 				<div class="feature-visibility-head">
-					<h2 style="margin:0; font-size:16px;">Tampilan fitur admin</h2>
-					<button type="button" class="feature-collapse-btn" id="feature-collapse-toggle" aria-label="Collapse panel" title="Collapse panel">
-						<span class="icon" id="feature-collapse-icon" aria-hidden="true">▾</span>
-						<span class="sr-only">Toggle panel</span>
-					</button>
+					<h2 style="margin:0; font-size:15px;">Tampilan fitur admin</h2>
+					<div class="feature-visibility-controls">
+						<div class="feature-toggle-actions">
+							<button type="button" id="feature-show-all">Tampilkan semua</button>
+							<button type="button" id="feature-hide-all">Sembunyikan semua</button>
+						</div>
+						<button type="button" class="feature-collapse-btn" id="feature-collapse-toggle" aria-expanded="true" aria-label="Ciutkan panel" title="Ciutkan panel">
+							<span class="icon" id="feature-collapse-icon" aria-hidden="true">▾</span>
+							<span class="sr-only">Alihkan panel</span>
+						</button>
+					</div>
 				</div>
 				<div class="feature-visibility-content" id="feature-visibility-content">
-					<p class="muted-text" style="margin:0;">Centang untuk tampilkan fitur. Hilangkan centang untuk sembunyikan fiturnya dari halaman ini.</p>
-					<div class="feature-toggle-actions">
-						<button type="button" id="feature-show-all">Tampilkan semua</button>
-						<button type="button" id="feature-hide-all">Sembunyikan semua</button>
-					</div>
+					<p class="muted-text" style="margin:0; font-size:12px;">Centang untuk tampilkan fitur. Hilangkan centang untuk sembunyikan fiturnya dari halaman ini.</p>
 					<div class="feature-toggle-list" id="feature-toggle-list"></div>
 				</div>
 			</div>
-			<div class="admin-feature-block" data-feature="insight-storage" data-feature-label="Penyimpanan Insight">
+			<div class="admin-feature-block" id="feature-insight-storage" data-feature="insight-storage" data-feature-label="Penyimpanan Insight">
 				<?php require __DIR__ . '/components/penyimpanan-insight.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="session" data-feature-label="Sesi">
+			<div class="admin-feature-block" id="feature-session" data-feature="session" data-feature-label="Sesi">
 				<?php require __DIR__ . '/components/sesi.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="credential" data-feature-label="Kredensial Admin">
+			<div class="admin-feature-block" id="feature-credential" data-feature="credential" data-feature-label="Kredensial Admin">
 				<?php require __DIR__ . '/components/kredensial-admin.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="log" data-feature-label="Log Akses">
+			<div class="admin-feature-block" id="feature-log" data-feature="log" data-feature-label="Log Akses">
 				<?php require __DIR__ . '/components/log.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="registration" data-feature-label="Link Pendaftaran">
+			<div class="admin-feature-block" id="feature-registration" data-feature="registration" data-feature-label="Link Pendaftaran">
 				<?php require __DIR__ . '/components/link-pendaftaran.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="hero-cards" data-feature-label="Header Card Presentation">
+			<div class="admin-feature-block" id="feature-hero-cards" data-feature="hero-cards" data-feature-label="Header Card Presentation">
 				<?php require __DIR__ . '/components/header-card-presentation.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="shortcut-cards" data-feature-label="Kartu Baca Ini">
+			<div class="admin-feature-block" id="feature-shortcut-cards" data-feature="shortcut-cards" data-feature-label="Kartu Baca Ini">
 				<?php require __DIR__ . '/components/shortcut-cards.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="divisions" data-feature-label="Divisi Kepengurusan">
+			<div class="admin-feature-block" id="feature-divisions" data-feature="divisions" data-feature-label="Divisi Kepengurusan">
 				<?php require __DIR__ . '/components/divisi-kepengurusan.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="docs" data-feature-label="Kartu Dokumentasi">
+			<div class="admin-feature-block" id="feature-docs" data-feature="docs" data-feature-label="Kartu Dokumentasi">
 				<?php require __DIR__ . '/components/kartu-dokumentasi.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="faq" data-feature-label="Pengelola FAQ">
+			<div class="admin-feature-block" id="feature-faq" data-feature="faq" data-feature-label="Pengelola FAQ">
 				<?php require __DIR__ . '/components/pengelola-faq.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="blog" data-feature-label="Pengelola Blog">
+			<div class="admin-feature-block" id="feature-blog" data-feature="blog" data-feature-label="Pengelola Blog">
 				<?php require __DIR__ . '/components/pengelola-blog.php'; ?>
 			</div>
-			<div class="admin-feature-block" data-feature="comment-moderation" data-feature-label="Moderasi Komentar">
+			<div class="admin-feature-block" id="feature-comment-moderation" data-feature="comment-moderation" data-feature-label="Moderasi Komentar">
 				<?php require __DIR__ . '/components/moderasi-komentar.php'; ?>
+			</div>
+			<div class="admin-feature-block" id="feature-seo-corrector" data-feature="seo-corrector" data-feature-label="Korektor Holistic SEO">
 				<?php require __DIR__ . '/components/korektor-seo.php'; ?>
 			</div>
+			<button type="button" class="admin-back-to-top btn-secondary" id="admin-back-to-top" aria-label="Kembali ke atas">↑ Ke atas</button>
 		<?php else: ?>
 			<h1>Login Admin</h1>
 			<p>Masukkan user dan key untuk mengakses halaman admin.</p>
@@ -168,7 +178,7 @@ $__adminBodyClass = $__adminEarlyLoad
 						<input type="password" id="recovery_key" name="recovery_key" required autocomplete="off" placeholder="Masukkan recovery key server">
 					</div>
 					<div class="actions">
-						<button type="submit" style="background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);">Reset Kredensial ke Default</button>
+						<button type="submit" class="btn-danger">Reset Kredensial ke Default</button>
 					</div>
 				</form>
 			</details>
@@ -176,16 +186,6 @@ $__adminBodyClass = $__adminEarlyLoad
 	</div>
 	<script>
 	(function () {
-		const archiveButtons = document.querySelectorAll('.archive-day');
-		archiveButtons.forEach(btn => {
-			btn.addEventListener('click', () => {
-				const targetId = btn.getAttribute('data-target');
-				const target = document.getElementById(targetId);
-				if (!target) return;
-				target.classList.toggle('open');
-			});
-		});
-
 		const SCROLL_KEY = 'admin_scroll_y';
 		const savedScroll = window.__ADMIN_SAVED_SCROLL__;
 		if (typeof savedScroll === 'number' && Number.isFinite(savedScroll)) {
@@ -202,33 +202,6 @@ $__adminBodyClass = $__adminEarlyLoad
 			form.addEventListener('submit', () => {
 				sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
 			});
-		});
-
-		const regPlatform = document.getElementById('registration_platform');
-		const regUrl = document.getElementById('registration_url');
-		const regFill = document.getElementById('registration_fill_template');
-		const regTemplates = {
-			'Google Form': 'https://forms.gle/xxxxxxxxxxxxxxxxx',
-			'Website': 'https://domainkamu.com/daftar',
-			'WhatsApp': 'https://wa.me/62XXXXXXXXXX?text=Halo%2C%20saya%20mau%20daftar%20UKMI',
-			'Telegram': 'https://t.me/username_ukmi',
-			'Typeform': 'https://yourorg.typeform.com/formname',
-			'Microsoft Forms': 'https://forms.office.com/r/XXXXXXXX',
-			'Notion': 'https://www.notion.so/your-form-page',
-			'Custom': 'https://'
-		};
-
-		function applyRegPlaceholder() {
-			if (!regPlatform || !regUrl) return;
-			const tpl = regTemplates[regPlatform.value] || 'https://';
-			regUrl.placeholder = tpl;
-		}
-		applyRegPlaceholder();
-		regPlatform?.addEventListener('change', applyRegPlaceholder);
-		regFill?.addEventListener('click', () => {
-			if (!regPlatform || !regUrl) return;
-			const tpl = regTemplates[regPlatform.value] || '';
-			if (tpl) regUrl.value = tpl;
 		});
 
 		(function enableAutosave() {
@@ -270,12 +243,70 @@ $__adminBodyClass = $__adminEarlyLoad
 				const key = form.getAttribute('data-autosave-key');
 				if (!key) return;
 				const storageKey = PREFIX + key;
+				const initialSerialized = JSON.stringify(serialize(form));
 				let saveTimer = null;
+
+				let banner = null;
+				const ensureBanner = (text, draftData) => {
+					if (!banner) {
+						banner = document.createElement('div');
+						banner.className = 'autosave-banner';
+						const msg = document.createElement('span');
+						msg.className = 'autosave-msg';
+						const actions = document.createElement('div');
+						actions.className = 'autosave-actions';
+						const restoreBtn = document.createElement('button');
+						restoreBtn.type = 'button';
+						restoreBtn.className = 'btn-secondary autosave-clear autosave-restore';
+						restoreBtn.textContent = 'Pulihkan draf';
+						restoreBtn.hidden = true;
+						restoreBtn.addEventListener('click', () => {
+							if (banner && banner.__draftData) {
+								restore(form, banner.__draftData);
+								restoreBtn.hidden = true;
+								const msgEl = banner.querySelector('.autosave-msg');
+								if (msgEl) msgEl.textContent = 'Draf lokal dipulihkan.';
+							}
+						});
+						const clearBtn = document.createElement('button');
+						clearBtn.type = 'button';
+						clearBtn.className = 'btn-secondary autosave-clear';
+						clearBtn.textContent = 'Buang draf';
+						clearBtn.addEventListener('click', () => {
+							try { localStorage.removeItem(storageKey); } catch (_) {}
+							form.reset();
+							if (banner) {
+								banner.remove();
+								banner = null;
+							}
+						});
+						actions.appendChild(restoreBtn);
+						actions.appendChild(clearBtn);
+						banner.appendChild(msg);
+						banner.appendChild(actions);
+						form.prepend(banner);
+					}
+					const msgEl = banner.querySelector('.autosave-msg');
+					if (msgEl) msgEl.textContent = text;
+					const restoreBtnEl = banner.querySelector('.autosave-restore');
+					if (restoreBtnEl) {
+						if (draftData && typeof draftData === 'object') {
+							banner.__draftData = draftData;
+							restoreBtnEl.hidden = false;
+						} else {
+							banner.__draftData = null;
+							restoreBtnEl.hidden = true;
+						}
+					}
+				};
 
 				const triggerSave = () => {
 					clearTimeout(saveTimer);
 					saveTimer = setTimeout(() => {
-						try { localStorage.setItem(storageKey, JSON.stringify(serialize(form))); } catch (_) {}
+						try {
+							localStorage.setItem(storageKey, JSON.stringify(serialize(form)));
+							ensureBanner('Draf lokal tersimpan otomatis.');
+						} catch (_) {}
 					}, 240);
 				};
 
@@ -283,15 +314,20 @@ $__adminBodyClass = $__adminEarlyLoad
 				if (raw) {
 					try {
 						const data = JSON.parse(raw);
-						const hasExisting = Array.from(form.querySelectorAll('input, textarea, select')).some(el => {
-							const type = (el.type || '').toLowerCase();
-							if (['submit', 'button', 'file', 'password', 'hidden'].includes(type)) return false;
-							if (!el.name) return false;
-							if (type === 'checkbox' || type === 'radio') return el.checked;
-							return !!el.value;
-						});
-						if (!hasExisting && data && typeof data === 'object') {
-							restore(form, data);
+						if (data && typeof data === 'object' && JSON.stringify(data) !== initialSerialized) {
+							const hasExisting = Array.from(form.querySelectorAll('input, textarea, select')).some(el => {
+								const type = (el.type || '').toLowerCase();
+								if (['submit', 'button', 'file', 'password', 'hidden'].includes(type)) return false;
+								if (!el.name) return false;
+								if (type === 'checkbox' || type === 'radio') return el.checked;
+								return !!el.value;
+							});
+							if (!hasExisting) {
+								restore(form, data);
+								ensureBanner('Draf lokal dipulihkan.');
+							} else {
+								ensureBanner('Ada draf lokal yang belum disimpan.', data);
+							}
 						}
 					} catch (_) {}
 				}
@@ -301,23 +337,6 @@ $__adminBodyClass = $__adminEarlyLoad
 				form.addEventListener('submit', () => localStorage.removeItem(storageKey));
 			});
 		})();
-
-		const filterEvent = document.getElementById('log-filter-event');
-		const filterText = document.getElementById('log-filter-text');
-		function applyLogFilter() {
-			const evt = (filterEvent?.value || '').toLowerCase();
-			const q = (filterText?.value || '').toLowerCase();
-			document.querySelectorAll('.log-list .log-item').forEach(item => {
-				const itemEvent = (item.getAttribute('data-event') || '').toLowerCase();
-				const itemText = (item.getAttribute('data-text') || '').toLowerCase();
-				const matchEvent = !evt || itemEvent === evt;
-				const matchText = !q || itemText.includes(q);
-				item.style.display = (matchEvent && matchText) ? '' : 'none';
-			});
-		}
-		filterEvent?.addEventListener('change', applyLogFilter);
-		filterText?.addEventListener('input', applyLogFilter);
-		applyLogFilter();
 
 		(function enableFeatureVisibilityToggle() {
 			if (!document.body.classList.contains('is-auth')) return;
@@ -330,7 +349,49 @@ $__adminBodyClass = $__adminEarlyLoad
 			const list = document.getElementById('feature-toggle-list');
 			const showAllBtn = document.getElementById('feature-show-all');
 			const hideAllBtn = document.getElementById('feature-hide-all');
+			const quickNav = document.getElementById('admin-quick-nav');
 			if (!blocks.length || !list) return;
+
+			function syncQuickNav() {
+				if (!quickNav) return;
+				quickNav.innerHTML = '';
+				blocks.forEach((block) => {
+					if (block.classList.contains('is-hidden')) return;
+					const feature = block.dataset.feature;
+					const label = block.dataset.featureLabel || feature;
+					const link = document.createElement('a');
+					link.href = '#feature-' + feature;
+					link.dataset.feature = feature;
+					link.textContent = label;
+					link.addEventListener('click', (e) => {
+						e.preventDefault();
+						block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					});
+					quickNav.appendChild(link);
+				});
+			}
+
+			if ('IntersectionObserver' in window && quickNav) {
+				const setActiveNav = (feature) => {
+					quickNav.querySelectorAll('a').forEach((a) => {
+						const active = a.dataset.feature === feature;
+						a.classList.toggle('is-active', active);
+						if (active) {
+							a.setAttribute('aria-current', 'location');
+						} else {
+							a.removeAttribute('aria-current');
+						}
+					});
+				};
+				const observer = new IntersectionObserver((entries) => {
+					const visible = entries.filter((e) => e.isIntersecting && !e.target.classList.contains('is-hidden'));
+					if (visible.length) {
+						visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+						setActiveNav(visible[0].target.dataset.feature || '');
+					}
+				}, { rootMargin: '-20% 0px -65% 0px' });
+				blocks.forEach((block) => observer.observe(block));
+			}
 
 			const readState = () => {
 				try {
@@ -353,9 +414,10 @@ $__adminBodyClass = $__adminEarlyLoad
 				if (!panel) return;
 				panel.classList.toggle('is-collapsed', !!collapsed);
 				if (collapseBtn) {
-					const label = collapsed ? 'Expand panel' : 'Collapse panel';
+					const label = collapsed ? 'Bentangkan panel' : 'Ciutkan panel';
 					collapseBtn.setAttribute('aria-label', label);
 					collapseBtn.setAttribute('title', label);
+					collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
 				}
 				if (collapseIcon) {
 					collapseIcon.textContent = collapsed ? '▸' : '▾';
@@ -381,6 +443,7 @@ $__adminBodyClass = $__adminEarlyLoad
 				block.classList.toggle('is-hidden', !visible);
 				state[feature] = !!visible;
 				writeState(state);
+				syncQuickNav();
 			}
 
 			blocks.forEach((block) => {
@@ -405,6 +468,7 @@ $__adminBodyClass = $__adminEarlyLoad
 					setVisibility(feature, checkbox.checked);
 				});
 			});
+			syncQuickNav();
 
 			showAllBtn?.addEventListener('click', () => {
 				list.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
@@ -419,6 +483,18 @@ $__adminBodyClass = $__adminEarlyLoad
 					setVisibility(cb.dataset.feature, false);
 				});
 			});
+
+			const backToTopBtn = document.getElementById('admin-back-to-top');
+			if (backToTopBtn) {
+				const syncBackToTop = () => {
+					backToTopBtn.classList.toggle('is-visible', window.scrollY > 320);
+				};
+				window.addEventListener('scroll', syncBackToTop, { passive: true });
+				syncBackToTop();
+				backToTopBtn.addEventListener('click', () => {
+					window.scrollTo({ top: 0, behavior: 'smooth' });
+				});
+			}
 		})();
 	})();
 	</script>

@@ -227,18 +227,18 @@ usort($modRows, function ($a, $b) {
 							<button type="submit" style="min-width:86px; background:rgba(248,113,113,0.15); color:#f87171; box-shadow:none; border:1px solid rgba(248,113,113,0.35);">Suspend</button>
 						</form>
 						<?php endif; ?>
-						<button type="button" class="comment-mod-edit-toggle" data-target="<?php echo htmlspecialchars($editKey, ENT_QUOTES, 'UTF-8'); ?>" style="min-width:74px; background:rgba(255,255,255,0.08); color:var(--text); box-shadow:none; border:1px solid rgba(148,163,184,0.25);">Edit</button>
+						<button type="button" class="comment-mod-edit-toggle btn-secondary" data-target="<?php echo htmlspecialchars($editKey, ENT_QUOTES, 'UTF-8'); ?>" style="min-width:74px;">Edit</button>
 						<form method="post" style="margin:0;" onsubmit="return uiConfirm(event, 'Hapus komentar ini beserta balasannya?');"><?php echo ukmi_csrf_field(); ?>
 							<input type="hidden" name="comment_moderate" value="1">
 							<input type="hidden" name="comment_csrf" value="<?php echo htmlspecialchars($modCsrf, ENT_QUOTES, 'UTF-8'); ?>">
 							<input type="hidden" name="comment_post_slug" value="<?php echo htmlspecialchars($row['post_slug'], ENT_QUOTES, 'UTF-8'); ?>">
 							<input type="hidden" name="comment_id" value="<?php echo htmlspecialchars($cId, ENT_QUOTES, 'UTF-8'); ?>">
 							<input type="hidden" name="comment_action" value="delete">
-							<button type="submit" style="min-width:74px; background:rgba(248,113,113,0.15); color:#f87171; box-shadow:none; border:1px solid rgba(248,113,113,0.35);">Hapus</button>
+							<button type="submit" class="btn-danger-outline" style="min-width:74px;">Hapus</button>
 						</form>
 					</div>
 				</div>
-				<form method="post" id="<?php echo htmlspecialchars($editKey, ENT_QUOTES, 'UTF-8'); ?><?php echo ukmi_csrf_field(); ?>" data-initial-sticker="<?php echo htmlspecialchars($rowSticker, ENT_QUOTES, 'UTF-8'); ?>" data-initial-preview="<?php echo $rowSticker !== '' ? htmlspecialchars(s3_to_relative_url(s3_photo_url($rowSticker)), ENT_QUOTES, 'UTF-8') : ''; ?>" style="display:none; margin-top:10px; border-top:1px dashed rgba(148,163,184,0.25); padding-top:10px;">
+				<form method="post" id="<?php echo htmlspecialchars($editKey, ENT_QUOTES, 'UTF-8'); ?>" data-initial-sticker="<?php echo htmlspecialchars($rowSticker, ENT_QUOTES, 'UTF-8'); ?>" data-initial-preview="<?php echo $rowSticker !== '' ? htmlspecialchars(s3_to_relative_url(s3_photo_url($rowSticker)), ENT_QUOTES, 'UTF-8') : ''; ?>" style="display:none; margin-top:10px; border-top:1px dashed rgba(148,163,184,0.25); padding-top:10px;"><?php echo ukmi_csrf_field(); ?>
 					<input type="hidden" name="comment_moderate" value="1">
 					<input type="hidden" name="comment_csrf" value="<?php echo htmlspecialchars($modCsrf, ENT_QUOTES, 'UTF-8'); ?>">
 					<input type="hidden" name="comment_post_slug" value="<?php echo htmlspecialchars($row['post_slug'], ENT_QUOTES, 'UTF-8'); ?>">
@@ -278,7 +278,7 @@ usort($modRows, function ($a, $b) {
 					</div>
 					<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px;">
 						<button type="submit" style="min-width:120px;">Simpan edit</button>
-						<button type="button" class="comment-mod-edit-cancel" data-target="<?php echo htmlspecialchars($editKey, ENT_QUOTES, 'UTF-8'); ?>" style="min-width:74px; background:rgba(255,255,255,0.08); color:var(--text); box-shadow:none; border:1px solid rgba(148,163,184,0.25);">Batal</button>
+						<button type="button" class="comment-mod-edit-cancel btn-secondary" data-target="<?php echo htmlspecialchars($editKey, ENT_QUOTES, 'UTF-8'); ?>" style="min-width:74px;">Batal</button>
 						<span class="muted-text" style="font-size:12px;">Menyimpan edit akan menampilkan badge "Diedit oleh <?php echo htmlspecialchars($modAdminPenName, ENT_QUOTES, 'UTF-8'); ?>" pada komentar.</span>
 					</div>
 				</form>

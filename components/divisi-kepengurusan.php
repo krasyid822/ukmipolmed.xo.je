@@ -86,7 +86,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<button type="submit" style="max-width:180px;">Buka</button>
 		</div>
 	</form>
-	<form method="post" class="stack-sm" id="divisions-form" data-autosave-key="divisions" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>"><?php echo ukmi_csrf_field(); ?>
+	<form method="post" class="stack-sm" id="divisions-form" data-autosave-key="divisions" style="margin-top:10px; <?php echo $divisionUnlocked ? '' : 'opacity:0.6; pointer-events:none;'; ?>" <?php echo $divisionUnlocked ? '' : 'inert'; ?>><?php echo ukmi_csrf_field(); ?>
 		<div id="division-list" class="field-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:10px;">
 			<?php foreach ($divisions as $idx => $div): ?>
 			<div class="division-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
@@ -100,7 +100,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 				<input type="file" class="division-avatar-file" accept=".svg,image/svg+xml" style="margin-bottom:6px;">
 				<div class="division-avatar-preview" style="display:<?php echo $divisionAvatar !== '' ? 'flex' : 'none'; ?>; align-items:center; gap:8px;">
 					<img src="<?php echo htmlspecialchars($divisionAvatar, ENT_QUOTES, 'UTF-8'); ?>" alt="Preview avatar <?php echo htmlspecialchars($div['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:48px; height:48px; border-radius:50%; object-fit:cover; background:rgba(255,255,255,0.08); border:1px solid rgba(148,163,184,0.3);">
-					<button type="button" class="clear-division-avatar" style="width:auto; min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus avatar</button>
+					<button type="button" class="clear-division-avatar btn-danger-outline" style="width:auto; min-width:90px;">Hapus avatar</button>
 				</div>
 				<?php $divPrograms = is_array($div['programs'] ?? null) ? $div['programs'] : []; ?>
 				<label style="display:block; font-size:13px; color: var(--muted); margin:10px 0 4px;">Program Kerja</label>
@@ -111,14 +111,14 @@ if (($adminComponentMode ?? '') === 'handle') {
 						<input type="text" class="division-program-title" placeholder="Nama program kerja" value="<?php echo htmlspecialchars($prog['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); font-size:13px;">
 						<textarea class="division-program-desc" placeholder="Deskripsi singkat (opsional)" rows="2" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); font-size:13px; resize:vertical;"><?php echo htmlspecialchars($prog['description'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
 						<div style="text-align:right;">
-							<button type="button" class="remove-division-program" style="width:auto; padding:5px 10px; font-size:12px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus program</button>
+							<button type="button" class="remove-division-program btn-danger-outline" style="width:auto; padding:5px 10px; font-size:12px;">Hapus program</button>
 						</div>
 					</div>
 					<?php endforeach; ?>
 				</div>
 				<button type="button" class="add-division-program" style="margin-top:6px; width:auto; padding:6px 12px; font-size:13px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">+ Tambah program kerja</button>
 				<div style="text-align:right; margin-top:6px;">
-					<button type="button" class="remove-division" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+					<button type="button" class="remove-division btn-danger-outline" style="min-width:70px;">Hapus</button>
 				</div>
 			</div>
 			<?php endforeach; ?>
@@ -146,14 +146,14 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<input type="file" class="division-avatar-file" accept=".svg,image/svg+xml" style="margin-bottom:6px;">
 			<div class="division-avatar-preview" style="display:none; align-items:center; gap:8px;">
 				<img src="" alt="Preview avatar" style="width:48px; height:48px; border-radius:50%; object-fit:cover; background:rgba(255,255,255,0.08); border:1px solid rgba(148,163,184,0.3);">
-				<button type="button" class="clear-division-avatar" style="width:auto; min-width:90px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus avatar</button>
+				<button type="button" class="clear-division-avatar btn-danger-outline" style="width:auto; min-width:90px;">Hapus avatar</button>
 			</div>
 			<label style="display:block; font-size:13px; color: var(--muted); margin:10px 0 4px;">Program Kerja</label>
 			<input type="hidden" name="division_programs[]" class="division-programs-json" value="[]">
 			<div class="division-programs-list" style="display:flex; flex-direction:column; gap:8px;"></div>
 			<button type="button" class="add-division-program" style="margin-top:6px; width:auto; padding:6px 12px; font-size:13px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">+ Tambah program kerja</button>
 			<div style="text-align:right; margin-top:6px;">
-				<button type="button" class="remove-division" style="background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25); min-width:70px;">Hapus</button>
+				<button type="button" class="remove-division btn-danger-outline" style="min-width:70px;">Hapus</button>
 			</div>
 		</div>`;
 	function attachRemoveHandlers() {
@@ -211,7 +211,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<input type="text" class="division-program-title" placeholder="Nama program kerja" value="" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); font-size:13px;">
 			<textarea class="division-program-desc" placeholder="Deskripsi singkat (opsional)" rows="2" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); font-size:13px; resize:vertical;"></textarea>
 			<div style="text-align:right;">
-				<button type="button" class="remove-division-program" style="width:auto; padding:5px 10px; font-size:12px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus program</button>
+				<button type="button" class="remove-division-program btn-danger-outline" style="width:auto; padding:5px 10px; font-size:12px;">Hapus program</button>
 			</div>
 		</div>`;
 	function syncDivisionPrograms(item) {

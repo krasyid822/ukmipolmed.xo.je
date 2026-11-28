@@ -4,7 +4,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 		$rawCards = (array) ($_POST['shortcut_cards'] ?? []);
 		$newCards = [];
 		$cardLimit = 8;
-		$slideLimit = 8;
+		$slideLimit = 2;
 		foreach ($rawCards as $card) {
 			if (!is_array($card)) continue;
 			$slides = [];
@@ -47,17 +47,17 @@ if (($adminComponentMode ?? '') === 'handle') {
 	</div>
 	<div class="admin-box" style="margin-top:10px;">
 		<h3 style="margin:0 0 8px; font-size:15px;">Kartu slide tambahan</h3>
-		<p class="muted-text" style="margin:0 0 10px;">Setiap kartu bisa berisi beberapa slide yang berganti otomatis dengan animasi membalik. Tambahkan kartu sebanyak yang dibutuhkan (maksimal 8 kartu, 8 slide per kartu).</p>
+		<p class="muted-text" style="margin:0 0 10px;">Setiap kartu bisa berisi beberapa slide yang berganti otomatis dengan animasi membalik. Tambahkan kartu sebanyak yang dibutuhkan (maksimal 8 kartu, 2 slide per kartu).</p>
 	<form method="post" id="shortcut-cards-form"><?php echo ukmi_csrf_field(); ?>
 		<div id="shortcut-card-list" class="stack-sm">
 			<?php foreach ($shortcutCards as $cardIdx => $shortcutCard): ?>
 			<div class="shortcut-card-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
 				<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
 					<strong class="shortcut-card-index" style="font-size:13px; color: var(--muted);">Kartu <?php echo $cardIdx + 1; ?></strong>
-					<button type="button" class="remove-shortcut-card" style="width:auto; min-width:70px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus kartu</button>
+					<button type="button" class="remove-shortcut-card btn-danger-outline" style="width:auto; min-width:70px;">Hapus kartu</button>
 				</div>
 				<div class="shortcut-slide-list field-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
-					<?php foreach (($shortcutCard['slides'] ?? []) as $slideIdx => $slide): ?>
+					<?php foreach (array_slice((array) ($shortcutCard['slides'] ?? []), 0, 2) as $slideIdx => $slide): ?>
 					<div class="shortcut-slide-item" style="border:1px dashed rgba(148,163,184,0.25); padding:10px; border-radius:10px;">
 						<strong class="shortcut-slide-index" style="display:block; font-size:12px; color: var(--muted); margin-bottom:6px;">Slide <?php echo $slideIdx + 1; ?></strong>
 						<label style="display:block; font-size:13px; color: var(--muted); margin-bottom:4px;">Tag</label>
@@ -67,7 +67,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 						<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Detail</label>
 						<textarea data-field="detail" name="shortcut_cards[<?php echo (int) $cardIdx; ?>][slides][<?php echo (int) $slideIdx; ?>][detail]" style="width:100%; min-height:72px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical;" placeholder="Deskripsi singkat"><?php echo htmlspecialchars($slide['detail'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
 						<div style="text-align:right; margin-top:6px;">
-							<button type="button" class="remove-shortcut-slide" style="width:auto; min-width:70px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus slide</button>
+							<button type="button" class="remove-shortcut-slide btn-danger-outline" style="width:auto; min-width:70px;">Hapus slide</button>
 						</div>
 					</div>
 					<?php endforeach; ?>
@@ -92,7 +92,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 	const addCard = document.getElementById('add-shortcut-card');
 	if (!cardList || !addCard) return;
 	const CARD_LIMIT = 8;
-	const SLIDE_LIMIT = 8;
+	const SLIDE_LIMIT = 2;
 
 	const slideTemplate = () => `
 		<div class="shortcut-slide-item" style="border:1px dashed rgba(148,163,184,0.25); padding:10px; border-radius:10px;">
@@ -104,7 +104,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 			<label style="display:block; font-size:13px; color: var(--muted); margin:8px 0 4px;">Detail</label>
 			<textarea data-field="detail" style="width:100%; min-height:72px; padding:10px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.3); background: rgba(15,23,42,0.4); color: var(--text); resize: vertical;" placeholder="Deskripsi singkat"></textarea>
 			<div style="text-align:right; margin-top:6px;">
-				<button type="button" class="remove-shortcut-slide" style="width:auto; min-width:70px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus slide</button>
+				<button type="button" class="remove-shortcut-slide btn-danger-outline" style="width:auto; min-width:70px;">Hapus slide</button>
 			</div>
 		</div>`;
 
@@ -112,7 +112,7 @@ if (($adminComponentMode ?? '') === 'handle') {
 		<div class="shortcut-card-item" style="border:1px solid rgba(148,163,184,0.25); padding:10px; border-radius:10px; background: rgba(255,255,255,0.02);">
 			<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
 				<strong class="shortcut-card-index" style="font-size:13px; color: var(--muted);">Kartu</strong>
-				<button type="button" class="remove-shortcut-card" style="width:auto; min-width:70px; background: rgba(255,255,255,0.08); color: var(--text); box-shadow: none; border: 1px solid rgba(148,163,184,0.25);">Hapus kartu</button>
+				<button type="button" class="remove-shortcut-card btn-danger-outline" style="width:auto; min-width:70px;">Hapus kartu</button>
 			</div>
 			<div class="shortcut-slide-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px;"></div>
 			<div style="margin-top:8px;">
@@ -124,7 +124,8 @@ if (($adminComponentMode ?? '') === 'handle') {
 		Array.from(cardList.querySelectorAll('.shortcut-card-item')).forEach((card, cardIdx) => {
 			const cardLabel = card.querySelector('.shortcut-card-index');
 			if (cardLabel) cardLabel.textContent = 'Kartu ' + (cardIdx + 1);
-			Array.from(card.querySelectorAll('.shortcut-slide-item')).forEach((slide, slideIdx) => {
+			const slides = Array.from(card.querySelectorAll('.shortcut-slide-item'));
+			slides.forEach((slide, slideIdx) => {
 				const slideLabel = slide.querySelector('.shortcut-slide-index');
 				if (slideLabel) slideLabel.textContent = 'Slide ' + (slideIdx + 1);
 				const prefix = `shortcut_cards[${cardIdx}][slides][${slideIdx}]`;
@@ -132,6 +133,11 @@ if (($adminComponentMode ?? '') === 'handle') {
 					field.name = prefix + '[' + field.dataset.field + ']';
 				});
 			});
+			const addSlide = card.querySelector('.add-shortcut-slide');
+			if (addSlide) {
+				addSlide.disabled = slides.length >= SLIDE_LIMIT;
+				addSlide.title = addSlide.disabled ? 'Maksimal ' + SLIDE_LIMIT + ' slide per kartu' : '';
+			}
 		});
 		updateAddCardState();
 	}

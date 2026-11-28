@@ -68,7 +68,7 @@ if (is_readable($defaultPath)) {
 }
 
 $config = (function_exists('data_store_is_sharded') && data_store_is_sharded())
-    ? array_merge(data_store_meta_read(), data_store_site_read())
+    ? array_merge(data_store_extra_read(), data_store_meta_read(), data_store_site_read())
     : store_read_json($configPath);
 if (is_array($config)) {
     if (!empty($config['agendas']) && is_array($config['agendas'])) {
@@ -238,7 +238,7 @@ foreach ($shortcutSource as $cardItem) {
         $detail = trim((string) ($slideItem['detail'] ?? ''));
         if ($tag === '' && $title === '' && $detail === '') continue;
         $slides[] = ['tag' => $tag, 'title' => $title, 'detail' => $detail];
-        if (count($slides) >= 8) break;
+        if (count($slides) >= 2) break;
     }
     if (empty($slides)) continue;
     $shortcutCards[] = ['slides' => $slides];
@@ -273,7 +273,6 @@ if (isset($config) && is_array($config) && array_key_exists('hero_cards', $confi
             if ($hasDefaultCard) continue;
             $tmpHeroCards[] = $protectedDefaultHeroCard;
             $hasDefaultCard = true;
-            if (count($tmpHeroCards) >= 8) break;
             continue;
         }
         $title = trim((string) ($item['title'] ?? ''));
@@ -289,7 +288,6 @@ if (isset($config) && is_array($config) && array_key_exists('hero_cards', $confi
             'content' => $content,
             'alt' => $alt,
         ];
-        if (count($tmpHeroCards) >= 8) break;
     }
     // override defaults even with an empty list
     $heroCards = $tmpHeroCards;
@@ -326,7 +324,7 @@ foreach ($heroCards as $item) {
 if (!$hasDefaultCard) {
     array_unshift($normalizedHeroCards, $protectedDefaultHeroCard);
 }
-$heroCards = array_slice($normalizedHeroCards, 0, 8);
+$heroCards = $normalizedHeroCards;
 
 $firstAgenda = $agendas[0];
 
@@ -447,7 +445,7 @@ $logoAbsoluteUrl = $canonicalBase . '/logo-ukmi.png';
             ],
             'sameAs' => [
                 'https://www.instagram.com/ukmipolmed/',
-                'https://www.youtube.com/c/UKMIPolmedTV',
+                'https://www.youtube.com/@UKMIPolmedTV',
                 'https://web.facebook.com/ukmipolmedmedan/',
                 'https://x.com/ukmipolmed',
                 'https://www.linkedin.com/company/unit-kegiatan-mahasiswa-islam-ukmi-politeknik-negeri-medan',
